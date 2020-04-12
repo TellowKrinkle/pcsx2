@@ -144,6 +144,7 @@ namespace GLLoader
 	bool in_replayer = false;
 
 	// Missing on macOS
+	bool found_GL_ARB_buffer_storage = false;
 	bool found_GL_ARB_shading_language_420pack = false;
 
 	bool has_dual_source_blend = false;
@@ -248,8 +249,6 @@ namespace GLLoader
 			ok = ok && mandatory("GL_ARB_texture_storage");
 			// GL4.3
 			ok = ok && mandatory("GL_KHR_debug");
-			// GL4.4
-			ok = ok && mandatory("GL_ARB_buffer_storage");
 		}
 
 		// Only for HW renderer
@@ -270,6 +269,7 @@ namespace GLLoader
 			found_GL_ARB_shading_language_420pack = optional("GL_ARB_shading_language_420pack");
 			// GL4.4
 			found_GL_ARB_clear_texture = optional("GL_ARB_clear_texture");
+			found_GL_ARB_buffer_storage = optional("GL_ARB_buffer_storage");
 			// GL4.5
 			optional("GL_ARB_direct_state_access");
 			// Mandatory for the advance HW renderer effect. Unfortunately Mesa LLVMPIPE/SWR renderers doesn't support this extension.
