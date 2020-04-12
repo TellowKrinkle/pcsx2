@@ -34,6 +34,7 @@ namespace PboPool
 	uptr m_offset;
 	char* m_map;
 	u32 m_size;
+	bool m_texture_storage;
 	GLsync m_fence[m_pbo_size / m_seg_size];
 
 	// Option for buffer storage
@@ -46,15 +47,24 @@ namespace PboPool
 
 	void Init()
 	{
+		m_texture_storage = GLLoader::found_GL_ARB_buffer_storage;
 		glGenBuffers(1, &m_buffer);
 
 		BindPbo();
 
 		glObjectLabel(GL_BUFFER, m_buffer, -1, "PBO");
 
-		glBufferStorage(GL_PIXEL_UNPACK_BUFFER, m_pbo_size, NULL, create_flags);
-		m_map = (char*)glMapBufferRange(GL_PIXEL_UNPACK_BUFFER, 0, m_pbo_size, map_flags);
-		m_offset = 0;
+		if (m_texture_storage)
+		{
+			glBufferStorage(GL_PIXEL_UNPACK_BUFFER, m_pbo_size, NULL, create_flags);
+			m_map = (char*)glMapBufferRange(GL_PIXEL_UNPACK_BUFFER, 0, m_pbo_size, map_flags);
+			m_offset = 0;
+		}
+		else
+		{
+			glBufferData(GL_PIXEL_UNPACK_BUFFER, m_pbo_size, NULL, GL_STREAM_COPY);
+			m_map = NULL;
+		}
 
 		std::fill(std::begin(m_fence), std::end(m_fence), nullptr);
 
@@ -76,16 +86,35 @@ namespace PboPool
 		// Pbo ready let's get a pointer
 		BindPbo();
 
-		Sync();
+		if (m_texture_storage)
+		{
+			Sync();
 
-		map = m_map + m_offset;
+			map = m_map + m_offset;
+		}
+		else
+		{
+			if (m_offset + m_size > m_pbo_size)
+			{
+				m_offset = 0;
+			}
+			GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT | GL_MAP_INVALIDATE_RANGE_BIT;
+			map = (char*)glMapBufferRange(GL_PIXEL_UNPACK_BUFFER, m_offset, m_size, flags);
+		}
 
 		return map;
 	}
 
 	void Unmap()
 	{
-		glFlushMappedBufferRange(GL_PIXEL_UNPACK_BUFFER, m_offset, m_size);
+		if (m_texture_storage)
+		{
+			glFlushMappedBufferRange(GL_PIXEL_UNPACK_BUFFER, m_offset, m_size);
+		}
+		else
+		{
+			glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+		}
 	}
 
 	uptr Offset()
