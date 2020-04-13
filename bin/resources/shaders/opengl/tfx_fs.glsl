@@ -68,14 +68,14 @@ in SHADER
 #endif
 #endif
 
-layout(binding = 1) uniform sampler2D PaletteSampler;
+BINDING(1) uniform sampler2D PaletteSampler;
 
-#if !HAS_FRAMEBUFFER_FETCH && NEEDS_RT
-layout(binding = 2) uniform sampler2D RtSampler; // note 2 already use by the image below
+#if !HAS_FRAMEBUFFER_FETCH
+BINDING(2) uniform sampler2D RtSampler; // note 2 already use by the image below
 #endif
 
 #if PS_DATE == 3
-layout(binding = 3) uniform sampler2D img_prim_min;
+BINDING(3) uniform sampler2D img_prim_min;
 
 // I don't remember why I set this parameter but it is surely useless
 //layout(pixel_center_integer) in vec4 gl_FragCoord;

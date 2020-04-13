@@ -383,7 +383,7 @@ bool GSDeviceOGL::Create()
                                               fmt::format("#define PS_SCALE_FACTOR {}\n", GSConfig.UpscaleMultiplier) :
                                               std::string();
 			const std::string ps(GetShaderSource(name, GL_FRAGMENT_SHADER, m_shader_common_header, *convert_glsl, macro_sel));
-			if (!m_shader_cache.GetProgram(&m_convert.ps[i], m_convert.vs, {}, ps))
+			if (!GetProgram(&m_convert.ps[i], m_convert.vs, {}, ps))
 				return false;
 			m_convert.ps[i].SetFormattedName("Convert pipe %s", name);
 
@@ -424,7 +424,7 @@ bool GSDeviceOGL::Create()
 		{
 			const char* name = shaderName(static_cast<PresentShader>(i));
 			const std::string ps(GetShaderSource(name, GL_FRAGMENT_SHADER, m_shader_common_header, *shader, {}));
-			if (!m_shader_cache.GetProgram(&m_present[i], present_vs, {}, ps))
+			if (!GetProgram(&m_present[i], present_vs, {}, ps))
 				return false;
 			m_present[i].SetFormattedName("Present pipe %s", name);
 
@@ -457,7 +457,7 @@ bool GSDeviceOGL::Create()
 		for (size_t i = 0; i < std::size(m_merge_obj.ps); i++)
 		{
 			const std::string ps(GetShaderSource(fmt::format("ps_main{}", i), GL_FRAGMENT_SHADER, m_shader_common_header, *shader, {}));
-			if (!m_shader_cache.GetProgram(&m_merge_obj.ps[i], m_convert.vs, {}, ps))
+			if (!GetProgram(&m_merge_obj.ps[i], m_convert.vs, {}, ps))
 				return false;
 			m_merge_obj.ps[i].SetFormattedName("Merge pipe %zu", i);
 			m_merge_obj.ps[i].RegisterUniform("BGColor");
@@ -480,7 +480,7 @@ bool GSDeviceOGL::Create()
 		for (size_t i = 0; i < std::size(m_interlace.ps); i++)
 		{
 			const std::string ps(GetShaderSource(fmt::format("ps_main{}", i), GL_FRAGMENT_SHADER, m_shader_common_header, *shader, {}));
-			if (!m_shader_cache.GetProgram(&m_interlace.ps[i], m_convert.vs, {}, ps))
+			if (!GetProgram(&m_interlace.ps[i], m_convert.vs, {}, ps))
 				return false;
 			m_interlace.ps[i].SetFormattedName("Merge pipe %zu", i);
 			m_interlace.ps[i].RegisterUniform("ZrH");
@@ -501,7 +501,7 @@ bool GSDeviceOGL::Create()
 		}
 
 		const std::string ps(GetShaderSource("ps_main", GL_FRAGMENT_SHADER, m_shader_common_header, *shader, {}));
-		if (!m_shader_cache.GetProgram(&m_shadeboost.ps, m_convert.vs, {}, ps))
+		if (!GetProgram(&m_shadeboost.ps, m_convert.vs, {}, ps))
 			return false;
 		m_shadeboost.ps.RegisterUniform("params");
 		m_shadeboost.ps.SetName("Shadeboost pipe");
@@ -540,7 +540,7 @@ bool GSDeviceOGL::Create()
 			const std::string ps(GetShaderSource(
 				fmt::format("ps_stencil_image_init_{}", i),
 				GL_FRAGMENT_SHADER, m_shader_common_header, *convert_glsl, {}));
-			m_shader_cache.GetProgram(&m_date.primid_ps[i], m_convert.vs, {}, ps);
+			GetProgram(&m_date.primid_ps[i], m_convert.vs, {}, ps);
 			m_date.primid_ps[i].SetFormattedName("PrimID Destination Alpha Init %d", i);
 		}
 	}
@@ -966,8 +966,15 @@ std::string GSDeviceOGL::GenGlslHeader(const std::string_view& entry, GLenum typ
 {
 	std::string header = "#version 330 core\n";
 
-	// Need GL version 420
-	header += "#extension GL_ARB_shading_language_420pack: require\n";
+	if (GLLoader::found_GL_ARB_shading_language_420pack)
+	{
+		// Need GL version 420
+		header += "#extension GL_ARB_shading_language_420pack: require\n";
+	}
+	else
+	{
+		header += "#define DISABLE_GL42\n";
+	}
 	// Need GL version 410
 	header += "#extension GL_ARB_separate_shader_objects: require\n";
 	if (m_features.framebuffer_fetch)
@@ -1114,6 +1121,24 @@ std::string GSDeviceOGL::GetPSSource(const PSSelector& sel)
 	src += m_shader_common_header;
 	src += m_shader_tfx_fs;
 	return src;
+}
+
+bool GSDeviceOGL::GetProgram(GL::Program* out_program, const std::string_view vertex_shader, const std::string_view geometry_shader, const std::string_view fragment_shader)
+{
+	if (!m_shader_cache.GetProgram(out_program, vertex_shader, geometry_shader, fragment_shader))
+		return false;
+	if (!GLLoader::found_GL_ARB_shading_language_420pack)
+	{
+		out_program->BindUniformBlock("cb20", 1);
+		out_program->BindUniformBlock("cb21", 0);
+
+		out_program->Bind();
+		out_program->Uniform1i("TextureSampler", 0);
+		out_program->Uniform1i("PaletteSampler", 1);
+		out_program->Uniform1i("RtSampler", 2);
+		out_program->Uniform1i("img_prim_min", 3);
+	}
+	return true;
 }
 
 bool GSDeviceOGL::DownloadTexture(GSTexture* src, const GSVector4i& rect, GSTexture::GSMap& out_map)
@@ -1776,7 +1801,7 @@ void GSDeviceOGL::SetupPipeline(const ProgramSelector& psel)
 	const std::string gs((psel.gs.key != 0) ? GetGSSource(psel.gs) : std::string());
 
 	GL::Program prog;
-	m_shader_cache.GetProgram(&prog, vs, gs, ps);
+	GetProgram(&prog, vs, gs, ps);
 	it = m_programs.emplace(psel, std::move(prog)).first;
 	it->second.Bind();
 }

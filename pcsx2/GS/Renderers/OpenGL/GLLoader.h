@@ -40,6 +40,7 @@ namespace GLLoader
 
 	// GL
 	extern bool has_dual_source_blend;
+	extern bool found_GL_ARB_shading_language_420pack;
 	extern bool found_framebuffer_fetch;
 	extern bool found_geometry_shader;
 	extern bool found_GL_ARB_gpu_shader5;
