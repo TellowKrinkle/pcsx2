@@ -56,7 +56,6 @@ namespace ReplaceGL
 
 } // namespace ReplaceGL
 
-#ifdef _WIN32
 namespace Emulate_DSA
 {
 	// Texture entry point
@@ -128,7 +127,6 @@ namespace Emulate_DSA
 		glCreateSamplers = CreateSamplers;
 	}
 } // namespace Emulate_DSA
-#endif
 
 namespace GLLoader
 {
@@ -321,13 +319,11 @@ namespace GLLoader
 			fprintf_once(stderr, "GL_ARB_texture_barrier is not supported! Blending emulation will not be supported\n");
 		}
 
-#ifdef _WIN32
 		// Thank you Intel for not providing support of basic features on your IGPUs.
 		if (!GLExtension::Has("GL_ARB_direct_state_access"))
 		{
 			Emulate_DSA::Init();
 		}
-#endif
 
 		return true;
 	}
