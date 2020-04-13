@@ -38,6 +38,12 @@ out gl_PerVertex {
 
 #endif
 
+#ifdef DISABLE_GL42
+#define BINDING(num)
+#else
+#define BINDING(num) layout(binding = num)
+#endif
+
 //////////////////////////////////////////////////////////////////////
 // Constant Buffer Definition
 //////////////////////////////////////////////////////////////////////
@@ -45,7 +51,7 @@ out gl_PerVertex {
 // even if only one was updated.
 
 #if defined(VERTEX_SHADER) || defined(GEOMETRY_SHADER)
-layout(std140, binding = 1) uniform cb20
+layout(std140) BINDING(1) uniform cb20
 {
     vec2  VertexScale;
     vec2  VertexOffset;
@@ -60,7 +66,7 @@ layout(std140, binding = 1) uniform cb20
 #endif
 
 #if defined(VERTEX_SHADER) || defined(FRAGMENT_SHADER)
-layout(std140, binding = 0) uniform cb21
+layout(std140) BINDING(0) uniform cb21
 {
     vec3 FogColor;
     float AREF;
@@ -88,7 +94,7 @@ layout(std140, binding = 0) uniform cb21
 };
 #endif
 
-//layout(std140, binding = 22) uniform cb22
+//layout(std140) BINDING(22) uniform cb22
 //{
 //    vec4 rt_size;
 //};
@@ -98,6 +104,6 @@ layout(std140, binding = 0) uniform cb21
 //////////////////////////////////////////////////////////////////////
 #ifdef FRAGMENT_SHADER
 
-layout(binding = 0) uniform sampler2D TextureSampler;
+BINDING(0) uniform sampler2D TextureSampler;
 
 #endif

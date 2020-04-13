@@ -210,6 +210,21 @@ GSTexture* GSDeviceOGL::CreateSurface(GSTexture::Type type, int w, int h, GSText
 	return t;
 }
 
+static void BindUniforms(GL::Program& program)
+{
+	if (GLLoader::found_GL_ARB_shading_language_420pack)
+		return;
+
+	program.BindUniformBlock("cb20", 1);
+	program.BindUniformBlock("cb21", 0);
+
+	program.Uniform1i("TextureSampler", 0);
+	program.Uniform1i("PaletteSampler", 1);
+	program.Uniform1i("img_prim_min", 2);
+	program.Uniform1i("RtSampler", 3);
+	program.Uniform1i("RawTextureSampler", 4);
+}
+
 bool GSDeviceOGL::Create(HostDisplay* display)
 {
 	if (!GSDevice::Create(display))
@@ -385,7 +400,7 @@ bool GSDeviceOGL::Create(HostDisplay* display)
                                               format("#define PS_SCALE_FACTOR %d\n", m_upscale_multiplier) :
                                               std::string();
 			const std::string ps(GetShaderSource(name, GL_FRAGMENT_SHADER, m_shader_common_header, *shader, macro_sel));
-			if (!m_shader_cache.GetProgram(&m_convert.ps[i], m_convert.vs, {}, ps))
+			if (!m_shader_cache.GetProgram(&m_convert.ps[i], m_convert.vs, {}, ps, BindUniforms))
 				return false;
 			m_convert.ps[i].SetFormattedName("Convert pipe %s", name);
 
@@ -422,7 +437,7 @@ bool GSDeviceOGL::Create(HostDisplay* display)
 		for (size_t i = 0; i < std::size(m_merge_obj.ps); i++)
 		{
 			const std::string ps(GetShaderSource(format("ps_main%d", i), GL_FRAGMENT_SHADER, m_shader_common_header, *shader, {}));
-			if (!m_shader_cache.GetProgram(&m_merge_obj.ps[i], m_convert.vs, {}, ps))
+			if (!m_shader_cache.GetProgram(&m_merge_obj.ps[i], m_convert.vs, {}, ps, BindUniforms))
 				return false;
 			m_merge_obj.ps[i].SetFormattedName("Merge pipe %zu", i);
 			m_merge_obj.ps[i].RegisterUniform("BGColor");
@@ -445,7 +460,7 @@ bool GSDeviceOGL::Create(HostDisplay* display)
 		for (size_t i = 0; i < std::size(m_interlace.ps); i++)
 		{
 			const std::string ps(GetShaderSource(format("ps_main%d", i), GL_FRAGMENT_SHADER, m_shader_common_header, *shader, {}));
-			if (!m_shader_cache.GetProgram(&m_interlace.ps[i], m_convert.vs, {}, ps))
+			if (!m_shader_cache.GetProgram(&m_interlace.ps[i], m_convert.vs, {}, ps, BindUniforms))
 				return false;
 			m_interlace.ps[i].SetFormattedName("Merge pipe %zu", i);
 			m_interlace.ps[i].RegisterUniform("ZrH");
@@ -474,7 +489,7 @@ bool GSDeviceOGL::Create(HostDisplay* display)
 		}
 
 		const std::string ps(GetShaderSource("ps_main", GL_FRAGMENT_SHADER, m_shader_common_header, *shader, shade_macro));
-		if (!m_shader_cache.GetProgram(&m_shadeboost.ps, m_convert.vs, {}, ps))
+		if (!m_shader_cache.GetProgram(&m_shadeboost.ps, m_convert.vs, {}, ps, BindUniforms))
 			return false;
 		m_shadeboost.ps.SetName("Shadeboost pipe");
 	}
@@ -966,8 +981,15 @@ std::string GSDeviceOGL::GenGlslHeader(const std::string_view& entry, GLenum typ
 {
 	std::string header = "#version 330 core\n";
 
-	// Need GL version 420
-	header += "#extension GL_ARB_shading_language_420pack: require\n";
+	if (GLLoader::found_GL_ARB_shading_language_420pack)
+	{
+		// Need GL version 420
+		header += "#extension GL_ARB_shading_language_420pack: require\n";
+	}
+	else
+	{
+		header += "#define DISABLE_GL42\n";
+	}
 	// Need GL version 410
 	header += "#extension GL_ARB_separate_shader_objects: require\n";
 	if (GLLoader::found_GL_ARB_shader_image_load_store)
@@ -1756,7 +1778,7 @@ void GSDeviceOGL::SetupPipeline(const ProgramSelector& psel)
 	const std::string gs((psel.gs.key != 0) ? GetGSSource(psel.gs) : std::string());
 
 	GL::Program prog;
-	m_shader_cache.GetProgram(&prog, vs, gs, ps);
+	m_shader_cache.GetProgram(&prog, vs, gs, ps, BindUniforms);
 	it = m_programs.emplace(psel, std::move(prog)).first;
 	it->second.Bind();
 }
