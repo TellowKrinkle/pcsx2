@@ -1369,6 +1369,7 @@ void GSApp::Init()
 	m_default_configuration["override_GL_ARB_sparse_texture"]             = "-1";
 	m_default_configuration["override_GL_ARB_sparse_texture2"]            = "-1";
 	m_default_configuration["override_GL_ARB_texture_barrier"]            = "-1";
+	m_default_configuration["override_GL_ARB_shading_language_420pack"]   = "-1";
 	m_default_configuration["OverrideTextureBarriers"]                    = "-1";
 	m_default_configuration["OverrideGeometryShaders"]                    = "-1";
 	m_default_configuration["paltex"]                                     = "0";

@@ -290,6 +290,7 @@ private:
 	GSDepthStencilOGL* m_om_dss[1 << 5] = {};
 	std::unordered_map<ProgramSelector, GL::Program, ProgramSelectorHash> m_programs;
 	GL::ShaderCache m_shader_cache;
+	bool GetProgram(GL::Program* out_program, const std::string_view vertex_shader, const std::string_view geometry_shader, const std::string_view fragment_shader);
 
 	GLuint m_palette_ss;
 

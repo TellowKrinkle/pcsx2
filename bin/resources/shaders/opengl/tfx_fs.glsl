@@ -64,10 +64,10 @@ in SHADER
 #endif
 #endif
 
-layout(binding = 1) uniform sampler2D PaletteSampler;
+BINDING(1) uniform sampler2D PaletteSampler;
 
 #if !HAS_FRAMEBUFFER_FETCH
-layout(binding = 2) uniform sampler2D RtSampler; // note 2 already use by the image below
+BINDING(2) uniform sampler2D RtSampler; // note 2 already use by the image below
 #endif
 
 #ifndef DISABLE_GL42_image
@@ -76,7 +76,7 @@ layout(binding = 2) uniform sampler2D RtSampler; // note 2 already use by the im
 // require extra shader validation.
 
 // FIXME how to declare memory access
-layout(r32i, binding = 3) uniform iimage2D img_prim_min;
+layout(r32i) BINDING(3) uniform iimage2D img_prim_min;
 // WARNING:
 // You can't enable it if you discard the fragment. The depth is still
 // updated (shadow in Shin Megami Tensei Nocturne)
