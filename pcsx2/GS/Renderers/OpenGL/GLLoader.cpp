@@ -147,6 +147,9 @@ namespace GLLoader
 	bool mesa_driver = false;
 	bool in_replayer = false;
 
+	// Missing on macOS
+	bool found_GL_ARB_shading_language_420pack = false;
+
 	bool found_geometry_shader = true; // we require GL3.3 so geometry must be supported by default
 	bool found_GL_ARB_clear_texture = false;
 	// DX11 GPU
@@ -251,7 +254,6 @@ namespace GLLoader
 			// GL4.1
 			ok = ok && mandatory("GL_ARB_separate_shader_objects");
 			// GL4.2
-			ok = ok && mandatory("GL_ARB_shading_language_420pack");
 			ok = ok && mandatory("GL_ARB_texture_storage");
 			// GL4.3
 			ok = ok && mandatory("GL_KHR_debug");
@@ -277,6 +279,7 @@ namespace GLLoader
 			found_GL_ARB_gpu_shader5 = optional("GL_ARB_gpu_shader5");
 			// GL4.2
 			found_GL_ARB_shader_image_load_store = optional("GL_ARB_shader_image_load_store");
+			found_GL_ARB_shading_language_420pack = optional("GL_ARB_shading_language_420pack");
 			// GL4.4
 			found_GL_ARB_clear_texture = optional("GL_ARB_clear_texture");
 			// GL4.5
