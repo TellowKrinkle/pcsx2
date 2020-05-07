@@ -1182,12 +1182,22 @@ void GSDeviceOGL::CopyRect(GSTexture* sTex, GSTexture* dTex, const GSVector4i& r
 	dTex->CommitRegion(GSVector2i(r.z, r.w));
 	g_perfmon.Put(GSPerfMon::TextureCopies, 1);
 
-	ASSERT(GLExtension::Has("GL_ARB_copy_image") && glCopyImageSubData);
-	glCopyImageSubData(sid, GL_TEXTURE_2D,
-		0, r.x, r.y, 0,
-		did, GL_TEXTURE_2D,
-		0, 0, 0, 0,
-		r.width(), r.height(), 1);
+	if (GLLoader::found_GL_ARB_copy_image)
+	{
+		glCopyImageSubData(sid, GL_TEXTURE_2D,
+			0, r.x, r.y, 0,
+			did, GL_TEXTURE_2D,
+			0, 0, 0, 0,
+			r.width(), r.height(), 1);
+	}
+	else
+	{
+		// Slower copy (conversion is done)
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_fbo_read);
+		glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, sid, 0);
+		glCopyTextureSubImage2D(did, GL_TEX_LEVEL_0, r.x, r.y, r.x, r.y, r.width(), r.height());
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	}
 }
 
 void GSDeviceOGL::StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture* dTex, const GSVector4& dRect, ShaderConvert shader, bool linear)
