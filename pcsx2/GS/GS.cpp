@@ -1251,6 +1251,7 @@ void GSApp::Init()
 	m_default_configuration["override_GL_ARB_texture_barrier"]            = "-1";
 	m_default_configuration["override_GL_ARB_shading_language_420pack"]   = "-1";
 	m_default_configuration["override_GL_ARB_buffer_storage"]             = "-1";
+	m_default_configuration["override_GL_ARB_copy_image"]                 = "-1";
 #ifdef GL_EXT_TEX_SUB_IMAGE
 	m_default_configuration["override_GL_ARB_get_texture_sub_image"]      = "-1";
 #endif
