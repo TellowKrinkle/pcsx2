@@ -86,6 +86,12 @@ namespace Emulate_DSA
 		glTexSubImage2D(GL_TEXTURE_2D, level, xoffset, yoffset, width, height, format, type, pixels);
 	}
 
+	void APIENTRY CopyTextureSubImage(GLuint texture, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height)
+	{
+		BindTextureUnit(7, texture);
+		glCopyTexSubImage2D(GL_TEXTURE_2D, level, xoffset, yoffset, x, y, width, height);
+	}
+
 	void APIENTRY GetTexureImage(GLuint texture, GLint level, GLenum format, GLenum type, GLsizei bufSize, void* pixels)
 	{
 		BindTextureUnit(7, texture);
@@ -124,6 +130,7 @@ namespace Emulate_DSA
 		glCreateTextures = CreateTexture;
 		glTextureStorage2D = TextureStorage;
 		glTextureSubImage2D = TextureSubImage;
+		glCopyTextureSubImage2D = CopyTextureSubImage;
 		glGetTextureImage = GetTexureImage;
 		glTextureParameteri = TextureParameteri;
 
@@ -152,6 +159,7 @@ namespace GLLoader
 	// Missing on macOS
 	bool found_GL_ARB_buffer_storage = false;
 	bool found_GL_ARB_shading_language_420pack = false;
+	bool found_GL_ARB_copy_image = false;
 
 	bool found_geometry_shader = true; // we require GL3.3 so geometry must be supported by default
 	bool found_GL_ARB_clear_texture = false;
@@ -258,7 +266,7 @@ namespace GLLoader
 		// Only for HW renderer
 		if (GSConfig.UseHardwareRenderer())
 		{
-			ok = ok && mandatory("GL_ARB_copy_image");
+			found_GL_ARB_copy_image = optional("GL_ARB_copy_image");
 			ok = ok && mandatory("GL_ARB_clip_control");
 		}
 		if (!ok)
