@@ -54,6 +54,10 @@ namespace ReplaceGL
 	{
 	}
 
+	template <typename... Ts>
+	void APIENTRY DoNothing(Ts...)
+	{
+	}
 } // namespace ReplaceGL
 
 namespace Emulate_DSA
@@ -256,8 +260,6 @@ namespace GLLoader
 			ok = ok && mandatory("GL_ARB_separate_shader_objects");
 			// GL4.2
 			ok = ok && mandatory("GL_ARB_texture_storage");
-			// GL4.3
-			ok = ok && mandatory("GL_KHR_debug");
 		}
 
 		// Only for HW renderer
@@ -302,6 +304,15 @@ namespace GLLoader
 			fprintf_once(stderr, "The OpenGL renderer is inefficient on Intel GPUs due to an inefficient driver.\n"
 								 "Check out the link below for further information.\n"
 								 "https://github.com/PCSX2/pcsx2/wiki/OpenGL-and-Intel-GPUs-All-you-need-to-know\n");
+		}
+
+		if (!GLExtension::Has("GL_KHR_debug"))
+		{
+			glObjectLabel          = ReplaceGL::DoNothing;
+			glDebugMessageCallback = ReplaceGL::DoNothing;
+			glDebugMessageInsert   = ReplaceGL::DoNothing;
+			glDebugMessageControl  = ReplaceGL::DoNothing;
+			fprintf_once(stderr, "GL_KHR_debug is not supported!  Will stub functions\n");
 		}
 
 		if (!GLExtension::Has("GL_ARB_viewport_array"))
