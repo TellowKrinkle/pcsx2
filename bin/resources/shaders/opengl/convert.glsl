@@ -75,7 +75,7 @@ void ps_convert_rgba8_16bits()
 void ps_convert_float32_32bits()
 {
     // Convert a GL_FLOAT32 depth texture into a 32 bits UINT texture
-    SV_Target1 = uint(exp2(32.0f) * sample_c().r);
+    SV_Target1 = DEPTH_TO_INT(sample_c().r);
 }
 #endif
 
@@ -83,7 +83,7 @@ void ps_convert_float32_32bits()
 void ps_convert_float32_rgba8()
 {
     // Convert a GL_FLOAT32 depth texture into a RGBA color texture
-    uint d = uint(sample_c().r * exp2(32.0f));
+    uint d = DEPTH_TO_INT(sample_c().r);
     SV_Target0 = vec4(uvec4((d & 0xFFu), ((d >> 8) & 0xFFu), ((d >> 16) & 0xFFu), (d >> 24))) / vec4(255.0);
 }
 #endif
@@ -92,7 +92,7 @@ void ps_convert_float32_rgba8()
 void ps_convert_float16_rgb5a1()
 {
     // Convert a GL_FLOAT32 (only 16 lsb) depth into a RGB5A1 color texture
-    uint d = uint(sample_c().r * exp2(32.0f));
+    uint d = DEPTH_TO_INT(sample_c().r);
     SV_Target0 = vec4(uvec4((d & 0x1Fu), ((d >> 5) & 0x1Fu), ((d >> 10) & 0x1Fu), (d >> 15) & 0x01u)) / vec4(32.0f, 32.0f, 32.0f, 1.0f);
 }
 #endif
@@ -100,25 +100,25 @@ void ps_convert_float16_rgb5a1()
 float rgba8_to_depth32(vec4 unorm)
 {
     uvec4 c = uvec4(unorm * vec4(255.5f));
-    return float(c.r | (c.g << 8) | (c.b << 16) | (c.a << 24)) * exp2(-32.0f);
+    return INT_TO_DEPTH(c.r | (c.g << 8) | (c.b << 16) | (c.a << 24));
 }
 
 float rgba8_to_depth24(vec4 unorm)
 {
     uvec3 c = uvec3(unorm.rgb * vec3(255.5f));
-    return float(c.r | (c.g << 8) | (c.b << 16)) * exp2(-32.0f);
+    return INT_TO_DEPTH(c.r | (c.g << 8) | (c.b << 16));
 }
 
 float rgba8_to_depth16(vec4 unorm)
 {
     uvec2 c = uvec2(unorm.rg * vec2(255.5f));
-    return float(c.r | (c.g << 8)) * exp2(-32.0f);
+    return INT_TO_DEPTH(c.r | (c.g << 8));
 }
 
 float rgb5a1_to_depth16(vec4 unorm)
 {
     uvec4 c = uvec4(unorm * vec4(255.5f));
-    return float(((c.r & 0xF8u) >> 3) | ((c.g & 0xF8u) << 2) | ((c.b & 0xF8u) << 7) | ((c.a & 0x80u) << 8)) * exp2(-32.0f);
+    return INT_TO_DEPTH(((c.r & 0xF8u) >> 3) | ((c.g & 0xF8u) << 2) | ((c.b & 0xF8u) << 7) | ((c.a & 0x80u) << 8));
 }
 
 #ifdef ps_convert_rgba8_float32

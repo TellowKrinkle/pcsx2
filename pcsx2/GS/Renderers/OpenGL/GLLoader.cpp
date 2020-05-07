@@ -158,6 +158,7 @@ namespace GLLoader
 	bool found_GL_ARB_buffer_storage = false;
 	bool found_GL_ARB_shading_language_420pack = false;
 	bool found_GL_ARB_copy_image = false;
+	bool found_GL_ARB_clip_control = false;
 
 	bool has_dual_source_blend = false;
 	bool found_framebuffer_fetch = false;
@@ -264,7 +265,7 @@ namespace GLLoader
 		if (GSConfig.UseHardwareRenderer())
 		{
 			found_GL_ARB_copy_image = optional("GL_ARB_copy_image");
-			ok = ok && mandatory("GL_ARB_clip_control");
+			found_GL_ARB_clip_control = optional("GL_ARB_clip_control");
 		}
 		if (!ok)
 			return false;

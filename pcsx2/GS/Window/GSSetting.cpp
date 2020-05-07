@@ -104,6 +104,8 @@ const char* dialog_message(int ID, bool* updateText)
 			return cvtString("Enable: Removes the offset for interlacing when upscaling.\n"
 				"Can reduce blurring in some games, where the opposite is true most of the time.\n"
 				"Used for ICO to reduce blur.");
+		case IDC_FULLDEPTH:
+			return cvtString("Higher values give more range to depth but reduce precision.  Higher values may cause z-fighting.");
 		case IDC_ACCURATE_BLEND_UNIT:
 			return cvtString("Control the accuracy level of the GS blending unit emulation.\n\n"
 				"Minimum:\nFast but introduces various rendering issues.\n"

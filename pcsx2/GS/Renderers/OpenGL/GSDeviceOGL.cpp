@@ -19,7 +19,6 @@
 #include "GSDeviceOGL.h"
 #include "GLState.h"
 #include "GS/GSGL.h"
-#include "GS/GSUtil.h"
 #include "Host.h"
 #include "HostDisplay.h"
 #include "ShaderCacheVersion.h"
@@ -234,6 +233,7 @@ bool GSDeviceOGL::Create()
 	m_features.stencil_buffer = true;
 	// Wide line support in GL is deprecated as of 3.1, so we will just do it in the Geometry Shader.
 	m_features.line_expand = false;
+	m_features.bad_depth_precision = !GLLoader::found_GL_ARB_clip_control;
 
 	GLint point_range[2] = {};
 	glGetIntegerv(GL_ALIASED_POINT_SIZE_RANGE, point_range);
@@ -555,7 +555,7 @@ bool GSDeviceOGL::Create()
 	// This extension allow FS depth to range from -1 to 1. So
 	// gl_position.z could range from [0, 1]
 	// Change depth convention
-	if (GLExtension::Has("GL_ARB_clip_control"))
+	if (GLLoader::found_GL_ARB_clip_control)
 		glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
 
 	// ****************************************************************
@@ -987,6 +987,9 @@ std::string GSDeviceOGL::GenGlslHeader(const std::string_view& entry, GLenum typ
 
 	if (GLLoader::found_GL_ARB_gpu_shader5)
 		header += "#extension GL_ARB_gpu_shader5 : enable\n";
+
+	if (!GLLoader::found_GL_ARB_clip_control && GSConfig.DepthRange < 8)
+		header += fmt::format("#define BAD_DEPTH_PRECISION {:d}.0f\n", GSConfig.DepthRange);
 
 	if (m_features.framebuffer_fetch)
 		header += "#define HAS_FRAMEBUFFER_FETCH 1\n";

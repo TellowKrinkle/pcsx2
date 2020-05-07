@@ -1445,6 +1445,7 @@ void GSApp::Init()
 	m_default_configuration["pcrtc_offsets"]                              = "0";
 	m_default_configuration["pcrtc_overscan"]                             = "0";
 	m_default_configuration["IntegerScaling"]                             = "0";
+	m_default_configuration["fulldepth"]                                  = "0";
 	m_default_configuration["deinterlace"]                                = "7";
 	m_default_configuration["linear_present"]                             = "1";
 	m_default_configuration["LoadTextureReplacements"]                    = "0";

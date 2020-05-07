@@ -2113,7 +2113,8 @@ void GSRendererHW::EmulateZbuffer()
 		}
 		else if (!m_context->ZBUF.ZMSK)
 		{
-			m_conf.cb_ps.TA_MaxDepth_Af.z = static_cast<float>(max_z) * 0x1p-32f;
+			int fulldepth = g_gs_device->Features().bad_depth_precision ? GSConfig.DepthRange : 8;
+			m_conf.cb_ps.TA_MaxDepth_Af.z = static_cast<float>(max_z) * ldexpf(1, -24 - fulldepth);
 			m_conf.ps.zclamp = 1;
 		}
 	}
