@@ -54,6 +54,10 @@ namespace ReplaceGL
 	{
 	}
 
+	template <typename... Ts>
+	void APIENTRY DoNothing(Ts...)
+	{
+	}
 } // namespace ReplaceGL
 
 namespace Emulate_DSA
@@ -246,8 +250,6 @@ namespace GLLoader
 			ok = ok && mandatory("GL_ARB_separate_shader_objects");
 			// GL4.2
 			ok = ok && mandatory("GL_ARB_texture_storage");
-			// GL4.3
-			ok = ok && mandatory("GL_KHR_debug");
 		}
 
 		// Only for HW renderer
@@ -280,6 +282,15 @@ namespace GLLoader
 				Console.Warning("Framebuffer fetch was found but is disabled. This will reduce performance.");
 				found_framebuffer_fetch = false;
 			}
+		}
+
+		if (!GLExtension::Has("GL_KHR_debug"))
+		{
+			glObjectLabel          = ReplaceGL::DoNothing;
+			glDebugMessageCallback = ReplaceGL::DoNothing;
+			glDebugMessageInsert   = ReplaceGL::DoNothing;
+			glDebugMessageControl  = ReplaceGL::DoNothing;
+			Console.Warning("GL_KHR_debug is not supported!  Will stub functions");
 		}
 
 		if (!GLExtension::Has("GL_ARB_viewport_array"))
