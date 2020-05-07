@@ -411,6 +411,7 @@ bool Pcsx2Config::GSOptions::OptionsAreEqual(const GSOptions& right) const
 		OpEqu(TVShader) &&
 		OpEqu(SkipDrawEnd) &&
 		OpEqu(SkipDrawStart) &&
+		OpEqu(DepthRange) &&
 
 		OpEqu(UserHacks_HalfBottomOverride) &&
 		OpEqu(UserHacks_HalfPixelOffset) &&
@@ -608,6 +609,7 @@ void Pcsx2Config::GSOptions::ReloadIniSettings()
 	GSSettingIntEnumEx(UserHacks_TriFilter, "UserHacks_TriFilter");
 	GSSettingIntEx(OverrideTextureBarriers, "OverrideTextureBarriers");
 	GSSettingIntEx(OverrideGeometryShaders, "OverrideGeometryShaders");
+	GSSettingIntEx(DepthRange, "fulldepth");
 
 	GSSettingInt(ShadeBoost_Brightness);
 	GSSettingInt(ShadeBoost_Contrast);

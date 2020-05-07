@@ -23,8 +23,6 @@ out SHADER
     #endif
 } VSout;
 
-const float exp_min32 = exp2(-32.0f);
-
 void texture_coord()
 {
     vec2 uv = vec2(i_uv) - TextureOffset;
@@ -59,7 +57,7 @@ void vs_main()
     p.xy = vec2(i_p) - vec2(0.05f, 0.05f);
     p.xy = p.xy * VertexScale - VertexOffset;
     p.w = 1.0f;
-    p.z = float(z) * exp_min32;
+    p.z = INT_TO_DEPTH(z);
 
     gl_Position = p;
 

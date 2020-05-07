@@ -532,6 +532,7 @@ struct Pcsx2Config
 		BiFiltering TextureFiltering{BiFiltering::PS2};
 		TexturePreloadingLevel TexturePreloading{TexturePreloadingLevel::Full};
 		GSDumpCompressionMethod GSDumpCompression{GSDumpCompressionMethod::LZMA};
+		int DepthRange{0};
 		int Dithering{2};
 		int MaxAnisotropy{0};
 		int SWExtraThreads{2};
