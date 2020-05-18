@@ -515,7 +515,7 @@ bool GSDeviceOGL::Create(const WindowInfo& wi)
 	// This extension allow FS depth to range from -1 to 1. So
 	// gl_position.z could range from [0, 1]
 	// Change depth convention
-	if (GLExtension::Has("GL_ARB_clip_control"))
+	if (GLLoader::found_GL_ARB_clip_control)
 		glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
 
 	// ****************************************************************
