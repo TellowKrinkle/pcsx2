@@ -533,7 +533,7 @@ bool GSDeviceOGL::Create(HostDisplay* display)
 	// This extension allow FS depth to range from -1 to 1. So
 	// gl_position.z could range from [0, 1]
 	// Change depth convention
-	if (GLExtension::Has("GL_ARB_clip_control"))
+	if (GLLoader::found_GL_ARB_clip_control)
 		glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
 
 	// ****************************************************************
@@ -1001,8 +1001,8 @@ std::string GSDeviceOGL::GenGlslHeader(const std::string_view& entry, GLenum typ
 	{
 		header += "#define DISABLE_GL42_image\n";
 	}
-	if (GLLoader::found_GL_ARB_clip_control) {
-		header += "#define ZERO_TO_ONE_DEPTH\n";
+	if (!GLLoader::found_GL_ARB_clip_control) {
+		header += "#define NEG_ONE_TO_ONE_DEPTH_AND_LOGZ\n";
 	}
 
 	if (GLLoader::vendor_id_amd || GLLoader::vendor_id_intel)
