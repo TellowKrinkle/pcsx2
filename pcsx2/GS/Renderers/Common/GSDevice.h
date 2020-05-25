@@ -544,6 +544,7 @@ public:
 		bool prefer_new_textures  : 1; ///< Allocate textures up to the pool size before reusing them, to avoid render pass restarts.
 		bool dxt_textures         : 1; ///< Supports DXTn texture compression, i.e. S3TC and BC1-3.
 		bool bptc_textures        : 1; ///< Supports BC6/7 texture compression.
+		bool bad_depth_precision  : 1; ///< Only 24 bits of depth precision supported
 		FeatureSupport()
 		{
 			memset(this, 0, sizeof(*this));
