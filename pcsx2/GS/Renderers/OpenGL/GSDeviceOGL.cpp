@@ -226,6 +226,7 @@ bool GSDeviceOGL::Create(HostDisplay* display)
 	m_features.framebuffer_fetch = GLLoader::found_framebuffer_fetch;
 	m_features.dual_source_blend = GLLoader::has_dual_source_blend && !GSConfig.DisableDualSourceBlend;
 	m_features.stencil_buffer = true;
+	m_features.bad_depth_precision = !GLLoader::found_GL_ARB_clip_control;
 
 	GLint point_range[2] = {};
 	GLint line_range[2] = {};
@@ -980,8 +981,8 @@ std::string GSDeviceOGL::GenGlslHeader(const std::string_view& entry, GLenum typ
 	{
 		header += "#define DISABLE_GL42_image\n";
 	}
-	if (!GLLoader::found_GL_ARB_clip_control) {
-		header += "#define NEG_ONE_TO_ONE_DEPTH_AND_LOGZ\n";
+	if (GLLoader::found_GL_ARB_clip_control) {
+		header += "#define ZERO_TO_ONE_DEPTH\n";
 	}
 
 	if (m_features.framebuffer_fetch)

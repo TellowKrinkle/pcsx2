@@ -594,6 +594,7 @@ public:
 		bool framebuffer_fetch    : 1; ///< Can sample from the framebuffer without texture barriers.
 		bool dual_source_blend    : 1; ///< Can use alpha output as a blend factor.
 		bool stencil_buffer       : 1; ///< Supports stencil buffer, and can use for DATE.
+		bool bad_depth_precision  : 1; ///< Only 24 bits of depth precision supported
 		FeatureSupport()
 		{
 			memset(this, 0, sizeof(*this));
