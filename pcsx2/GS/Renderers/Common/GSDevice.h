@@ -542,6 +542,7 @@ public:
 		bool point_expand         : 1; ///< Supports point expansion in hardware without using geometry shaders.
 		bool line_expand          : 1; ///< Supports line expansion in hardware without using geometry shaders.
 		bool prefer_new_textures  : 1; ///< Allocate textures up to the pool size before reusing them, to avoid render pass restarts.
+		bool bad_depth_precision  : 1; ///< Only 24 bits of depth precision supported
 		FeatureSupport()
 		{
 			memset(this, 0, sizeof(*this));
