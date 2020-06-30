@@ -44,6 +44,12 @@ out gl_PerVertex {
 #define BINDING(num) layout(binding = num)
 #endif
 
+#ifdef GL_ARB_enhanced_layouts
+#define HAS_ENHANCED_LAYOUTS GL_ARB_enhanced_layouts
+#else
+#define HAS_ENHANCED_LAYOUTS 0
+#endif
+
 //////////////////////////////////////////////////////////////////////
 // Constant Buffer Definition
 //////////////////////////////////////////////////////////////////////
