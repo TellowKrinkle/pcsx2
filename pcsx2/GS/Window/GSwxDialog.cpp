@@ -36,7 +36,6 @@ RendererTab::RendererTab(wxWindow* parent)
 	auto* hardware_box = new wxStaticBoxSizer(wxVERTICAL, this, "Hardware Mode");
 	auto* software_box = new wxStaticBoxSizer(wxVERTICAL, this, "Software Mode");
 
-	hacks_check = new wxCheckBox(this, wxID_ANY, "Enable User Hacks");
 	eight_bit_check = new wxCheckBox(this, wxID_ANY, "GPU Palette Conversion");
 	framebuffer_check = new wxCheckBox(this, wxID_ANY, "Conservative Buffer Allocation");
 	acc_date_check = new wxCheckBox(this, wxID_ANY, "Accurate DATE");
@@ -98,7 +97,6 @@ RendererTab::RendererTab(wxWindow* parent)
 	hw_choice_grid->Add(m_blend_select);
 
 	auto* top_checks_box = new wxWrapSizer(wxHORIZONTAL);
-	top_checks_box->Add(hacks_check, wxSizerFlags().Centre());
 	top_checks_box->Add(eight_bit_check, wxSizerFlags().Centre());
 	top_checks_box->Add(framebuffer_check, wxSizerFlags().Centre());
 	top_checks_box->Add(acc_date_check, wxSizerFlags().Centre());
@@ -130,11 +128,102 @@ RendererTab::RendererTab(wxWindow* parent)
 	SetSizerAndFit(tab_box);
 }
 
-AdvancedTab::AdvancedTab(wxWindow* parent)
+HacksTab::HacksTab(wxWindow* parent)
 	: wxPanel(parent, wxID_ANY)
 {
 	auto* tab_box = new wxBoxSizer(wxVERTICAL);
-	tab_box->Add(new wxStaticText(this, wxID_ANY, "This is a test"), wxSizerFlags().Centre().Expand());
+
+	hacks_check = new wxCheckBox(this, wxID_ANY, "Enable User Hacks");
+
+	auto* hacks_box = new wxStaticBoxSizer(wxVERTICAL, this, "Hacks");
+
+	auto* hack_checks_box = new wxFlexGridSizer(2, 0, 0);
+	align_sprite_check = new wxCheckBox(this, wxID_ANY, "Align Sprite");
+	fb_convert_check = new wxCheckBox(this, wxID_ANY, "Frame Buffer Conversion");
+	auto_flush_check = new wxCheckBox(this, wxID_ANY, "Auto Flush");
+	mem_wrap_check = new wxCheckBox(this, wxID_ANY, "Memory Wrapping");
+	dis_depth_check = new wxCheckBox(this, wxID_ANY, "Disable Depth Emulation");
+	merge_sprite_check = new wxCheckBox(this, wxID_ANY, "Merge Sprite");
+	dis_safe_features_check = new wxCheckBox(this, wxID_ANY, "Disable Safe Features");
+	preload_gs_check = new wxCheckBox(this, wxID_ANY, "Preload Frame Data");
+	fast_inv_check = new wxCheckBox(this, wxID_ANY, "Fast Texture Invalidation");
+	wild_arms_check = new wxCheckBox(this, wxID_ANY, "Wild Arms Hack");
+
+	hack_checks_box->Add(align_sprite_check);
+	hack_checks_box->Add(fb_convert_check);
+	hack_checks_box->Add(auto_flush_check);
+	hack_checks_box->Add(mem_wrap_check);
+	hack_checks_box->Add(dis_depth_check);
+	hack_checks_box->Add(merge_sprite_check);
+	hack_checks_box->Add(dis_safe_features_check);
+	hack_checks_box->Add(preload_gs_check);
+	hack_checks_box->Add(fast_inv_check);
+	hack_checks_box->Add(wild_arms_check);
+
+	auto* hack_choice_box = new wxFlexGridSizer(2, 0, 0);
+
+	// Half Screen Fix
+	hack_choice_box->Add(new wxStaticText(this, wxID_ANY, "Half Screen Fix:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
+
+	wxArrayString m_half_str;
+	add_settings_to_array_string(theApp.m_gs_generic_list, m_half_str);
+	m_half_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_half_str);
+
+	hack_choice_box->Add(m_half_select);
+
+	// Trilinear Filtering
+	hack_choice_box->Add(new wxStaticText(this, wxID_ANY, "Trilinear Filtering:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
+
+	wxArrayString m_tri_str;
+	add_settings_to_array_string(theApp.m_gs_trifilter, m_tri_str);
+	m_tri_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_tri_str);
+
+	hack_choice_box->Add(m_tri_select);
+
+	// Half-Pixel Offset
+	hack_choice_box->Add(new wxStaticText(this, wxID_ANY, "Half-Pixel Offset:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
+
+	wxArrayString m_half_pixel_str;
+	add_settings_to_array_string(theApp.m_gs_offset_hack, m_half_pixel_str);
+	m_gs_offset_hack_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_half_pixel_str);
+
+	hack_choice_box->Add(m_gs_offset_hack_select);
+
+	// Round Sprite
+	hack_choice_box->Add(new wxStaticText(this, wxID_ANY, "Round Sprite:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
+
+	wxArrayString m_round_str;
+	add_settings_to_array_string(theApp.m_gs_hack, m_round_str);
+	m_round_hack_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_round_str);
+
+	hack_choice_box->Add(m_round_hack_select);
+
+	// Skipdraw Range
+	hack_choice_box->Add(new wxStaticText(this, wxID_ANY, "Skipdraw Range:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
+	auto* skip_box = new wxBoxSizer(wxHORIZONTAL);
+	skip_x_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 10000, 0);
+	skip_y_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 10000, 0);
+	skip_box->Add(skip_x_spin);
+	skip_box->Add(skip_y_spin);
+
+	hack_choice_box->Add(skip_box);
+
+	// Texture Offsets
+	hack_choice_box->Add(new wxStaticText(this, wxID_ANY, "Texture Offsets:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
+	auto* tex_off_box = new wxBoxSizer(wxHORIZONTAL);
+	tex_off_x_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 10000, 0);
+	tex_off_y_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 10000, 0);
+	tex_off_box->Add(tex_off_x_spin);
+	tex_off_box->Add(tex_off_y_spin);
+
+	hack_choice_box->Add(tex_off_box);
+
+	hacks_box->Add(hack_checks_box);
+	hacks_box->Add(new wxStaticLine(this, wxID_ANY), wxSizerFlags().Centre().Expand().Border(5));
+	hacks_box->Add(hack_choice_box, wxSizerFlags().Expand());
+
+	tab_box->Add(hacks_check, wxSizerFlags().Left());
+	tab_box->Add(hacks_box, wxSizerFlags().Centre().Expand());
 
 	SetSizerAndFit(tab_box);
 }
@@ -152,8 +241,10 @@ PostTab::PostTab(wxWindow* parent)
 	: wxPanel(parent, wxID_ANY)
 {
 	auto* tab_box = new wxBoxSizer(wxVERTICAL);
-	tab_box->Add(new wxStaticText(this, wxID_ANY, "This is a test"), wxSizerFlags().Centre());
+	auto* opengl_box = new wxStaticBoxSizer(wxVERTICAL, this, "Very Advanced OpenGL Settings");
+	opengl_box->Add(new wxStaticText(this, wxID_ANY, "This is a test"), wxSizerFlags().Centre());
 
+	tab_box->Add(opengl_box, wxSizerFlags().Centre().Expand());
 	SetSizerAndFit(tab_box);
 }
 
@@ -201,15 +292,15 @@ Dialog::Dialog()
 	auto* book = new wxNotebook(this, wxID_ANY, wxDefaultPosition, wxSize(450, -1));
 
 	m_renderer_panel = new RendererTab(book);
-	m_adv_panel = new AdvancedTab(book);
+	m_hacks_panel = new HacksTab(book);
 	m_debug_rec_panel = new DebugTab(book);
 	m_post_panel = new PostTab(book);
 	m_osd_panel = new OSDTab(book);
 
 	book->AddPage(m_renderer_panel, "Renderer", true);
-	book->AddPage(m_adv_panel, "Advanced");
+	book->AddPage(m_hacks_panel, "Hacks");
 	book->AddPage(m_debug_rec_panel, "Debug/Recording");
-	book->AddPage(m_post_panel, "Post Processing");
+	book->AddPage(m_post_panel, "Post Processing/OGL");
 	book->AddPage(m_osd_panel, "OSD");
 	book->SetPadding(wxSize(0, 0));
 
