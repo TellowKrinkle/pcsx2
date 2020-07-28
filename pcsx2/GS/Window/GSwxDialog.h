@@ -56,6 +56,9 @@ namespace GSSettingsDialog
 	class DebugTab : public wxPanel
 	{
 	public:
+		wxCheckBox *glsl_debug_check, *gl_debug_check, *gs_dump_check, *gs_save_check, *gs_savef_check, *gs_savet_check, *gs_savez_check;
+		wxSpinCtrl *start_dump_spin, *end_dump_spin;
+		wxChoice *m_geo_shader_select, *m_image_load_store_select, *m_sparse_select;
 		DebugTab(wxWindow* parent);
 	};
 
@@ -88,12 +91,6 @@ namespace GSSettingsDialog
 		OSDTab(wxWindow* parent);
 	};
 
-	class OGLTab : public wxPanel
-	{
-	public:
-		OGLTab(wxWindow* parent);
-	};
-
 	class Dialog : public wxDialog
 	{
 		wxBoxSizer* m_top_box;
@@ -104,7 +101,6 @@ namespace GSSettingsDialog
 		RecTab* m_rec_panel;
 		PostTab* m_post_panel;
 		OSDTab* m_osd_panel;
-		OGLTab* m_ogl_panel;
 
 	public:
 		Dialog();

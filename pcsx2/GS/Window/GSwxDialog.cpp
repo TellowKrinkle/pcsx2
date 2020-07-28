@@ -351,23 +351,63 @@ OSDTab::OSDTab(wxWindow* parent)
 	SetSizerAndFit(tab_box);
 }
 
-OGLTab::OGLTab(wxWindow* parent)
-	: wxPanel(parent, wxID_ANY)
-{
-	auto* tab_box = new wxBoxSizer(wxVERTICAL);
-	tab_box->Add(new wxStaticText(this, wxID_ANY, "This is a test"), wxSizerFlags().Centre());
-
-	SetSizerAndFit(tab_box);
-}
-
 DebugTab::DebugTab(wxWindow* parent)
 	: wxPanel(parent, wxID_ANY)
 {
 	auto* tab_box = new wxBoxSizer(wxVERTICAL);
 
 	auto* debug_box = new wxStaticBoxSizer(wxVERTICAL, this, "Debug");
-	debug_box->Add(new wxStaticText(this, wxID_ANY, "This is a test"), wxSizerFlags().Centre());
+	auto* debug_check_box = new wxWrapSizer(wxHORIZONTAL);
+
+	glsl_debug_check = new wxCheckBox(this, wxID_ANY, "GLSL compilation");
+	debug_check_box->Add(glsl_debug_check);
+
+	gl_debug_check = new wxCheckBox(this, wxID_ANY, "Print GL error");
+	debug_check_box->Add(gl_debug_check);
+
+	gs_dump_check = new wxCheckBox(this, wxID_ANY, "Dump GS data");
+	debug_check_box->Add(gs_dump_check);
+
+	auto* debug_save_check_box = new wxWrapSizer(wxHORIZONTAL);
+
+	gs_save_check = new wxCheckBox(this, wxID_ANY, "Save RT");
+	debug_save_check_box->Add(gs_save_check);
+
+	gs_savef_check = new wxCheckBox(this, wxID_ANY, "Save Frame");
+	debug_save_check_box->Add(gs_savef_check);
+
+	gs_savet_check = new wxCheckBox(this, wxID_ANY, "Save Texture");
+	debug_save_check_box->Add(gs_savet_check);
+
+	gs_savez_check = new wxCheckBox(this, wxID_ANY, "Save Depth");
+	debug_save_check_box->Add(gs_savez_check);
+
+	debug_box->Add(debug_check_box);
+	//debug_box->Add(new wxStaticLine(this, wxID_ANY), wxSizerFlags().Centre().Expand().Border(5));
+	debug_box->Add(debug_save_check_box);
+	//debug_box->Add(new wxStaticLine(this, wxID_ANY), wxSizerFlags().Centre().Expand().Border(5));
+
+	auto* dump_grid = new wxFlexGridSizer(4, 0, 0);
+
+	add_label(this, dump_grid, "Start of Dump:");
+	start_dump_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, pow(10, 9), 0);
+	dump_grid->Add(start_dump_spin);
+
+	add_label(this, dump_grid, "End of Dump:");
+	end_dump_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, pow(10, 5), 5000);
+	dump_grid->Add(end_dump_spin);
+
+	debug_box->Add(dump_grid);
+
+	auto* ogl_box = new wxStaticBoxSizer(wxVERTICAL, this, "OpenGL");
+	auto* ogl_grid = new wxFlexGridSizer(2, 0, 0);
+	add_label_and_combo_box(this, ogl_grid, m_geo_shader_select, "Geometry Shader:", theApp.m_gs_generic_list);
+	add_label_and_combo_box(this, ogl_grid, m_image_load_store_select, "Image Load Store:", theApp.m_gs_generic_list);
+	add_label_and_combo_box(this, ogl_grid, m_sparse_select, "Sparse Texture:", theApp.m_gs_generic_list);
+	ogl_box->Add(ogl_grid);
+
 	tab_box->Add(debug_box, wxSizerFlags().Centre().Expand());
+	tab_box->Add(ogl_box, wxSizerFlags().Centre().Expand());
 
 	SetSizerAndFit(tab_box);
 }
@@ -408,16 +448,14 @@ Dialog::Dialog()
 	m_rec_panel = new RecTab(book);
 	m_post_panel = new PostTab(book);
 	m_osd_panel = new OSDTab(book);
-	m_ogl_panel = new OGLTab(book);
 	m_debug_panel = new DebugTab(book);
 
 	book->AddPage(m_renderer_panel, "Renderer", true);
 	book->AddPage(m_hacks_panel, "Hacks");
 	book->AddPage(m_post_panel, "Shader");
 	book->AddPage(m_osd_panel, "OSD");
-	book->AddPage(m_ogl_panel, "OGL");
 	book->AddPage(m_rec_panel, "Recording");
-	book->AddPage(m_debug_panel, "Debug");
+	book->AddPage(m_debug_panel, "Debug/OGL");
 	book->SetPadding(wxSize(0, 0));
 
 	m_top_box->Add(top_grid, wxSizerFlags().Centre());
