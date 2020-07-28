@@ -301,6 +301,60 @@ OSDTab::OSDTab(wxWindow* parent)
 	: wxPanel(parent, wxID_ANY)
 {
 	auto* tab_box = new wxBoxSizer(wxVERTICAL);
+
+	monitor_check = new wxCheckBox(this, wxID_ANY, "Enable Monitor");
+	tab_box->Add(monitor_check);
+
+	auto* font_box = new wxStaticBoxSizer(wxVERTICAL, this, "Font");
+	auto* font_grid = new wxFlexGridSizer(2, 0, 0);
+
+	add_label(this, font_grid, "Size:");
+	size_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 100, 25);
+	font_grid->Add(size_spin, wxSizerFlags().Expand());
+
+	add_label(this, font_grid, "Red:");
+	red_slider = new wxSlider(this, wxID_ANY, 0, 0, 255, wxDefaultPosition, wxSize(250, -1), wxSL_HORIZONTAL | wxSL_VALUE_LABEL);
+	font_grid->Add(red_slider, wxSizerFlags().Expand().Shaped());
+
+	add_label(this, font_grid, "Green:");
+	green_slider = new wxSlider(this, wxID_ANY, 0, 0, 255, wxDefaultPosition, wxSize(250, -1), wxSL_HORIZONTAL | wxSL_VALUE_LABEL);
+	font_grid->Add(green_slider, wxSizerFlags().Expand().Shaped());
+
+	add_label(this, font_grid, "Blue:");
+	blue_slider = new wxSlider(this, wxID_ANY, 0, 0, 255, wxDefaultPosition, wxSize(250, -1), wxSL_HORIZONTAL | wxSL_VALUE_LABEL);
+	font_grid->Add(blue_slider, wxSizerFlags().Expand().Shaped());
+
+	add_label(this, font_grid, "Opacity:");
+	opacity_slider = new wxSlider(this, wxID_ANY, 100, 0, 100, wxDefaultPosition, wxSize(250, -1), wxSL_HORIZONTAL | wxSL_VALUE_LABEL);
+	font_grid->Add(opacity_slider, wxSizerFlags().Expand().Shaped());
+
+	font_box->Add(font_grid, wxSizerFlags().Centre().Expand());
+	tab_box->Add(font_box, wxSizerFlags().Centre());
+
+	log_check = new wxCheckBox(this, wxID_ANY, "Enable Log");
+	tab_box->Add(log_check);
+
+	auto* log_box = new wxStaticBoxSizer(wxVERTICAL, this, "Log Messages");
+	auto* log_grid = new wxFlexGridSizer(2, 0, 0);
+
+	add_label(this, log_grid, "Timeout (seconds):");
+	timeout_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 2, 10, 4);
+	log_grid->Add(timeout_spin);
+
+	add_label(this, log_grid, "Max On-Screen Messages:");
+	max_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 10, 2);
+	log_grid->Add(max_spin);
+
+	log_box->Add(log_grid, wxSizerFlags().Centre().Expand());
+	tab_box->Add(log_box, wxSizerFlags().Centre());
+
+	SetSizerAndFit(tab_box);
+}
+
+OGLTab::OGLTab(wxWindow* parent)
+	: wxPanel(parent, wxID_ANY)
+{
+	auto* tab_box = new wxBoxSizer(wxVERTICAL);
 	tab_box->Add(new wxStaticText(this, wxID_ANY, "This is a test"), wxSizerFlags().Centre());
 
 	SetSizerAndFit(tab_box);
@@ -354,12 +408,14 @@ Dialog::Dialog()
 	m_rec_panel = new RecTab(book);
 	m_post_panel = new PostTab(book);
 	m_osd_panel = new OSDTab(book);
+	m_ogl_panel = new OGLTab(book);
 	m_debug_panel = new DebugTab(book);
 
 	book->AddPage(m_renderer_panel, "Renderer", true);
 	book->AddPage(m_hacks_panel, "Hacks");
-	book->AddPage(m_post_panel, "Shader/OGL");
+	book->AddPage(m_post_panel, "Shader");
 	book->AddPage(m_osd_panel, "OSD");
+	book->AddPage(m_ogl_panel, "OGL");
 	book->AddPage(m_rec_panel, "Recording");
 	book->AddPage(m_debug_panel, "Debug");
 	book->SetPadding(wxSize(0, 0));

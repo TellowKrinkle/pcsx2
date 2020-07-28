@@ -82,7 +82,16 @@ namespace GSSettingsDialog
 	class OSDTab : public wxPanel
 	{
 	public:
+		wxCheckBox *monitor_check, *log_check;
+		wxSpinCtrl *size_spin, *timeout_spin, *max_spin;
+		wxSlider *red_slider, *green_slider, *blue_slider, *opacity_slider;
 		OSDTab(wxWindow* parent);
+	};
+
+	class OGLTab : public wxPanel
+	{
+	public:
+		OGLTab(wxWindow* parent);
 	};
 
 	class Dialog : public wxDialog
@@ -95,6 +104,7 @@ namespace GSSettingsDialog
 		RecTab* m_rec_panel;
 		PostTab* m_post_panel;
 		OSDTab* m_osd_panel;
+		OGLTab* m_ogl_panel;
 
 	public:
 		Dialog();
