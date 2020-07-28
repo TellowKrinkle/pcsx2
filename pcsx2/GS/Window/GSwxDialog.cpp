@@ -41,6 +41,26 @@ size_t get_config_index(const std::vector<GSSetting>& s, const char* str)
 	return 0;
 }
 
+void add_label(wxWindow* parent, wxSizer* sizer, const char* str, long style = wxALIGN_RIGHT | wxALIGN_CENTRE_HORIZONTAL, wxSizerFlags flags = wxSizerFlags().Right().DoubleBorder())
+{
+	auto* temp_text = new wxStaticText(parent, wxID_ANY, str, wxDefaultPosition, wxDefaultSize, style);
+	sizer->Add(temp_text, flags);
+}
+
+void add_combo_box(wxWindow* parent, wxSizer* sizer, wxChoice*& choice, const std::vector<GSSetting>& s, wxSizerFlags flags = wxSizerFlags().Expand().Left())
+{
+	wxArrayString temp;
+	add_settings_to_array_string(s, temp);
+	choice = new wxChoice(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, temp);
+	sizer->Add(choice, flags);
+}
+
+void add_label_and_combo_box(wxWindow* parent, wxSizer* sizer, wxChoice*& choice, const char* str, const std::vector<GSSetting>& s)
+{
+	add_label(parent, sizer, str);
+	add_combo_box(parent, sizer, choice, s);
+}
+
 RendererTab::RendererTab(wxWindow* parent)
 	: wxPanel(parent, wxID_ANY)
 {
@@ -52,61 +72,14 @@ RendererTab::RendererTab(wxWindow* parent)
 	framebuffer_check = new wxCheckBox(this, wxID_ANY, "Conservative Buffer Allocation");
 	acc_date_check = new wxCheckBox(this, wxID_ANY, "Accurate DATE");
 
-	auto* hw_choice_grid = new wxFlexGridSizer(2, 0, 0);
+	auto* hw_choice_grid = new wxGridSizer(2, 0, 0);
 
-	// Internal Resolution
-	hw_choice_grid->Add(new wxStaticText(this, wxID_ANY, "Internal Resolution:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
-
-	wxArrayString m_res_str;
-	add_settings_to_array_string(theApp.m_gs_upscale_multiplier, m_res_str);
-	m_res_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_res_str);
-
-	hw_choice_grid->Add(m_res_select, wxSizerFlags().Expand());
-
-	// Anisotropic Filtering
-	hw_choice_grid->Add(new wxStaticText(this, wxID_ANY, "Anisotropic Filtering:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
-
-	wxArrayString m_ani_str;
-	add_settings_to_array_string(theApp.m_gs_max_anisotropy, m_ani_str);
-	m_anisotropic_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_ani_str);
-
-	hw_choice_grid->Add(m_anisotropic_select, wxSizerFlags().Expand());
-
-	// Dithering
-	hw_choice_grid->Add(new wxStaticText(this, wxID_ANY, "Dithering (PgDn):", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
-
-	wxArrayString m_dither_str;
-	add_settings_to_array_string(theApp.m_gs_dithering, m_dither_str);
-	m_dither_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_dither_str);
-
-	hw_choice_grid->Add(m_dither_select);
-
-	// MipMapping
-	hw_choice_grid->Add(new wxStaticText(this, wxID_ANY, "Mipmapping (Insert):", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
-
-	wxArrayString m_mip_str;
-	add_settings_to_array_string(theApp.m_gs_hw_mipmapping, m_mip_str);
-	m_mipmap_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_mip_str);
-
-	hw_choice_grid->Add(m_mipmap_select, wxSizerFlags().Expand());
-
-	// CRC Hack Level
-	hw_choice_grid->Add(new wxStaticText(this, wxID_ANY, "CRC Hack Level:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
-
-	wxArrayString m_crc_str;
-	add_settings_to_array_string(theApp.m_gs_crc_level, m_crc_str);
-	m_crc_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_crc_str);
-
-	hw_choice_grid->Add(m_crc_select, wxSizerFlags().Expand());
-
-	// Date Accuracy
-	hw_choice_grid->Add(new wxStaticText(this, wxID_ANY, "Blending Accuracy:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
-
-	wxArrayString m_blend_str;
-	add_settings_to_array_string(theApp.m_gs_acc_blend_level, m_blend_str);
-	m_blend_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_blend_str);
-
-	hw_choice_grid->Add(m_blend_select, wxSizerFlags().Expand());
+	add_label_and_combo_box(this, hw_choice_grid, m_res_select, "Internal Resolution:", theApp.m_gs_upscale_multiplier);
+	add_label_and_combo_box(this, hw_choice_grid, m_anisotropic_select, "Anisotropic Filtering:", theApp.m_gs_max_anisotropy);
+	add_label_and_combo_box(this, hw_choice_grid, m_dither_select, "Dithering (PgDn):", theApp.m_gs_dithering);
+	add_label_and_combo_box(this, hw_choice_grid, m_mipmap_select, "Mipmapping (Insert):", theApp.m_gs_hw_mipmapping);
+	add_label_and_combo_box(this, hw_choice_grid, m_crc_select, "CRC Hack Level:", theApp.m_gs_crc_level);
+	add_label_and_combo_box(this, hw_choice_grid, m_blend_select, "Blending Accuracy:", theApp.m_gs_acc_blend_level);
 
 	auto* top_checks_box = new wxWrapSizer(wxHORIZONTAL);
 	top_checks_box->Add(eight_bit_check, wxSizerFlags().Centre());
@@ -128,7 +101,8 @@ RendererTab::RendererTab(wxWindow* parent)
 
 	// Rendering threads
 	auto* thread_box = new wxBoxSizer(wxHORIZONTAL);
-	thread_box->Add(new wxStaticText(this, wxID_ANY, "Extra Rendering threads:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
+
+	add_label(this, thread_box, "Extra Rendering threads:");
 	thread_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 32, 2);
 	thread_box->Add(thread_spin, wxSizerFlags().Centre());
 	software_box->Add(thread_box, wxSizerFlags().Centre());
@@ -182,26 +156,11 @@ HacksTab::HacksTab(wxWindow* parent)
 	auto* upscale_hack_choice_grid = new wxFlexGridSizer(2, 0, 0);
 
 	// Renderer Hacks:
-	// Half Screen Fix
-	rend_hack_choice_grid->Add(new wxStaticText(this, wxID_ANY, "Half Screen Fix:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
-
-	wxArrayString m_half_str;
-	add_settings_to_array_string(theApp.m_gs_generic_list, m_half_str);
-	m_half_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_half_str);
-
-	rend_hack_choice_grid->Add(m_half_select, wxSizerFlags().Expand());
-
-	// Trilinear Filtering
-	rend_hack_choice_grid->Add(new wxStaticText(this, wxID_ANY, "Trilinear Filtering:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
-
-	wxArrayString m_tri_str;
-	add_settings_to_array_string(theApp.m_gs_trifilter, m_tri_str);
-	m_tri_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_tri_str);
-
-	rend_hack_choice_grid->Add(m_tri_select, wxSizerFlags().Expand());
+	add_label_and_combo_box(this, rend_hack_choice_grid, m_half_select, "Half Screen Fix:", theApp.m_gs_generic_list);
+	add_label_and_combo_box(this, rend_hack_choice_grid, m_tri_select, "Trilinear Filtering:", theApp.m_gs_trifilter);
 
 	// Skipdraw Range
-	rend_hack_choice_grid->Add(new wxStaticText(this, wxID_ANY, "Skipdraw Range:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
+	add_label(this, rend_hack_choice_grid, "Skipdraw Range:");
 	auto* skip_box = new wxBoxSizer(wxHORIZONTAL);
 	skip_x_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 10000, 0);
 	skip_y_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 10000, 0);
@@ -211,27 +170,11 @@ HacksTab::HacksTab(wxWindow* parent)
 	rend_hack_choice_grid->Add(skip_box);
 
 	// Upscale Hacks:
-	// Half-Pixel Offset
-	upscale_hack_choice_grid->Add(new wxStaticText(this, wxID_ANY, "Half-Pixel Offset:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
-
-	wxArrayString m_half_pixel_str;
-	add_settings_to_array_string(theApp.m_gs_offset_hack, m_half_pixel_str);
-	m_gs_offset_hack_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_half_pixel_str);
-
-	upscale_hack_choice_grid->Add(m_gs_offset_hack_select, wxSizerFlags().Expand());
-
-	// Round Sprite
-	upscale_hack_choice_grid->Add(new wxStaticText(this, wxID_ANY, "Round Sprite:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
-
-	wxArrayString m_round_str;
-	add_settings_to_array_string(theApp.m_gs_hack, m_round_str);
-	m_round_hack_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_round_str);
-
-	upscale_hack_choice_grid->Add(m_round_hack_select, wxSizerFlags().Expand());
-
+	add_label_and_combo_box(this, upscale_hack_choice_grid, m_gs_offset_hack_select, "Half-Pixel Offset:", theApp.m_gs_offset_hack);
+	add_label_and_combo_box(this, upscale_hack_choice_grid, m_round_hack_select, "Round Sprite:", theApp.m_gs_hack);
 
 	// Texture Offsets
-	upscale_hack_choice_grid->Add(new wxStaticText(this, wxID_ANY, "Texture Offsets:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
+	add_label(this, upscale_hack_choice_grid, "Texture Offsets:");
 	auto* tex_off_box = new wxBoxSizer(wxHORIZONTAL);
 	tex_off_x_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 10000, 0);
 	tex_off_y_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 0, 10000, 0);
@@ -265,7 +208,7 @@ RecTab::RecTab(wxWindow* parent)
 	auto* record_grid_box = new wxFlexGridSizer(2, 0, 0);
 
 	// Resolution
-	record_grid_box->Add(new wxStaticText(this, wxID_ANY, "Resolution:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
+	add_label(this, record_grid_box, "Resolution:");
 	auto* res_box = new wxBoxSizer(wxHORIZONTAL);
 	res_x_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 256, 8192, 640);
 	res_y_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 256, 8192, 480);
@@ -274,15 +217,15 @@ RecTab::RecTab(wxWindow* parent)
 
 	record_grid_box->Add(res_box);
 
-	record_grid_box->Add(new wxStaticText(this, wxID_ANY, "Saving Threads:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
+	add_label(this, record_grid_box, "Saving Threads:");
 	thread_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 32, 4);
 	record_grid_box->Add(thread_spin);
 
-	record_grid_box->Add(new wxStaticText(this, wxID_ANY, "PNG Compression Level:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
+	add_label(this, record_grid_box, "PNG Compression Level:");
 	png_spin = new wxSpinCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 9, 1);
 	record_grid_box->Add(png_spin);
 
-	record_grid_box->Add(new wxStaticText(this, wxID_ANY, "Output Directory:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
+	add_label(this, record_grid_box, "Output Directory:");
 	dir_select = new wxDirPickerCtrl(this, wxID_ANY);
 	record_grid_box->Add(dir_select, wxSizerFlags().Expand());
 
@@ -298,10 +241,59 @@ PostTab::PostTab(wxWindow* parent)
 	: wxPanel(parent, wxID_ANY)
 {
 	auto* tab_box = new wxBoxSizer(wxVERTICAL);
-	auto* opengl_box = new wxStaticBoxSizer(wxVERTICAL, this, "Very Advanced OpenGL Settings");
-	opengl_box->Add(new wxStaticText(this, wxID_ANY, "This is a test"), wxSizerFlags().Centre());
+	auto* shader_box = new wxStaticBoxSizer(wxVERTICAL, this, "Custom Shader");
 
-	tab_box->Add(opengl_box, wxSizerFlags().Centre().Expand());
+	tex_filter_check = new wxCheckBox(this, wxID_ANY, "Texture Filtering of Display");
+	fxaa_check = new wxCheckBox(this, wxID_ANY, "FXAA Shader (PgUp)");
+
+	shader_box->Add(tex_filter_check);
+	shader_box->Add(fxaa_check);
+
+	shade_boost_check = new wxCheckBox(this, wxID_ANY, "Enable Shade Boost");
+	shader_box->Add(shade_boost_check);
+
+	auto* shade_boost_box = new wxStaticBoxSizer(wxVERTICAL, this, "Shade Boost");
+	auto* shader_boost_grid = new wxFlexGridSizer(2, 0, 0);
+
+	add_label(this, shader_boost_grid, "Brightness:");
+	sb_brightness_slider = new wxSlider(this, wxID_ANY, 50, 0, 100, wxDefaultPosition, wxSize(250, -1), wxSL_HORIZONTAL | wxSL_VALUE_LABEL);
+	shader_boost_grid->Add(sb_brightness_slider, wxSizerFlags().Expand().Shaped());
+
+
+	add_label(this, shader_boost_grid, "Contrast:");
+	sb_contrast_slider = new wxSlider(this, wxID_ANY, 50, 0, 100, wxDefaultPosition, wxSize(250, -1), wxSL_HORIZONTAL | wxSL_VALUE_LABEL);
+	shader_boost_grid->Add(sb_contrast_slider, wxSizerFlags().Centre().Expand());
+
+	add_label(this, shader_boost_grid, "Saturation:");
+	sb_saturation_slider = new wxSlider(this, wxID_ANY, 50, 0, 100, wxDefaultPosition, wxSize(250, -1), wxSL_HORIZONTAL | wxSL_VALUE_LABEL);
+	shader_boost_grid->Add(sb_saturation_slider, wxSizerFlags().Centre().Expand());
+
+	shade_boost_box->Add(shader_boost_grid, wxSizerFlags().Centre());
+	shader_box->Add(shade_boost_box, wxSizerFlags().Expand().Centre());
+
+	ext_shader_check = new wxCheckBox(this, wxID_ANY, "Enable External Shader");
+	shader_box->Add(ext_shader_check);
+
+	auto* ext_shader_box = new wxStaticBoxSizer(wxVERTICAL, this, "External Shader (Home)");
+	auto* ext_shader_grid = new wxFlexGridSizer(4, 0, 0);
+
+	ext_shader_grid->Add(new wxStaticText(this, wxID_ANY, "GLSL fx File:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
+	glsl_select = new wxDirPickerCtrl(this, wxID_ANY);
+	ext_shader_grid->Add(glsl_select, wxSizerFlags().Expand());
+
+	ext_shader_grid->Add(new wxStaticText(this, wxID_ANY, "Config File:", wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT), wxSizerFlags().Centre());
+	config_select = new wxDirPickerCtrl(this, wxID_ANY);
+	ext_shader_grid->Add(config_select, wxSizerFlags().Expand());
+
+	ext_shader_box->Add(ext_shader_grid, wxSizerFlags().Centre());
+	shader_box->Add(ext_shader_box, wxSizerFlags().Expand().Centre());
+
+	// TV Shader
+	auto* tv_box = new wxBoxSizer(wxHORIZONTAL);
+	add_label_and_combo_box(this, tv_box, m_tv_select, "TV Shader:", theApp.m_gs_tv_shaders);
+	shader_box->Add(tv_box);
+
+	tab_box->Add(shader_box, wxSizerFlags().Centre().Expand());
 	SetSizerAndFit(tab_box);
 }
 
@@ -342,14 +334,9 @@ Dialog::Dialog()
 	auto* top_grid = new wxFlexGridSizer(2, 0, 0);
 	top_grid->SetFlexibleDirection(wxHORIZONTAL);
 
-	top_grid->Add(new wxStaticText(this, wxID_ANY, "Renderer:"), wxSizerFlags().Centre());
+	add_label_and_combo_box(this, top_grid, m_renderer_select, "Renderer:", theApp.m_gs_renderers);
 
-	wxArrayString m_renderer_str;
-	add_settings_to_array_string(theApp.m_gs_renderers, m_renderer_str);
-	m_renderer_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_renderer_str);
-	top_grid->Add(m_renderer_select, wxSizerFlags().Expand());
-
-	top_grid->Add(new wxStaticText(this, wxID_ANY, "Adapter:"), wxSizerFlags().Centre());
+	add_label(this, top_grid, "Adapter:");
 	wxArrayString m_adapter_str;
 	//add_settings_to_array_string(theApp.m_gs_renderers, m_adapter_str);
 	m_adapter_str.Add("Default");
@@ -357,17 +344,8 @@ Dialog::Dialog()
 	top_grid->Add(m_adapter_select, wxSizerFlags().Expand());
 	m_adapter_select->Disable();
 
-	top_grid->Add(new wxStaticText(this, wxID_ANY, "Interlacing(F5):"), wxSizerFlags().Centre());
-	wxArrayString m_interlace_str;
-	add_settings_to_array_string(theApp.m_gs_interlace, m_interlace_str);
-	m_interlace_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_interlace_str);
-	top_grid->Add(m_interlace_select, wxSizerFlags().Expand());
-
-	top_grid->Add(new wxStaticText(this, wxID_ANY, "Texture Filtering:"), wxSizerFlags().Centre());
-	wxArrayString m_texture_str;
-	add_settings_to_array_string(theApp.m_gs_bifilter, m_texture_str);
-	m_texture_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_texture_str);
-	top_grid->Add(m_texture_select, wxSizerFlags().Expand());
+	add_label_and_combo_box(this, top_grid, m_interlace_select, "Interlacing(F5):", theApp.m_gs_interlace);
+	add_label_and_combo_box(this, top_grid, m_texture_select, "Texture Filtering:", theApp.m_gs_bifilter);
 
 	auto* book = new wxNotebook(this, wxID_ANY, wxDefaultPosition, wxSize(450, -1));
 
@@ -380,9 +358,9 @@ Dialog::Dialog()
 
 	book->AddPage(m_renderer_panel, "Renderer", true);
 	book->AddPage(m_hacks_panel, "Hacks");
-	book->AddPage(m_rec_panel, "Recording");
 	book->AddPage(m_post_panel, "Shader/OGL");
 	book->AddPage(m_osd_panel, "OSD");
+	book->AddPage(m_rec_panel, "Recording");
 	book->AddPage(m_debug_panel, "Debug");
 	book->SetPadding(wxSize(0, 0));
 

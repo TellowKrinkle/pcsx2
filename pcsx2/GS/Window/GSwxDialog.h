@@ -72,6 +72,10 @@ namespace GSSettingsDialog
 	class PostTab : public wxPanel
 	{
 	public:
+		wxCheckBox *tex_filter_check, *fxaa_check, *shade_boost_check, *ext_shader_check;
+		wxSlider *sb_brightness_slider, *sb_contrast_slider, *sb_saturation_slider;
+		wxDirPickerCtrl *glsl_select, *config_select;
+		wxChoice* m_tv_select;
 		PostTab(wxWindow* parent);
 	};
 
