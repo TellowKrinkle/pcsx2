@@ -113,6 +113,29 @@ RendererTab::RendererTab(wxWindow* parent)
 	SetSizerAndFit(tab_box);
 }
 
+void RendererTab::Load()
+{
+	// All values checked.
+	acc_date_check->SetValue(theApp.GetConfigB("accurate_date"));
+	eight_bit_check->SetValue(theApp.GetConfigB("paltex"));
+	framebuffer_check->SetValue(theApp.GetConfigB("conservative_framebuffer"));
+	flush_check->SetValue(theApp.GetConfigB("autoflush_sw"));
+	edge_check->SetValue(theApp.GetConfigB("aa1"));
+	mipmap_check->SetValue(theApp.GetConfigB("mipmap"));
+
+	m_res_select->SetSelection(get_config_index(theApp.m_gs_upscale_multiplier, "upscale_multiplier"));
+	m_anisotropic_select->SetSelection(get_config_index(theApp.m_gs_max_anisotropy, "MaxAnisotropy"));
+	m_dither_select->SetSelection(get_config_index(theApp.m_gs_dithering, "dithering_ps2"));
+	m_mipmap_select->SetSelection(get_config_index(theApp.m_gs_hw_mipmapping, "mipmap_hw"));
+	m_crc_select->SetSelection(get_config_index(theApp.m_gs_crc_level, "crc_hack_level"));
+	m_blend_select->SetSelection(get_config_index(theApp.m_gs_acc_blend_level, "accurate_blending_unit"));
+	thread_spin->SetValue(theApp.GetConfigI("extrathreads"));
+}
+
+void RendererTab::Save()
+{
+}
+
 HacksTab::HacksTab(wxWindow* parent)
 	: wxPanel(parent, wxID_ANY)
 {
@@ -198,6 +221,36 @@ HacksTab::HacksTab(wxWindow* parent)
 	SetSizerAndFit(tab_box);
 }
 
+void HacksTab::Load()
+{
+	hacks_check->SetValue(theApp.GetConfigB("UserHacks"));
+
+	align_sprite_check->SetValue(theApp.GetConfigB("UserHacks_align_sprite_X"));
+	fb_convert_check->SetValue(theApp.GetConfigB("UserHacks_CPU_FB_Conversion"));
+	auto_flush_check->SetValue(theApp.GetConfigB("UserHacks_AutoFlush"));
+	mem_wrap_check->SetValue(theApp.GetConfigB("wrap_gs_mem"));
+	dis_depth_check->SetValue(theApp.GetConfigB("UserHacks_DisableDepthSupport"));
+	merge_sprite_check->SetValue(theApp.GetConfigB("UserHacks_merge_pp_sprite"));
+	dis_safe_features_check->SetValue(theApp.GetConfigB("UserHacks_Disable_Safe_Features"));
+	preload_gs_check->SetValue(theApp.GetConfigB("preload_frame_with_gs_data"));
+	fast_inv_check->SetValue(theApp.GetConfigB("UserHacks_DisablePartialInvalidation"));
+	wild_arms_check->SetValue(theApp.GetConfigB("UserHacks_WildHack"));
+
+	m_half_select->SetSelection(get_config_index(theApp.m_gs_offset_hack, "UserHacks_HalfPixelOffset"));
+	m_tri_select->SetSelection(get_config_index(theApp.m_gs_trifilter, "UserHacks_TriFilter"));
+	m_gs_offset_hack_select->SetSelection(get_config_index(theApp.m_gs_generic_list, "UserHacks_Half_Bottom_Override"));
+	m_round_hack_select->SetSelection(get_config_index(theApp.m_gs_hack, "UserHacks_round_sprite_offset"));
+
+	skip_x_spin->SetValue(theApp.GetConfigI("UserHacks_SkipDraw_Offset"));
+	skip_y_spin->SetValue(theApp.GetConfigI("UserHacks_SkipDraw"));
+	tex_off_x_spin->SetValue(theApp.GetConfigI("UserHacks_TCOffsetX"));
+	tex_off_y_spin->SetValue(theApp.GetConfigI("UserHacks_TCOffsetY"));
+}
+
+void HacksTab::Save()
+{
+}
+
 RecTab::RecTab(wxWindow* parent)
 	: wxPanel(parent, wxID_ANY)
 {
@@ -236,6 +289,21 @@ RecTab::RecTab(wxWindow* parent)
 	SetSizerAndFit(tab_box);
 }
 
+void RecTab::Load()
+{
+	record_check->SetValue(theApp.GetConfigB("capture_enabled"));
+
+	res_x_spin->SetValue(theApp.GetConfigI("CaptureWidth"));
+	res_y_spin->SetValue(theApp.GetConfigI("CaptureHeight"));
+	thread_spin->SetValue(theApp.GetConfigI("capture_threads"));
+	png_spin->SetValue(theApp.GetConfigI("png_compression_level"));
+
+	dir_select->SetInitialDirectory(theApp.GetConfigS("capture_out_dir"));
+}
+
+void RecTab::Save()
+{
+}
 
 PostTab::PostTab(wxWindow* parent)
 	: wxPanel(parent, wxID_ANY)
@@ -297,6 +365,27 @@ PostTab::PostTab(wxWindow* parent)
 	SetSizerAndFit(tab_box);
 }
 
+void PostTab::Load()
+{
+	tex_filter_check->SetValue(theApp.GetConfigB("linear_present"));
+	fxaa_check->SetValue(theApp.GetConfigB("fxaa"));
+	shade_boost_check->SetValue(theApp.GetConfigB("ShadeBoost"));
+	ext_shader_check->SetValue(theApp.GetConfigB("shaderfx"));
+
+	m_tv_select->SetSelection(get_config_index(theApp.m_gs_tv_shaders, "TVShader"));
+
+	glsl_select->SetInitialDirectory(theApp.GetConfigS("shaderfx_glsl"));
+	config_select->SetInitialDirectory(theApp.GetConfigS("shaderfx_conf"));
+
+	sb_brightness_slider->SetValue(theApp.GetConfigI("ShadeBoost_Brightness"));
+	sb_contrast_slider->SetValue(theApp.GetConfigI("ShadeBoost_Contrast"));
+	sb_saturation_slider->SetValue(theApp.GetConfigI("ShadeBoost_Saturation"));
+}
+
+void PostTab::Save()
+{
+}
+
 OSDTab::OSDTab(wxWindow* parent)
 	: wxPanel(parent, wxID_ANY)
 {
@@ -351,6 +440,25 @@ OSDTab::OSDTab(wxWindow* parent)
 	SetSizerAndFit(tab_box);
 }
 
+void OSDTab::Load()
+{
+	monitor_check->SetValue(theApp.GetConfigB("osd_monitor_enabled"));
+	log_check->SetValue(theApp.GetConfigB("osd_log_enabled"));
+
+	size_spin->SetValue(theApp.GetConfigI("osd_fontsize"));
+	timeout_spin->SetValue(theApp.GetConfigI("osd_log_timeout"));
+	max_spin->SetValue(theApp.GetConfigI("osd_max_log_messages"));
+
+	red_slider->SetValue(theApp.GetConfigI("osd_color_r"));
+	green_slider->SetValue(theApp.GetConfigI("osd_color_g"));
+	blue_slider->SetValue(theApp.GetConfigI("osd_color_b"));
+	opacity_slider->SetValue(theApp.GetConfigI("osd_color_opacity"));
+}
+
+void OSDTab::Save()
+{
+}
+
 DebugTab::DebugTab(wxWindow* parent)
 	: wxPanel(parent, wxID_ANY)
 {
@@ -383,9 +491,7 @@ DebugTab::DebugTab(wxWindow* parent)
 	debug_save_check_box->Add(gs_savez_check);
 
 	debug_box->Add(debug_check_box);
-	//debug_box->Add(new wxStaticLine(this, wxID_ANY), wxSizerFlags().Centre().Expand().Border(5));
 	debug_box->Add(debug_save_check_box);
-	//debug_box->Add(new wxStaticLine(this, wxID_ANY), wxSizerFlags().Centre().Expand().Border(5));
 
 	auto* dump_grid = new wxFlexGridSizer(4, 0, 0);
 
@@ -410,6 +516,28 @@ DebugTab::DebugTab(wxWindow* parent)
 	tab_box->Add(ogl_box, wxSizerFlags().Centre().Expand());
 
 	SetSizerAndFit(tab_box);
+}
+
+void DebugTab::Load()
+{
+	glsl_debug_check->SetValue(theApp.GetConfigB("debug_glsl_shader"));
+	gl_debug_check->SetValue(theApp.GetConfigB("debug_opengl"));
+	gs_dump_check->SetValue(theApp.GetConfigB("dump"));
+	gs_save_check->SetValue(theApp.GetConfigB("save"));
+	gs_savef_check->SetValue(theApp.GetConfigB("savef"));
+	gs_savet_check->SetValue(theApp.GetConfigB("savet"));
+	gs_savez_check->SetValue(theApp.GetConfigB("savez"));
+
+	start_dump_spin->SetValue(theApp.GetConfigI("saven"));
+	end_dump_spin->SetValue(theApp.GetConfigI("savel"));
+
+	m_geo_shader_select->SetSelection(get_config_index(theApp.m_gs_generic_list, "override_geometry_shader"));
+	m_image_load_store_select->SetSelection(get_config_index(theApp.m_gs_generic_list, "override_GL_ARB_shader_image_load_store"));
+	m_sparse_select->SetSelection(get_config_index(theApp.m_gs_generic_list, "override_GL_ARB_sparse_texture"));
+}
+
+void DebugTab::Save()
+{
 }
 
 Dialog::Dialog()
@@ -470,29 +598,15 @@ Dialog::~Dialog()
 {
 }
 
-void Dialog::Reset()
+void Dialog::Load()
 {
 	m_renderer_select->SetSelection(get_config_index(theApp.m_gs_renderers, "Renderer"));
 	m_adapter_select->SetSelection(0);
 	m_interlace_select->SetSelection(get_config_index(theApp.m_gs_interlace, "interlace"));
 	m_texture_select->SetSelection(get_config_index(theApp.m_gs_bifilter, "filter"));
 
-	m_hacks_panel->hacks_check->SetValue(theApp.GetConfigB("UserHacks"));
-
-	m_renderer_panel->acc_date_check->SetValue(theApp.GetConfigB("accurate_date"));
-	m_renderer_panel->eight_bit_check->SetValue(theApp.GetConfigB("paltex"));
-	m_renderer_panel->framebuffer_check->SetValue(theApp.GetConfigB("conservative_framebuffer"));
-	m_renderer_panel->flush_check->SetValue(theApp.GetConfigB("autoflush_sw"));
-	m_renderer_panel->edge_check->SetValue(theApp.GetConfigB("aa1"));
-	m_renderer_panel->mipmap_check->SetValue(theApp.GetConfigB("mipmap"));
-
-	m_renderer_panel->m_res_select->SetSelection(get_config_index(theApp.m_gs_upscale_multiplier, "upscale_multiplier"));
-	m_renderer_panel->m_anisotropic_select->SetSelection(get_config_index(theApp.m_gs_max_anisotropy, "MaxAnisotropy"));
-	m_renderer_panel->m_dither_select->SetSelection(get_config_index(theApp.m_gs_dithering, "dithering_ps2"));
-	m_renderer_panel->m_mipmap_select->SetSelection(get_config_index(theApp.m_gs_hw_mipmapping, "mipmap_hw"));
-	m_renderer_panel->m_crc_select->SetSelection(get_config_index(theApp.m_gs_crc_level, "crc_hack_level"));
-	m_renderer_panel->m_blend_select->SetSelection(get_config_index(theApp.m_gs_acc_blend_level, "accurate_blending_unit"));
-	m_renderer_panel->thread_spin->SetValue(theApp.GetConfigI("extrathreads"));
+	m_hacks_panel->Load();
+	m_renderer_panel->Load();
 }
 
 void Dialog::Save()
@@ -503,7 +617,7 @@ bool RunwxDialog()
 {
 	Dialog GSSettingsDialog;
 
-	GSSettingsDialog.Reset();
+	GSSettingsDialog.Load();
 	GSSettingsDialog.ShowModal();
 	GSSettingsDialog.Save();
 
