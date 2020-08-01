@@ -255,6 +255,7 @@ HacksTab::HacksTab(wxWindow* parent)
 	tab_box->Add(upscale_hacks_box, wxSizerFlags().Centre().Expand());
 
 	SetSizerAndFit(tab_box);
+	Bind(wxEVT_SPINCTRL, &HacksTab::CallUpdate, this);
 	Bind(wxEVT_CHECKBOX, &HacksTab::CallUpdate, this);
 }
 
@@ -340,6 +341,12 @@ void HacksTab::Update()
 	skip_y_spin->Enable(hacks_enabled);
 	tex_off_x_spin->Enable(hacks_enabled);
 	tex_off_y_spin->Enable(hacks_enabled);
+
+	if (skip_x_spin->GetValue() == 0)
+		skip_y_spin->SetValue(0);
+	if (skip_y_spin->GetValue() < skip_x_spin->GetValue())
+		skip_y_spin->SetValue(skip_x_spin->GetValue());
+	//if (tex_off_y_spin->GetValue() < tex_off_x_spin->GetValue()) tex_off_y_spin->SetValue(tex_off_x_spin->GetValue());
 }
 
 RecTab::RecTab(wxWindow* parent)
@@ -704,6 +711,7 @@ DebugTab::DebugTab(wxWindow* parent)
 	tab_box->Add(ogl_box, wxSizerFlags().Centre().Expand());
 
 	SetSizerAndFit(tab_box);
+	Bind(wxEVT_SPINCTRL, &DebugTab::CallUpdate, this);
 	Bind(wxEVT_CHECKBOX, &DebugTab::CallUpdate, this);
 }
 
@@ -751,6 +759,8 @@ void DebugTab::Save()
 
 void DebugTab::Update()
 {
+	if (end_dump_spin->GetValue() < start_dump_spin->GetValue())
+		end_dump_spin->SetValue(start_dump_spin->GetValue());
 }
 
 Dialog::Dialog()
