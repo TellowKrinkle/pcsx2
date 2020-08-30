@@ -18,67 +18,70 @@
 
 using namespace GSSettingsDialog;
 
-void add_tooltip(wxWindow* widget, int tooltip)
+namespace
 {
-	if (tooltip != -1)
-		widget->SetToolTip(dialog_message(tooltip));
-}
-
-void add_settings_to_array_string(const std::vector<GSSetting>& s, wxArrayString& arr)
-{
-	for (const GSSetting& setting : s)
+	void add_tooltip(wxWindow* widget, int tooltip)
 	{
-		if (!setting.note.empty())
-			arr.Add(setting.name + " (" + setting.note + ")");
-		else
-			arr.Add(setting.name);
+		if (tooltip != -1)
+			widget->SetToolTip(dialog_message(tooltip));
 	}
-}
 
-size_t get_config_index(const std::vector<GSSetting>& s, const char* str)
-{
-	int value = theApp.GetConfigI(str);
-
-	for (size_t i = 0; i < s.size(); i++)
+	void add_settings_to_array_string(const std::vector<GSSetting>& s, wxArrayString& arr)
 	{
-		if (s[i].value == value)
-			return i;
+		for (const GSSetting& setting : s)
+		{
+			if (!setting.note.empty())
+				arr.Add(setting.name + " (" + setting.note + ")");
+			else
+				arr.Add(setting.name);
+		}
 	}
-	return 0;
-}
 
-void set_config_from_choice(const wxChoice* choice, const std::vector<GSSetting>& s, const char* str)
-{
-	int idx = choice->GetSelection();
+	size_t get_config_index(const std::vector<GSSetting>& s, const char* str)
+	{
+		int value = theApp.GetConfigI(str);
 
-	if (idx == wxNOT_FOUND)
-		return;
+		for (size_t i = 0; i < s.size(); i++)
+		{
+			if (s[i].value == value)
+				return i;
+		}
+		return 0;
+	}
 
-	theApp.SetConfig(str, s[idx].value);
-}
+	void set_config_from_choice(const wxChoice* choice, const std::vector<GSSetting>& s, const char* str)
+	{
+		int idx = choice->GetSelection();
 
-void add_label(wxWindow* parent, wxSizer* sizer, const char* str, int tooltip = -1, long style = wxALIGN_RIGHT | wxALIGN_CENTRE_HORIZONTAL, wxSizerFlags flags = wxSizerFlags().Right().DoubleBorder())
-{
-	auto* temp_text = new wxStaticText(parent, wxID_ANY, str, wxDefaultPosition, wxDefaultSize, style);
-	add_tooltip(temp_text, tooltip);
-	sizer->Add(temp_text, flags);
-}
+		if (idx == wxNOT_FOUND)
+			return;
 
-void add_combo_box(wxWindow* parent, wxSizer* sizer, wxChoice*& choice, const std::vector<GSSetting>& s, int tooltip = -1, wxSizerFlags flags = wxSizerFlags().Expand().Left())
-{
-	wxArrayString temp;
-	add_settings_to_array_string(s, temp);
-	choice = new wxChoice(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, temp);
+		theApp.SetConfig(str, s[idx].value);
+	}
 
-	add_tooltip(choice, tooltip);
-	sizer->Add(choice, flags);
-}
+	void add_label(wxWindow* parent, wxSizer* sizer, const char* str, int tooltip = -1, long style = wxALIGN_RIGHT | wxALIGN_CENTRE_HORIZONTAL, wxSizerFlags flags = wxSizerFlags().Right().DoubleBorder())
+	{
+		auto* temp_text = new wxStaticText(parent, wxID_ANY, str, wxDefaultPosition, wxDefaultSize, style);
+		add_tooltip(temp_text, tooltip);
+		sizer->Add(temp_text, flags);
+	}
 
-void add_label_and_combo_box(wxWindow* parent, wxSizer* sizer, wxChoice*& choice, const char* str, const std::vector<GSSetting>& s, int tooltip = -1)
-{
-	add_label(parent, sizer, str, tooltip);
-	add_combo_box(parent, sizer, choice, s, tooltip);
-}
+	void add_combo_box(wxWindow* parent, wxSizer* sizer, wxChoice*& choice, const std::vector<GSSetting>& s, int tooltip = -1, wxSizerFlags flags = wxSizerFlags().Expand().Left())
+	{
+		wxArrayString temp;
+		add_settings_to_array_string(s, temp);
+		choice = new wxChoice(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, temp);
+
+		add_tooltip(choice, tooltip);
+		sizer->Add(choice, flags);
+	}
+
+	void add_label_and_combo_box(wxWindow* parent, wxSizer* sizer, wxChoice*& choice, const char* str, const std::vector<GSSetting>& s, int tooltip = -1)
+	{
+		add_label(parent, sizer, str, tooltip);
+		add_combo_box(parent, sizer, choice, s, tooltip);
+	}
+} // namespace
 
 RendererTab::RendererTab(wxWindow* parent)
 	: wxPanel(parent, wxID_ANY)
@@ -141,7 +144,7 @@ RendererTab::RendererTab(wxWindow* parent)
 	Bind(wxEVT_CHECKBOX, &RendererTab::CallUpdate, this);
 }
 
-void RendererTab::CallUpdate(wxCommandEvent& event)
+void RendererTab::CallUpdate(wxCommandEvent&)
 {
 	Update();
 }
@@ -290,7 +293,7 @@ HacksTab::HacksTab(wxWindow* parent)
 	Bind(wxEVT_CHECKBOX, &HacksTab::CallUpdate, this);
 }
 
-void HacksTab::CallUpdate(wxCommandEvent& event)
+void HacksTab::CallUpdate(wxCommandEvent&)
 {
 	Update();
 }
@@ -419,7 +422,7 @@ RecTab::RecTab(wxWindow* parent)
 	Bind(wxEVT_CHECKBOX, &RecTab::CallUpdate, this);
 }
 
-void RecTab::CallUpdate(wxCommandEvent& event)
+void RecTab::CallUpdate(wxCommandEvent&)
 {
 	Update();
 }
@@ -526,7 +529,7 @@ PostTab::PostTab(wxWindow* parent)
 	Bind(wxEVT_CHECKBOX, &PostTab::CallUpdate, this);
 }
 
-void PostTab::CallUpdate(wxCommandEvent& event)
+void PostTab::CallUpdate(wxCommandEvent&)
 {
 	Update();
 }
@@ -636,7 +639,7 @@ OSDTab::OSDTab(wxWindow* parent)
 	Bind(wxEVT_CHECKBOX, &OSDTab::CallUpdate, this);
 }
 
-void OSDTab::CallUpdate(wxCommandEvent& event)
+void OSDTab::CallUpdate(wxCommandEvent&)
 {
 	Update();
 }
@@ -750,7 +753,7 @@ DebugTab::DebugTab(wxWindow* parent)
 	Bind(wxEVT_CHECKBOX, &DebugTab::CallUpdate, this);
 }
 
-void DebugTab::CallUpdate(wxCommandEvent& event)
+void DebugTab::CallUpdate(wxCommandEvent&)
 {
 	Update();
 }
@@ -862,7 +865,7 @@ Dialog::~Dialog()
 {
 }
 
-void Dialog::CallUpdate(wxCommandEvent& event)
+void Dialog::CallUpdate(wxCommandEvent&)
 {
 	Update();
 }
