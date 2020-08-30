@@ -818,12 +818,14 @@ Dialog::Dialog()
 
 	add_label_and_combo_box(this, top_grid, m_renderer_select, "Renderer:", theApp.m_gs_renderers);
 
+#ifdef _WIN32
 	add_label(this, top_grid, "Adapter:");
 	wxArrayString m_adapter_str;
 	//add_settings_to_array_string(theApp.m_gs_renderers, m_adapter_str);
 	m_adapter_str.Add("Default");
 	m_adapter_select = new wxChoice(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, m_adapter_str);
 	top_grid->Add(m_adapter_select, wxSizerFlags().Expand());
+#endif
 
 	add_label_and_combo_box(this, top_grid, m_interlace_select, "Interlacing(F5):", theApp.m_gs_interlace);
 	add_label_and_combo_box(this, top_grid, m_texture_select, "Texture Filtering:", theApp.m_gs_bifilter);
@@ -868,7 +870,9 @@ void Dialog::CallUpdate(wxCommandEvent& event)
 void Dialog::Load()
 {
 	m_renderer_select->SetSelection(get_config_index(theApp.m_gs_renderers, "Renderer"));
+#ifdef _WIN32
 	m_adapter_select->SetSelection(0);
+#endif
 	m_interlace_select->SetSelection(get_config_index(theApp.m_gs_interlace, "interlace"));
 	m_texture_select->SetSelection(get_config_index(theApp.m_gs_bifilter, "filter"));
 
