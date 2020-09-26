@@ -1563,7 +1563,7 @@ void GSRendererOGL::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sour
 	{
 		const GSVector4 dRect(ComputeBoundingBox(rtscale, rtsize));
 		const GSVector4 sRect = dRect / GSVector4(rtsize.x, rtsize.y).xyxy();
-		dev->StretchRect(hdr_rt, sRect, rt, dRect, ShaderConvert_MOD_256, false);
+		dev->StretchRect(hdr_rt, sRect, rt, dRect, ShaderConvert::MOD_256, false);
 
 		dev->Recycle(hdr_rt);
 	}
