@@ -4,8 +4,6 @@ name: 🍎 MacOS Builds
 # events but only for the master branch
 on:
   push:
-    branches:
-      - master
     paths-ignore:
       - '**/*.md'
       - '**/*.bat'
@@ -32,8 +30,6 @@ on:
       - 'pcsx2/USB/Win32/**'
       - 'pcsx2/windows/**'
   pull_request:
-    branches:
-      - master
     paths-ignore:
       - '**/*.md'
       - '**/*.bat'
