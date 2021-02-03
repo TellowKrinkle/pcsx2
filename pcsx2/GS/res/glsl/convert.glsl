@@ -15,12 +15,14 @@ layout(location = 7) in vec4 COLOR;
 // smooth, the default, means to do perspective-correct interpolation.
 //
 // The centroid qualifier only matters when multisampling. If this qualifier is not present, then the value is interpolated to the pixel's center, anywhere in the pixel, or to one of the pixel's samples. This sample may lie outside of the actual primitive being rendered, since a primitive can cover only part of a pixel's area. The centroid qualifier is used to prevent this; the interpolation point must fall within both the pixel's area and the primitive's area.
-out SHADER
+struct VSOutStruct
 {
     vec4 p;
     vec2 t;
     vec4 c;
-} VSout;
+};
+
+layout(location = 0) out VSOutStruct VSout;
 
 void vs_main()
 {
@@ -34,12 +36,14 @@ void vs_main()
 
 #ifdef FRAGMENT_SHADER
 
-in SHADER
+struct PSInStruct
 {
     vec4 p;
     vec2 t;
     vec4 c;
-} PSin;
+};
+
+layout(location = 0) in PSInStruct PSin;
 
 // Give a different name so I remember there is a special case!
 #if defined(ps_main1) || defined(ps_main10)
