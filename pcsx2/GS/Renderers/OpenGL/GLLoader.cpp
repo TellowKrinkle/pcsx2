@@ -140,6 +140,12 @@ namespace Emulate_DSA
 } // namespace Emulate_DSA
 #endif
 
+#ifdef __APPLE__
+// Used for bugginess checks, normally defined in an ObjC header so we can't just import it
+extern "C" const double NSAppKitVersionNumber;
+#define NSAppKitVersionNumber10_10 1343
+#endif
+
 namespace GLLoader
 {
 
@@ -232,6 +238,10 @@ namespace GLLoader
 #endif
 		// As of 2019 SSO is still broken on intel (Kaby Lake confirmed).
 		buggy_sso_dual_src = vendor_id_intel || vendor_id_amd;
+
+#ifdef __APPLE__
+		buggy_sso_dual_src |= NSAppKitVersionNumber < NSAppKitVersionNumber10_10;
+#endif
 
 		if (theApp.GetConfigI("override_geometry_shader") != -1)
 		{
