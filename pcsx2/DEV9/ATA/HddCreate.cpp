@@ -27,7 +27,7 @@ void HddCreate::Start()
 	{
 		wxTheApp->CallAfter([&] { Start(); });
 		//Block until done
-		std::unique_lock competedLock(completedMutex);
+		std::unique_lock<std::mutex> competedLock(completedMutex);
 		completedCV.wait(competedLock, [&] { return completed; });
 		return;
 	}
@@ -72,7 +72,7 @@ void HddCreate::Start()
 #endif
 	//Signal calling thread to resume
 	{
-		std::lock_guard ioSignallock(completedMutex);
+		std::lock_guard<std::mutex> ioSignallock(completedMutex);
 		completed = true;
 	}
 	completedCV.notify_all();
