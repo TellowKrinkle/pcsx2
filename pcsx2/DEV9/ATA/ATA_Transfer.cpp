@@ -20,7 +20,7 @@
 
 void ATA::IO_Thread()
 {
-	std::unique_lock ioWaitHandle(ioMutex);
+	std::unique_lock<std::mutex> ioWaitHandle(ioMutex);
 	ioThreadIdle_bool = false;
 	ioWaitHandle.unlock();
 
@@ -82,7 +82,7 @@ void ATA::IO_Read()
 	}
 	hddImage.read((char*)readBuffer, (u64)nsector * 512);
 	{
-		std::lock_guard ioSignallock(ioMutex);
+		std::lock_guard<std::mutex> ioSignallock(ioMutex);
 		ioRead = false;
 	}
 }
@@ -92,7 +92,7 @@ bool ATA::IO_Write()
 	WriteQueueEntry entry;
 	if (!writeQueue.Dequeue(&entry))
 	{
-		std::lock_guard ioSignallock(ioMutex);
+		std::lock_guard<std::mutex> ioSignallock(ioMutex);
 		ioWrite = false;
 		return false;
 	}
@@ -127,7 +127,7 @@ void ATA::HDD_ReadAsync(void (ATA::*drqCMD)())
 	waitingCmd = drqCMD;
 
 	{
-		std::lock_guard ioSignallock(ioMutex);
+		std::lock_guard<std::mutex> ioSignallock(ioMutex);
 		ioRead = true;
 	}
 	ioReady.notify_all();
@@ -138,7 +138,7 @@ void ATA::HDD_ReadAsync(void (ATA::*drqCMD)())
 void ATA::HDD_ReadSync(void (ATA::*drqCMD)())
 {
 	//unique_lock instead of lock_guard as also used for cv
-	std::unique_lock ioWaitHandle(ioMutex);
+	std::unique_lock<std::mutex> ioWaitHandle(ioMutex);
 	//Set ioWrite false to prevent reading & writing at the same time
 	const bool ioWritePaused = ioWrite;
 	ioWrite = false;
