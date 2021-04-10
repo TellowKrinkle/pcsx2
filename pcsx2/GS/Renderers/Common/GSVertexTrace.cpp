@@ -191,8 +191,17 @@ void GSVertexTrace::FindMinMax(const void* vertex, const u32* index, int count)
 	GSVector4i cmin = GSVector4i::xffffffff();
 	GSVector4i cmax = GSVector4i::zero();
 
+#if _M_SSE >= 0x401
+
 	GSVector4i pmin = GSVector4i::xffffffff();
 	GSVector4i pmax = GSVector4i::zero();
+
+#else
+
+	GSVector4 pmin = s_minmax.xxxx();
+	GSVector4 pmax = s_minmax.yyyy();
+
+#endif
 
 	const GSVertex* RESTRICT v = (GSVertex*)vertex;
 
@@ -261,8 +270,11 @@ void GSVertexTrace::FindMinMax(const void* vertex, const u32* index, int count)
 		GSVector4i xyzf1(v1.m[1]);
 
 		GSVector4i xy0 = xyzf0.upl16();
-		GSVector4i zf0 = xyzf0.ywyw();
 		GSVector4i xy1 = xyzf1.upl16();
+
+#if _M_SSE >= 0x401
+
+		GSVector4i zf0 = xyzf0.ywyw();
 		GSVector4i zf1 = xyzf1.ywyw();
 
 		GSVector4i p0 = xy0.blend32<0xc>(primclass == GS_SPRITE_CLASS ? zf1 : zf0);
@@ -270,6 +282,19 @@ void GSVertexTrace::FindMinMax(const void* vertex, const u32* index, int count)
 
 		pmin = pmin.min_u32(p0.min_u32(p1));
 		pmax = pmax.max_u32(p0.max_u32(p1));
+
+#else
+
+		GSVector4i zf0 = xyzf0.yyyy().srl32(1).upl32(xyzf0.wwww());
+		GSVector4i zf1 = xyzf1.yyyy().srl32(1).upl32(xyzf0.wwww());
+
+		GSVector4 p0 = GSVector4(xy0.upl64(primclass == GS_SPRITE_CLASS ? zf1 : zf0));
+		GSVector4 p1 = GSVector4(xy1.upl64(zf1));
+
+		pmin = pmin.min(p0.min(p1));
+		pmax = pmax.max(p0.max(p1));
+
+#endif
 	};
 
 	if (n == 2)
@@ -325,15 +350,24 @@ void GSVertexTrace::FindMinMax(const void* vertex, const u32* index, int count)
 		pxAssertRel(0, "Bad n value");
 	}
 
+	// FIXME/WARNING. A division by 2 is done on the depth on SSE<4.1 to avoid
+	// negative value. However it means that we lost the lsb bit. m_eq.z could
+	// be true if depth isn't constant but close enough. It also imply that
+	// pmin.z & 1 == 0 and pax.z & 1 == 0
+
 	GSVector4 o(context->XYOFFSET);
 	GSVector4 s(1.0f / 16, 1.0f / 16, 2.0f, 1.0f);
 
 	m_min.p = (GSVector4(pmin) - o) * s;
 	m_max.p = (GSVector4(pmax) - o) * s;
 
-	// Fix signed int conversion
+#if _M_SSE >= 0x401
+
+	// Keep full precision on depth
 	m_min.p = m_min.p.insert32<0, 2>(GSVector4::load((float)(u32)pmin.extract32<2>()));
 	m_max.p = m_max.p.insert32<0, 2>(GSVector4::load((float)(u32)pmax.extract32<2>()));
+
+#endif
 
 	if (tme)
 	{

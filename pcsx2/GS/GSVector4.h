@@ -268,7 +268,33 @@ public:
 	template <int mode>
 	__forceinline GSVector4 round() const
 	{
+#if _M_SSE >= 0x401
+
 		return GSVector4(_mm_round_ps(m, mode));
+
+#else
+
+		GSVector4 a = *this;
+
+		GSVector4 b = (a & cast(GSVector4i::x80000000())) | m_x4b000000;
+
+		b = a + b - b;
+
+		if ((mode & 7) == (Round_NegInf & 7))
+		{
+			return b - ((a < b) & m_one);
+		}
+
+		if ((mode & 7) == (Round_PosInf & 7))
+		{
+			return b + ((a > b) & m_one);
+		}
+
+		ASSERT((mode & 7) == (Round_NearestInt & 7)); // other modes aren't implemented
+
+		return b;
+
+#endif
 	}
 
 	__forceinline GSVector4 floor() const
@@ -396,29 +422,65 @@ public:
 
 	__forceinline GSVector4 hadd() const
 	{
+#if _M_SSE >= 0x300
+
 		return GSVector4(_mm_hadd_ps(m, m));
+
+#else
+
+		return xzxz() + ywyw();
+
+#endif
 	}
 
 	__forceinline GSVector4 hadd(const GSVector4& v) const
 	{
+#if _M_SSE >= 0x300
+
 		return GSVector4(_mm_hadd_ps(m, v.m));
+
+#else
+
+		return xzxz(v) + ywyw(v);
+
+#endif
 	}
 
 	__forceinline GSVector4 hsub() const
 	{
+#if _M_SSE >= 0x300
+
 		return GSVector4(_mm_hsub_ps(m, m));
+
+#else
+
+		return xzxz() - ywyw();
+
+#endif
 	}
 
 	__forceinline GSVector4 hsub(const GSVector4& v) const
 	{
+#if _M_SSE >= 0x300
+
 		return GSVector4(_mm_hsub_ps(m, v.m));
+
+#else
+
+		return xzxz(v) - ywyw(v);
+
+#endif
 	}
+
+#if _M_SSE >= 0x401
 
 	template <int i>
 	__forceinline GSVector4 dp(const GSVector4& v) const
 	{
 		return GSVector4(_mm_dp_ps(m, v.m, i));
 	}
+
+#endif
 
 	__forceinline GSVector4 sat(const GSVector4& a, const GSVector4& b) const
 	{
@@ -453,12 +515,25 @@ public:
 	template <int mask>
 	__forceinline GSVector4 blend32(const GSVector4& a) const
 	{
+#if _M_SSE >= 0x401
 		return GSVector4(_mm_blend_ps(m, a, mask));
+#else
+		constexpr GSVector4 maskvec = GSVector4::cxpr(mask & 1 ? ~0 : 0, mask & 2 ? ~0 : 0, mask & 4 ? ~0 : 0, mask & 8 ? ~0 : 0);
+		return blend32(a, maskvec);
+#endif
 	}
 
 	__forceinline GSVector4 blend32(const GSVector4& a, const GSVector4& mask) const
 	{
+#if _M_SSE >= 0x401
+
 		return GSVector4(_mm_blendv_ps(m, a, mask));
+
+#else
+
+		return GSVector4(_mm_or_ps(_mm_andnot_ps(mask, m), _mm_and_ps(mask, a)));
+
+#endif
 	}
 
 	__forceinline GSVector4 upl(const GSVector4& a) const
@@ -512,11 +587,15 @@ public:
 
 		return _mm_testz_ps(m, m) != 0;
 
-		#else
+#elif _M_SSE >= 0x401
 
 		__m128i a = _mm_castps_si128(m);
 
 		return _mm_testz_si128(a, a) != 0;
+
+#else
+
+		return mask() == 0;
 
 #endif
 	}
@@ -606,13 +685,29 @@ GSVector.h:2973:15: error:  shadows template parm 'int i'
 	template <int index>
 	__forceinline int extract32() const
 	{
+#if _M_SSE >= 0x401
+
 		return _mm_extract_ps(m, index);
+
+#else
+
+		return I32[index];
+
+#endif
 	}
 #else
 	template <int i>
 	__forceinline int extract32() const
 	{
+#if _M_SSE >= 0x401
+
 		return _mm_extract_ps(m, i);
+
+#else
+
+		return I32[i];
+
+#endif
 	}
 #endif
 
@@ -967,6 +1062,10 @@ GSVector.h:2973:15: error:  shadows template parm 'int i'
 
 	__forceinline static GSVector4 broadcast64(const void* d)
 	{
+#if _M_SSE >= 0x300
 		return GSVector4(_mm_loaddup_pd(static_cast<const double*>(d)));
+#else
+		return GSVector4(_mm_load1_pd(static_cast<const double*>(d)));;
+#endif
 	}
 };

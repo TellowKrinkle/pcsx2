@@ -1509,9 +1509,11 @@ void GSDeviceMTL::MREClearScissor()
 		return;
 	m_current_render.has.scissor = false;
 	GSVector4i size = GSVector4i(0);
-	if (m_current_render.color_target)   size = size.max_u32(GSVector4i(m_current_render.color_target  ->GetSize()));
-	if (m_current_render.depth_target)   size = size.max_u32(GSVector4i(m_current_render.depth_target  ->GetSize()));
-	if (m_current_render.stencil_target) size = size.max_u32(GSVector4i(m_current_render.stencil_target->GetSize()));
+
+	if (m_current_render.color_target)   size = GSVector4i(m_current_render.color_target  ->GetSize());
+	if (m_current_render.depth_target)   size = GSVector4i(m_current_render.depth_target  ->GetSize());
+	if (m_current_render.stencil_target) size = GSVector4i(m_current_render.stencil_target->GetSize());
+
 	MTLScissorRect r;
 	r.x = 0;
 	r.y = 0;

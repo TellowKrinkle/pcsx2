@@ -1500,11 +1500,12 @@ void GSLocalMemory::ReadTexture8(const GSOffset& off, const GSVector4i& r, u8* d
 
 void GSLocalMemory::ReadTexture4(const GSOffset& off, const GSVector4i& r, u8* dst, int dstpitch, const GIFRegTEXA& TEXA)
 {
-	const u32* pal = m_clut;
+	const u64* pal64 = m_clut;
+	const u32* pal32 = m_clut;
 
 	foreachBlock(off.assertSizesMatch(swizzle4), this, r, dst, dstpitch, 32, [&](u8* read_dst, const u8* src)
 	{
-		GSBlock::ReadAndExpandBlock4_32(src, read_dst, dstpitch, pal);
+		GSBlock::ReadAndExpandBlock4_32(src, read_dst, dstpitch, pal32, pal64);
 	});
 }
 
@@ -1608,7 +1609,7 @@ void GSLocalMemory::ReadTextureBlock4(u32 bp, u8* dst, int dstpitch, const GIFRe
 {
 	ALIGN_STACK(32);
 
-	GSBlock::ReadAndExpandBlock4_32(BlockPtr(bp), dst, dstpitch, m_clut);
+	GSBlock::ReadAndExpandBlock4_32(BlockPtr(bp), dst, dstpitch, m_clut, m_clut);
 }
 
 void GSLocalMemory::ReadTextureBlock8H(u32 bp, u8* dst, int dstpitch, const GIFRegTEXA& TEXA) const

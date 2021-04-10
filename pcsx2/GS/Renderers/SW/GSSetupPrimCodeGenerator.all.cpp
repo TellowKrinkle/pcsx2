@@ -195,7 +195,15 @@ void GSSetupPrimCodeGenerator2::Depth_XMM()
 		if (m_en.z)
 		{
 			// VectorF dz = VectorF::broadcast64(&dscan.p.z)
-			movddup(xmm0, ptr[_dscan + offsetof(GSVertexSW, p.z)]);
+			if (hasSSE3)
+			{
+				movddup(xmm0, ptr[_dscan + offsetof(GSVertexSW, p.z)]);
+			}
+			else
+			{
+				movsd(xmm0, ptr[_dscan + offsetof(GSVertexSW, p.z)]);
+				unpcklpd(xmm0, xmm0);
+			}
 
 			// m_local.d4.z = dz.mul64(GSVector4::f32to64(shift));
 			cvtps2pd(xmm1, xmm3);

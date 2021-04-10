@@ -231,7 +231,11 @@ void GSVertexSW::ConvertVertexBuffer(GSDrawingContext* RESTRICT ctx, GSVertexSW*
 
 	GSVector4i off = (GSVector4i)ctx->XYOFFSET;
 	GSVector4 tsize = GSVector4(0x10000 << ctx->TEX0.TW, 0x10000 << ctx->TEX0.TH, 1, 0);
+#if _M_SSE >= 0x401
 	GSVector4i z_max = GSVector4i::xffffffff().srl32(GSLocalMemory::m_psm[ctx->ZBUF.PSM].fmt * 8);
+#else
+	u32 z_max = 0xffffffff >> (GSLocalMemory::m_psm[ctx->ZBUF.PSM].fmt * 8);
+#endif
 
 	for (int i = (int)count; i > 0; i--, src++, dst++)
 	{
@@ -276,12 +280,17 @@ void GSVertexSW::ConvertVertexBuffer(GSDrawingContext* RESTRICT ctx, GSVertexSW*
 		{
 			dst->p = GSVector4(xy).xyyw(GSVector4(xyzuvf)) * m_pos_scale;
 
+#if _M_SSE >= 0x401
 			xyzuvf = xyzuvf.min_u32(z_max);
 			t = t.insert32<1, 3>(GSVector4::cast(xyzuvf));
+#else
+			u32 z = std::min<u32>(src->XYZ.Z, z_max);
+			t = t.insert32<0, 3>(GSVector4::cast(GSVector4i::load(z)));
+#endif
 		}
 		else
 		{
-			double z = static_cast<double>(static_cast<u32>(xyzuvf.extract32<1>()));
+			double z = static_cast<double>(src->XYZ.Z);
 			dst->p = (GSVector4(xy) * m_pos_scale).upld(GSVector4::f64(z, 0.0));
 			t = t.blend32<8>(GSVector4(xyzuvf << 7));
 		}

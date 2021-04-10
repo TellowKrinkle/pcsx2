@@ -487,7 +487,15 @@ void GSDrawScanline::CDrawScanline(int pixels, int left, int top, const GSVertex
 					}
 
 					if (sel.zclamp)
+					{
+#if _M_SSE >= 0x401
 						zs = zs.min_u32(VectorI::xffffffff().srl32(sel.zpsm * 8));
+#else
+						const u32 z_max = 0xffffffff >> (sel.zpsm * 8);
+						for (u32& z : zs.U32)
+							z = std::min(z_max, z);
+#endif
+					}
 				}
 				else
 				{

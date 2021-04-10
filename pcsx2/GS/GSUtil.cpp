@@ -158,7 +158,13 @@ bool GSUtil::CheckSSE()
 	};
 
 	ISA checks[] = {
+		{Xbyak::util::Cpu::tSSE2, "SSE2"},
+#if _M_SSE >= 0x301
+		{Xbyak::util::Cpu::tSSSE3, "SSSE3"},
+#endif
+#if _M_SSE >= 0x401
 		{Xbyak::util::Cpu::tSSE41, "SSE41"},
+#endif
 #if _M_SSE >= 0x500
 		{Xbyak::util::Cpu::tAVX, "AVX1"},
 #endif
