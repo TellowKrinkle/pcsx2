@@ -225,9 +225,19 @@ void recPMTHL()
 
 	int info = eeRecompileCodeXMM(XMMINFO_READS | XMMINFO_READLO | XMMINFO_READHI | XMMINFO_WRITELO | XMMINFO_WRITEHI);
 
-	xBLEND.PS(xRegisterSSE(EEREC_LO), xRegisterSSE(EEREC_S), 0x5);
-	xSHUF.PS(xRegisterSSE(EEREC_HI), xRegisterSSE(EEREC_S), 0xdd);
-	xSHUF.PS(xRegisterSSE(EEREC_HI), xRegisterSSE(EEREC_HI), 0x72);
+	if (x86caps.hasStreamingSIMD4Extensions)
+	{
+		xBLEND.PS(xRegisterSSE(EEREC_LO), xRegisterSSE(EEREC_S), 0x5);
+		xSHUF.PS(xRegisterSSE(EEREC_HI), xRegisterSSE(EEREC_S), 0xdd);
+		xSHUF.PS(xRegisterSSE(EEREC_HI), xRegisterSSE(EEREC_HI), 0x72);
+	}
+	else
+	{
+		xSHUF.PS(xRegisterSSE(EEREC_LO), xRegisterSSE(EEREC_S), 0x8d);
+		xSHUF.PS(xRegisterSSE(EEREC_HI), xRegisterSSE(EEREC_S), 0xdd);
+		xSHUF.PS(xRegisterSSE(EEREC_LO), xRegisterSSE(EEREC_LO), 0x72);
+		xSHUF.PS(xRegisterSSE(EEREC_HI), xRegisterSSE(EEREC_HI), 0x72);
+	}
 
 	_clearNeededXMMregs();
 }
@@ -421,16 +431,58 @@ void recPMAXW()
 	EE::Profiler.EmitOp(eeOpcode::PMAXW);
 
 	int info = eeRecompileCodeXMM(XMMINFO_READS | XMMINFO_READT | XMMINFO_WRITED);
-	if (EEREC_S == EEREC_T)
-		xMOVDQA(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
-	else if (EEREC_D == EEREC_S)
-		xPMAX.SD(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T));
-	else if (EEREC_D == EEREC_T)
-		xPMAX.SD(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
+	if (x86caps.hasStreamingSIMD4Extensions)
+	{
+		if (EEREC_S == EEREC_T)
+			xMOVDQA(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
+		else if (EEREC_D == EEREC_S)
+			xPMAX.SD(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T));
+		else if (EEREC_D == EEREC_T)
+			xPMAX.SD(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
+		else
+		{
+			xMOVDQA(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
+			xPMAX.SD(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T));
+		}
+	}
 	else
 	{
-		xMOVDQA(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
-		xPMAX.SD(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T));
+		int t0reg;
+
+		if (EEREC_S == EEREC_T)
+		{
+			xMOVDQA(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
+		}
+		else
+		{
+			t0reg = _allocTempXMMreg(XMMT_INT, -1);
+			xMOVDQA(xRegisterSSE(t0reg), xRegisterSSE(EEREC_S));
+			xPCMP.GTD(xRegisterSSE(t0reg), xRegisterSSE(EEREC_T));
+
+			if (EEREC_D == EEREC_S)
+			{
+				xPAND(xRegisterSSE(EEREC_D), xRegisterSSE(t0reg));
+				xPANDN(xRegisterSSE(t0reg), xRegisterSSE(EEREC_T));
+			}
+			else if (EEREC_D == EEREC_T)
+			{
+				int t1reg = _allocTempXMMreg(XMMT_INT, -1);
+				xMOVDQA(xRegisterSSE(t1reg), xRegisterSSE(EEREC_T));
+				xMOVDQA(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
+				xPAND(xRegisterSSE(EEREC_D), xRegisterSSE(t0reg));
+				xPANDN(xRegisterSSE(t0reg), xRegisterSSE(t1reg));
+				_freeXMMreg(t1reg);
+			}
+			else
+			{
+				xMOVDQA(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
+				xPAND(xRegisterSSE(EEREC_D), xRegisterSSE(t0reg));
+				xPANDN(xRegisterSSE(t0reg), xRegisterSSE(EEREC_T));
+			}
+
+			xPOR(xRegisterSSE(EEREC_D), xRegisterSSE(t0reg));
+			_freeXMMreg(t0reg);
+		}
 	}
 	_clearNeededXMMregs();
 }
@@ -1268,7 +1320,20 @@ void recPABSW() //needs clamping
 	xPCMP.EQD(xRegisterSSE(t0reg), xRegisterSSE(t0reg));
 	xPSLL.D(xRegisterSSE(t0reg), 31);
 	xPCMP.EQD(xRegisterSSE(t0reg), xRegisterSSE(EEREC_T)); //0xffffffff if equal to 0x80000000
-	xPABS.D(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T)); //0x80000000 -> 0x80000000
+	if (x86caps.hasSupplementalStreamingSIMD3Extensions)
+	{
+		xPABS.D(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T)); //0x80000000 -> 0x80000000
+	}
+	else
+	{
+		int t1reg = _allocTempXMMreg(XMMT_INT, -1);
+		xMOVDQA(xRegisterSSE(t1reg), xRegisterSSE(EEREC_T));
+		xMOVDQA(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T));
+		xPSRA.D(xRegisterSSE(t1reg), 31);
+		xPXOR(xRegisterSSE(EEREC_D), xRegisterSSE(t1reg));
+		xPSUB.D(xRegisterSSE(EEREC_D), xRegisterSSE(t1reg)); //0x80000000 -> 0x80000000
+		_freeXMMreg(t1reg);
+	}
 	xPXOR(xRegisterSSE(EEREC_D), xRegisterSSE(t0reg)); //0x80000000 -> 0x7fffffff
 	_freeXMMreg(t0reg);
 	_clearNeededXMMregs();
@@ -1288,7 +1353,20 @@ void recPABSH()
 	xPCMP.EQW(xRegisterSSE(t0reg), xRegisterSSE(t0reg));
 	xPSLL.W(xRegisterSSE(t0reg), 15);
 	xPCMP.EQW(xRegisterSSE(t0reg), xRegisterSSE(EEREC_T)); //0xffff if equal to 0x8000
-	xPABS.W(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T)); //0x8000 -> 0x8000
+	if (x86caps.hasSupplementalStreamingSIMD3Extensions)
+	{
+		xPABS.W(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T)); //0x8000 -> 0x8000
+	}
+	else
+	{
+		int t1reg = _allocTempXMMreg(XMMT_INT, -1);
+		xMOVDQA(xRegisterSSE(t1reg), xRegisterSSE(EEREC_T));
+		xMOVDQA(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T));
+		xPSRA.W(xRegisterSSE(t1reg), 15);
+		xPXOR(xRegisterSSE(EEREC_D), xRegisterSSE(t1reg));
+		xPSUB.W(xRegisterSSE(EEREC_D), xRegisterSSE(t1reg)); //0x8000 -> 0x8000
+		_freeXMMreg(t1reg);
+	}
 	xPXOR(xRegisterSSE(EEREC_D), xRegisterSSE(t0reg)); //0x8000 -> 0x7fff
 	_freeXMMreg(t0reg);
 	_clearNeededXMMregs();
@@ -1303,16 +1381,58 @@ void recPMINW()
 	EE::Profiler.EmitOp(eeOpcode::PMINW);
 
 	int info = eeRecompileCodeXMM(XMMINFO_READS | XMMINFO_READT | XMMINFO_WRITED);
-	if (EEREC_S == EEREC_T)
-		xMOVDQA(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
-	else if (EEREC_D == EEREC_S)
-		xPMIN.SD(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T));
-	else if (EEREC_D == EEREC_T)
-		xPMIN.SD(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
+	if (x86caps.hasStreamingSIMD4Extensions)
+	{
+		if (EEREC_S == EEREC_T)
+			xMOVDQA(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
+		else if (EEREC_D == EEREC_S)
+			xPMIN.SD(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T));
+		else if (EEREC_D == EEREC_T)
+			xPMIN.SD(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
+		else
+		{
+			xMOVDQA(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
+			xPMIN.SD(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T));
+		}
+	}
 	else
 	{
-		xMOVDQA(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
-		xPMIN.SD(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T));
+		int t0reg;
+
+		if (EEREC_S == EEREC_T)
+		{
+			xMOVDQA(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
+		}
+		else
+		{
+			t0reg = _allocTempXMMreg(XMMT_INT, -1);
+			xMOVDQA(xRegisterSSE(t0reg), xRegisterSSE(EEREC_T));
+			xPCMP.GTD(xRegisterSSE(t0reg), xRegisterSSE(EEREC_S));
+
+			if (EEREC_D == EEREC_S)
+			{
+				xPAND(xRegisterSSE(EEREC_D), xRegisterSSE(t0reg));
+				xPANDN(xRegisterSSE(t0reg), xRegisterSSE(EEREC_T));
+			}
+			else if (EEREC_D == EEREC_T)
+			{
+				int t1reg = _allocTempXMMreg(XMMT_INT, -1);
+				xMOVDQA(xRegisterSSE(t1reg), xRegisterSSE(EEREC_T));
+				xMOVDQA(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
+				xPAND(xRegisterSSE(EEREC_D), xRegisterSSE(t0reg));
+				xPANDN(xRegisterSSE(t0reg), xRegisterSSE(t1reg));
+				_freeXMMreg(t1reg);
+			}
+			else
+			{
+				xMOVDQA(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_S));
+				xPAND(xRegisterSSE(EEREC_D), xRegisterSSE(t0reg));
+				xPANDN(xRegisterSSE(t0reg), xRegisterSSE(EEREC_T));
+			}
+
+			xPOR(xRegisterSSE(EEREC_D), xRegisterSSE(t0reg));
+			_freeXMMreg(t0reg);
+		}
 	}
 	_clearNeededXMMregs();
 }
@@ -1834,6 +1954,13 @@ void recPMADDW()
 {
 	EE::Profiler.EmitOp(eeOpcode::PMADDW);
 
+	if (!x86caps.hasStreamingSIMD4Extensions)
+	{
+		_deleteEEreg(_Rd_, 0);
+		recCall(Interp::PMADDW);
+		return;
+	}
+
 	int info = eeRecompileCodeXMM((((_Rs_) && (_Rt_)) ? XMMINFO_READS : 0) | (((_Rs_) && (_Rt_)) ? XMMINFO_READT : 0) | (_Rd_ ? XMMINFO_WRITED : 0) | XMMINFO_WRITELO | XMMINFO_WRITEHI | XMMINFO_READLO | XMMINFO_READHI);
 	xSHUF.PS(xRegisterSSE(EEREC_LO), xRegisterSSE(EEREC_HI), 0x88);
 	xPSHUF.D(xRegisterSSE(EEREC_LO), xRegisterSSE(EEREC_LO), 0xd8); // LO = {LO[0], HI[0], LO[2], HI[2]}
@@ -1901,8 +2028,20 @@ void recPSLLVW()
 		}
 		else
 		{
-			xPSHUF.D(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T), 0x88);
-			xPMOVSX.DQ(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_D));
+			if (x86caps.hasStreamingSIMD4Extensions)
+			{
+				xPSHUF.D(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T), 0x88);
+				xPMOVSX.DQ(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_D));
+			}
+			else
+			{
+				int t0reg = _allocTempXMMreg(XMMT_INT, -1);
+				xPSHUF.D(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T), 0x88);
+				xMOVDQA(xRegisterSSE(t0reg), xRegisterSSE(EEREC_D));
+				xPSRA.D(xRegisterSSE(t0reg), 31);
+				xPUNPCK.LDQ(xRegisterSSE(EEREC_D), xRegisterSSE(t0reg));
+				_freeXMMreg(t0reg);
+			}
 		}
 	}
 	else if (_Rt_ == 0)
@@ -1932,8 +2071,18 @@ void recPSLLVW()
 		xPSLL.D(xRegisterSSE(t1reg), xRegisterSSE(t0reg));
 
 		// merge & sign extend
-		xPUNPCK.LDQ(xRegisterSSE(EEREC_D), xRegisterSSE(t1reg));
-		xPMOVSX.DQ(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_D));
+		if (x86caps.hasStreamingSIMD4Extensions)
+		{
+			xPUNPCK.LDQ(xRegisterSSE(EEREC_D), xRegisterSSE(t1reg));
+			xPMOVSX.DQ(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_D));
+		}
+		else
+		{
+			xPUNPCK.LDQ(xRegisterSSE(EEREC_D), xRegisterSSE(t1reg));
+			xMOVDQA(xRegisterSSE(t0reg), xRegisterSSE(EEREC_D));
+			xPSRA.D(xRegisterSSE(t0reg), 31); // get the signs
+			xPUNPCK.LDQ(xRegisterSSE(EEREC_D), xRegisterSSE(t0reg));
+		}
 
 		_freeXMMreg(t0reg);
 		_freeXMMreg(t1reg);
@@ -1958,8 +2107,20 @@ void recPSRLVW()
 		}
 		else
 		{
-			xPSHUF.D(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T), 0x88);
-			xPMOVSX.DQ(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_D));
+			if (x86caps.hasStreamingSIMD4Extensions)
+			{
+				xPSHUF.D(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T), 0x88);
+				xPMOVSX.DQ(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_D));
+			}
+			else
+			{
+				int t0reg = _allocTempXMMreg(XMMT_INT, -1);
+				xPSHUF.D(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T), 0x88);
+				xMOVDQA(xRegisterSSE(t0reg), xRegisterSSE(EEREC_D));
+				xPSRA.D(xRegisterSSE(t0reg), 31);
+				xPUNPCK.LDQ(xRegisterSSE(EEREC_D), xRegisterSSE(t0reg));
+				_freeXMMreg(t0reg);
+			}
 		}
 	}
 	else if (_Rt_ == 0)
@@ -1989,8 +2150,18 @@ void recPSRLVW()
 		xPSRL.D(xRegisterSSE(t1reg), xRegisterSSE(t0reg));
 
 		// merge & sign extend
-		xPUNPCK.LDQ(xRegisterSSE(EEREC_D), xRegisterSSE(t1reg));
-		xPMOVSX.DQ(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_D));
+		if (x86caps.hasStreamingSIMD4Extensions)
+		{
+			xPUNPCK.LDQ(xRegisterSSE(EEREC_D), xRegisterSSE(t1reg));
+			xPMOVSX.DQ(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_D));
+		}
+		else
+		{
+			xPUNPCK.LDQ(xRegisterSSE(EEREC_D), xRegisterSSE(t1reg));
+			xMOVDQA(xRegisterSSE(t0reg), xRegisterSSE(EEREC_D));
+			xPSRA.D(xRegisterSSE(t0reg), 31); // get the signs
+			xPUNPCK.LDQ(xRegisterSSE(EEREC_D), xRegisterSSE(t0reg));
+		}
 
 		_freeXMMreg(t0reg);
 		_freeXMMreg(t1reg);
@@ -2003,6 +2174,12 @@ void recPMSUBW()
 {
 	EE::Profiler.EmitOp(eeOpcode::PMSUBW);
 
+	if (!x86caps.hasStreamingSIMD4Extensions)
+	{
+		_deleteEEreg(_Rd_, 0);
+		recCall(Interp::PMSUBW);
+		return;
+	}
 	int info = eeRecompileCodeXMM((((_Rs_) && (_Rt_)) ? XMMINFO_READS : 0) | (((_Rs_) && (_Rt_)) ? XMMINFO_READT : 0) | (_Rd_ ? XMMINFO_WRITED : 0) | XMMINFO_WRITELO | XMMINFO_WRITEHI | XMMINFO_READLO | XMMINFO_READHI);
 	xSHUF.PS(xRegisterSSE(EEREC_LO), xRegisterSSE(EEREC_HI), 0x88);
 	xPSHUF.D(xRegisterSSE(EEREC_LO), xRegisterSSE(EEREC_LO), 0xd8); // LO = {LO[0], HI[0], LO[2], HI[2]}
@@ -2064,6 +2241,12 @@ void recPMULTW()
 {
 	EE::Profiler.EmitOp(eeOpcode::PMULTW);
 
+	if (!x86caps.hasStreamingSIMD4Extensions)
+	{
+		_deleteEEreg(_Rd_, 0);
+		recCall(Interp::PMULTW);
+		return;
+	}
 	int info = eeRecompileCodeXMM((((_Rs_) && (_Rt_)) ? XMMINFO_READS : 0) | (((_Rs_) && (_Rt_)) ? XMMINFO_READT : 0) | (_Rd_ ? XMMINFO_WRITED : 0) | XMMINFO_WRITELO | XMMINFO_WRITEHI);
 	if (!_Rs_ || !_Rt_)
 	{
@@ -2607,8 +2790,20 @@ void recPSRAVW()
 		}
 		else
 		{
-			xPSHUF.D(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T), 0x88);
-			xPMOVSX.DQ(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_D));
+			if (x86caps.hasStreamingSIMD4Extensions)
+			{
+				xPSHUF.D(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T), 0x88);
+				xPMOVSX.DQ(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_D));
+			}
+			else
+			{
+				int t0reg = _allocTempXMMreg(XMMT_INT, -1);
+				xPSHUF.D(xRegisterSSE(EEREC_D), xRegisterSSE(EEREC_T), 0x88);
+				xMOVDQA(xRegisterSSE(t0reg), xRegisterSSE(EEREC_D));
+				xPSRA.D(xRegisterSSE(t0reg), 31);
+				xPUNPCK.LDQ(xRegisterSSE(EEREC_D), xRegisterSSE(t0reg));
+				_freeXMMreg(t0reg);
+			}
 		}
 	}
 	else if (_Rt_ == 0)
