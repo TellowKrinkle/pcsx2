@@ -185,5 +185,11 @@ private:
 		const Xmm& d2s0, const Xmm& d3s1,
 		const Xmm& s2,   const Xmm& s3,
 		int pixels,      int mip_offset);
+	void ReadTexelImplSSE3(
+		const Xmm& d0,   const Xmm& d1,
+		const Xmm& d2s0, const Xmm& d3s1,
+		const Xmm& s2,   const Xmm& s3,
+		const Xmm& tmp1, const Xmm& tmp2,
+		int pixels,      int mip_offset);
 	void ReadTexelImpl(const Xmm& dst, const Xmm& addr, u8 i, bool texInA3, bool preserveDst);
 };

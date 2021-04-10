@@ -29,9 +29,13 @@
 		#define _M_SSE 0x500
 	#elif defined(__SSE4_1__)
 		#define _M_SSE 0x401
+	#elif defined(__SSSE3__)
+		#define _M_SSE 0x301
+	#elif defined(__SSE2__)
+		#define _M_SSE 0x200
 	#else
-		#error PCSX2 requires compiling for at least SSE 4.1
+		#error PCSX2 requires compiling for at least SSE2
 	#endif
-#elif _M_SSE < 0x401
-	#error PCSX2 requires compiling for at least SSE 4.1
+#elif _M_SSE < 0x200
+	#error PCSX2 requires compiling for at least SSE2
 #endif
