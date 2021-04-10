@@ -337,10 +337,12 @@ public:
 		if (mask == 0xffffffff)
 			return a;
 
+#if _M_SSE >= 0x401
 		if (mask == 0x0000ffff)
 			return blend16<0x55>(a);
 		if (mask == 0xffff0000)
 			return blend16<0xaa>(a);
+#endif
 
 		for (int i = 0; i < 32; i += 8)
 		{

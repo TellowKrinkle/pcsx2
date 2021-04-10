@@ -517,7 +517,7 @@ public:
 		GSVector8i::storel(&dst[dstpitch * 2], v1);
 		GSVector8i::storeh(&dst[dstpitch * 3], v1);
 
-#else
+#elif _M_SSE >= 0x301
 
 		const GSVector4i* s = (const GSVector4i*)src;
 
@@ -550,6 +550,35 @@ public:
 		GSVector4i::store<true>(&dst[dstpitch * 1], v3);
 		GSVector4i::store<true>(&dst[dstpitch * 2], v1);
 		GSVector4i::store<true>(&dst[dstpitch * 3], v2);
+#else
+
+		const GSVector4i* s = (const GSVector4i*)src;
+
+		GSVector4i v0 = s[i * 4 + 0];
+		GSVector4i v1 = s[i * 4 + 1];
+		GSVector4i v2 = s[i * 4 + 2];
+		GSVector4i v3 = s[i * 4 + 3];
+
+		GSVector4i::sw8(v0, v1, v2, v3);
+		GSVector4i::sw16(v0, v1, v2, v3);
+		GSVector4i::sw8(v0, v2, v1, v3);
+		GSVector4i::sw64(v0, v1, v2, v3);
+
+		if ((i & 1) == 0)
+		{
+			v2 = v2.yxwz();
+			v3 = v3.yxwz();
+		}
+		else
+		{
+			v0 = v0.yxwz();
+			v1 = v1.yxwz();
+		}
+
+		GSVector4i::store<true>(&dst[dstpitch * 0], v0);
+		GSVector4i::store<true>(&dst[dstpitch * 1], v1);
+		GSVector4i::store<true>(&dst[dstpitch * 2], v2);
+		GSVector4i::store<true>(&dst[dstpitch * 3], v3);
 
 #endif
 	}
@@ -588,7 +617,7 @@ public:
 		GSVector8i::storel(&dst[dstpitch * 2], v1);
 		GSVector8i::storeh(&dst[dstpitch * 3], v1);
 
-#else
+#elif _M_SSE >= 0x301
 
 		const GSVector4i* s = (const GSVector4i*)src;
 
@@ -624,6 +653,37 @@ public:
 		GSVector4i::store<true>(&dst[dstpitch * 0], v0);
 		GSVector4i::store<true>(&dst[dstpitch * 1], v1);
 		GSVector4i::store<true>(&dst[dstpitch * 2], v2);
+		GSVector4i::store<true>(&dst[dstpitch * 3], v3);
+
+#else
+
+		const GSVector4i* s = (const GSVector4i*)src;
+
+		GSVector4i v0 = s[i * 4 + 0];
+		GSVector4i v1 = s[i * 4 + 1];
+		GSVector4i v2 = s[i * 4 + 2];
+		GSVector4i v3 = s[i * 4 + 3];
+
+		GSVector4i::sw32_inv(v0, v1, v2, v3);
+		GSVector4i::mix4(v0, v1);
+		GSVector4i::mix4(v2, v3);
+		GSVector4i::sw8(v0, v2, v1, v3);
+		GSVector4i::sw16(v0, v1, v2, v3);
+
+		if ((i & 1) == 0)
+		{
+			v1 = v1.yxwzlh();
+			v3 = v3.yxwzlh();
+		}
+		else
+		{
+			v0 = v0.yxwzlh();
+			v2 = v2.yxwzlh();
+		}
+
+		GSVector4i::store<true>(&dst[dstpitch * 0], v0);
+		GSVector4i::store<true>(&dst[dstpitch * 1], v2);
+		GSVector4i::store<true>(&dst[dstpitch * 2], v1);
 		GSVector4i::store<true>(&dst[dstpitch * 3], v3);
 
 #endif
@@ -930,7 +990,12 @@ public:
 		V rmask = V(0x000000f8);
 		V gmask = V(0x0000f800);
 		V bmask = V(0x00f80000);
-		return ((c << 3) & rmask) | ((c << 6) & gmask) | ((c << 9) & bmask) | (AEM ? TA0.blend8(TA1, c).andnot(c == V::zero()) : TA0.blend8(TA1, c));
+#if _M_SSE < 0x401
+		V a = c.sra16(15);
+#else
+		V a = c;
+#endif
+		return ((c << 3) & rmask) | ((c << 6) & gmask) | ((c << 9) & bmask) | (AEM ? TA0.blend8(TA1, a).andnot(c == V::zero()) : TA0.blend8(TA1, a));
 	}
 
 	/// Expands the 16bpp pixel in the low half of each dword to a 32bpp pixel
@@ -942,7 +1007,11 @@ public:
 		V bmask = V(0x00f80000);
 		V o = ((c << 3) & rmask) | ((c << 6) & gmask) | ((c << 9) & bmask);
 		V ta0 = AEM ? TA0.andnot(o == V::zero()) : TA0;
+#if _M_SSE >= 0x401
 		return o | ta0.blend8(TA1, c << 16);
+#else
+		return o | ta0.blend(TA1, (c << 16).sra32(31));
+#endif
 	}
 
 	/// Expands the 16bpp pixel in the high half of each dword to a 32bpp pixel
@@ -954,7 +1023,11 @@ public:
 		V bmask = V(0x00f80000);
 		V o = ((c >> 13) & rmask) | ((c >> 10) & gmask) | ((c >> 7) & bmask);
 		V ta0 = AEM ? TA0.andnot(o == V::zero()) : TA0;
+#if _M_SSE >= 0x401
 		return o | ta0.blend8(TA1, c);
+#else
+		return o | ta0.blend(TA1, c.sra32(31));
+#endif
 	}
 
 	template <bool AEM>
@@ -1107,6 +1180,7 @@ public:
 	{
 		for (int j = 0; j < 8; j++, dst += dstpitch)
 		{
+#if _M_SSE >= 0x401
 			const GSVector4i* s = (const GSVector4i*)src;
 
 			GSVector4i v0 = s[j * 2 + 0] >> shift;
@@ -1120,6 +1194,15 @@ public:
 			v1 = v1.gather32_32<>(pal);
 
 			((GSVector4i*)dst)[0] = v0.pu32(v1);
+#else
+			for (int i = 0; i < 8; i++)
+			{
+				u16 idx = src[j * 8 + i] >> shift;
+				if (mask != 0xff)
+					idx &= mask;
+				((u16*)dst)[i] = (u32)pal[idx];
+			}
+#endif
 		}
 	}
 
@@ -1300,15 +1383,19 @@ public:
 
 		GSVector4i v0, v1, v2, v3;
 
+#if _M_SSE >= 0x301
 		GSVector4i mask0 = m_uw8hmask0;
 		GSVector4i mask1 = m_uw8hmask1;
 		GSVector4i mask2 = m_uw8hmask2;
 		GSVector4i mask3 = m_uw8hmask3;
+#endif
 
 		GSVector4i* d = reinterpret_cast<GSVector4i*>(dst);
 
 		for (int i = 0; i < 2; i++, src += srcpitch * 4, d += 8)
 		{
+#if _M_SSE >= 0x301
+
 			if (mask == 0xff000000)
 			{
 				v4 = GSVector4i::load(src + srcpitch * 0, src + srcpitch * 1);
@@ -1344,15 +1431,73 @@ public:
 			v2 = v4.shuffle8(mask2);
 			v3 = v4.shuffle8(mask3);
 
+#else
+
+			if (mask == 0xff000000)
+			{
+				v4 = GSVector4i::loadl(&src[srcpitch * 0]);
+				v5 = GSVector4i::loadl(&src[srcpitch * 1]);
+				v6 = v4.upl16(v5);
+				v4 = GSVector4i::loadl(&src[srcpitch * 2]);
+				v5 = GSVector4i::loadl(&src[srcpitch * 3]);
+				v7 = v4.upl16(v5);
+			}
+			else
+			{
+				v6 = GSVector4i::load(*(u32*)&src[srcpitch * 0]);
+				v7 = GSVector4i::load(*(u32*)&src[srcpitch * 2]);
+				v4 = v6.upl32(v7);
+				v6 = GSVector4i::load(*(u32*)&src[srcpitch * 1]);
+				v7 = GSVector4i::load(*(u32*)&src[srcpitch * 3]);
+				v5 = v6.upl32(v7);
+
+				if (mask == 0x0f000000)
+				{
+					v4 = v4.upl8(v4 >> 4);
+					v5 = v5.upl8(v5 >> 4);
+				}
+				else if (mask == 0xf0000000)
+				{
+					v4 = (v4 << 4).upl8(v4);
+					v5 = (v5 << 4).upl8(v5);
+				}
+				else
+				{
+					ASSERT(0);
+				}
+
+				v6 = v4.upl16(v5);
+				v7 = v4.uph16(v5);
+			}
+
+			v4 = v6.upl8(v6);
+			v5 = v6.uph8(v6);
+			v6 = v7.upl8(v7);
+			v7 = v7.uph8(v7);
+
+			v0 = v4.upl16(v4);
+			v1 = v4.uph16(v4);
+			v2 = v5.upl16(v5);
+			v3 = v5.uph16(v5);
+
+#endif
+
 			d[0] = d[0].smartblend<mask>(v0);
 			d[1] = d[1].smartblend<mask>(v1);
 			d[2] = d[2].smartblend<mask>(v2);
 			d[3] = d[3].smartblend<mask>(v3);
 
+#if _M_SSE >= 0x301
 			v0 = v5.shuffle8(mask0);
 			v1 = v5.shuffle8(mask1);
 			v2 = v5.shuffle8(mask2);
 			v3 = v5.shuffle8(mask3);
+#else
+			v0 = v6.upl16(v6);
+			v1 = v6.uph16(v6);
+			v2 = v7.upl16(v7);
+			v3 = v7.uph16(v7);
+#endif
 
 			d[4] = d[4].smartblend<mask>(v0);
 			d[5] = d[5].smartblend<mask>(v1);
@@ -1590,7 +1735,7 @@ public:
 			dst += dstpitch * 4;
 		}
 
-#else
+#elif _M_SSE >= 0x401
 
 		const GSVector4i* s = (const GSVector4i*)src;
 
@@ -1634,6 +1779,10 @@ public:
 			dst += dstpitch;
 		}
 
+#else
+
+		ReadAndExpandBlock8_32HSW(src, dst, dstpitch, pal);
+
 #endif
 	}
 
@@ -1676,7 +1825,7 @@ public:
 		ReadClut4(p0, p1, p2, p3, src, dst[dstride * 0], dst[dstride * 1], dst[dstride * 2], dst[dstride * 3]);
 	}
 
-	__forceinline static void ReadAndExpandBlock4_32(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch, const u32* RESTRICT pal)
+	__forceinline static void ReadAndExpandBlock4_32(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch, const u32* RESTRICT pal32, const u64* RESTRICT pal64)
 	{
 		//printf("ReadAndExpandBlock4_32\n");
 
@@ -1685,7 +1834,7 @@ public:
 		const GSVector8i* s = (const GSVector8i*)src;
 
 		GSVector8i p0, p1, p2, p3;
-		LoadPalVecs(pal, p0, p1, p2, p3);
+		LoadPalVecs(pal32, p0, p1, p2, p3);
 		GSVector8i shuf = GSVector8i::broadcast128(m_palvec_mask);
 		GSVector8i mask(0x0f0f0f0f);
 
@@ -1734,12 +1883,12 @@ public:
 			dst += dstpitch * 4;
 		}
 
-#else
+#elif _M_SSE >= 0x301
 
 		const GSVector4i* s = (const GSVector4i*)src;
 
 		GSVector4i p0, p1, p2, p3;
-		LoadPalVecs(pal, p0, p1, p2, p3);
+		LoadPalVecs(pal32, p0, p1, p2, p3);
 		GSVector4i mask(0x0f0f0f0f);
 
 		GSVector4i v0, v1, v2, v3;
@@ -1802,6 +1951,14 @@ public:
 
 			dst += dstpitch * 4;
 		}
+
+#else
+
+		alignas(32) u8 block[(32 / 2) * 16];
+
+		ReadBlock4(src, (u8*)block, sizeof(block) / 16);
+
+		ExpandBlock4_32(block, dst, dstpitch, pal64);
 
 #endif
 	}
@@ -1892,7 +2049,7 @@ public:
 			dst += dstpitch * 4;
 		}
 
-#else
+#elif _M_SSE >= 0x301
 
 		const GSVector4i* s = (const GSVector4i*)src;
 
@@ -1920,6 +2077,14 @@ public:
 
 			dst += dstpitch * 2;
 		}
+
+#else
+
+		alignas(32) u32 block[8 * 8];
+
+		ReadBlock32(src, (u8*)block, sizeof(block) / 8);
+
+		ExpandBlockH_32<shift, mask & 0xff>(block, dst, dstpitch, pal);
 
 #endif
 	}
