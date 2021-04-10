@@ -4,13 +4,6 @@ name: 🐧 Linux Builds
 # events but only for the master branch
 on:
   push:
-    branches:
-      - master
-    tags:
-      - v*
-  pull_request:
-    branches:
-      - master
     paths-ignore:
       - "**/*.md"
       - "**/*.bat"
