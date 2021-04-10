@@ -55,36 +55,91 @@ void mVUsaveReg(const xmm& reg, xAddressVoid ptr, int xyzw, bool modXYZW)
 	switch (xyzw)
 	{
 		case 5: // YW
-			xEXTRACTPS(ptr32[ptr + 4], reg, 1);
-			xEXTRACTPS(ptr32[ptr + 12], reg, 3);
+			if (x86caps.hasStreamingSIMD4Extensions)
+			{
+				xEXTRACTPS(ptr32[ptr + 4], reg, 1);
+				xEXTRACTPS(ptr32[ptr + 12], reg, 3);
+			}
+			else
+			{
+				xPSHUF.D(reg, reg, 0xe1); //WZXY
+				xMOVSS(ptr32[ptr + 4], reg);
+				xPSHUF.D(reg, reg, 0xff); //WWWW
+				xMOVSS(ptr32[ptr + 12], reg);
+			}
 			break;
 		case 6: // YZ
 			xPSHUF.D(reg, reg, 0xc9);
 			xMOVL.PS(ptr64[ptr + 4], reg);
 			break;
 		case 7: // YZW
-			xMOVH.PS(ptr64[ptr + 8], reg);
-			xEXTRACTPS(ptr32[ptr + 4], reg, 1);
+			if (x86caps.hasStreamingSIMD4Extensions)
+			{
+				xMOVH.PS(ptr64[ptr + 8], reg);
+				xEXTRACTPS(ptr32[ptr + 4], reg, 1);
+			}
+			else
+			{
+				xPSHUF.D(reg, reg, 0x93); //ZYXW
+				xMOVH.PS(ptr64[ptr + 4], reg);
+				xMOVSS(ptr32[ptr + 12], reg);
+			}
 			break;
 		case 9: // XW
-			xMOVSS(ptr32[ptr], reg);
-			xEXTRACTPS(ptr32[ptr + 12], reg, 3);
+			if (x86caps.hasStreamingSIMD4Extensions)
+			{
+				xMOVSS(ptr32[ptr], reg);
+				xEXTRACTPS(ptr32[ptr + 12], reg, 3);
+			}
+			else
+			{
+				xMOVSS(ptr32[ptr], reg);
+				xPSHUF.D(reg, reg, 0xff); //WWWW
+				xMOVSS(ptr32[ptr + 12], reg);
+			}
 			break;
 		case 10: // XZ
-			xMOVSS(ptr32[ptr], reg);
-			xEXTRACTPS(ptr32[ptr + 8], reg, 2);
+			if (x86caps.hasStreamingSIMD4Extensions)
+			{
+				xMOVSS(ptr32[ptr], reg);
+				xEXTRACTPS(ptr32[ptr + 8], reg, 2);
+			}
+			else
+			{
+				xMOVSS(ptr32[ptr], reg);
+				xMOVHL.PS(reg, reg);
+				xMOVSS(ptr32[ptr + 8], reg);
+			}
 			break;
 		case 11: // XZW
 			xMOVSS(ptr32[ptr], reg);
 			xMOVH.PS(ptr64[ptr + 8], reg);
 			break;
 		case 13: // XYW
-			xMOVL.PS(ptr64[ptr], reg);
-			xEXTRACTPS(ptr32[ptr + 12], reg, 3);
+			if (x86caps.hasStreamingSIMD4Extensions)
+			{
+				xMOVL.PS(ptr64[ptr], reg);
+				xEXTRACTPS(ptr32[ptr + 12], reg, 3);
+			}
+			else
+			{
+				xPSHUF.D(reg, reg, 0x4b); //YXZW
+				xMOVH.PS(ptr64[ptr], reg);
+				xMOVSS(ptr32[ptr + 12], reg);
+			}
 			break;
 		case 14: // XYZ
-			xMOVL.PS(ptr64[ptr], reg);
-			xEXTRACTPS(ptr32[ptr + 8], reg, 2);
+			if (x86caps.hasStreamingSIMD4Extensions)
+			{
+				xMOVL.PS(ptr64[ptr], reg);
+				xEXTRACTPS(ptr32[ptr + 8], reg, 2);
+			}
+			else
+			{
+				xMOVL.PS(ptr64[ptr], reg);
+				xMOVHL.PS(reg, reg);
+				xMOVSS(ptr32[ptr + 8], reg);
+			}
 			break;
 		case 4: // Y
 			if (!modXYZW)
@@ -122,11 +177,7 @@ void mVUmergeRegs(const xmm& dest, const xmm& src, int xyzw, bool modXYZW)
 	xyzw &= 0xf;
 	if ((dest != src) && (xyzw != 0))
 	{
-		if (xyzw == 0x8)
-			xMOVSS(dest, src);
-		else if (xyzw == 0xf)
-			xMOVAPS(dest, src);
-		else
+		if (x86caps.hasStreamingSIMD4Extensions && (xyzw != 0x8) && (xyzw != 0xf))
 		{
 			if (modXYZW)
 			{
@@ -136,6 +187,76 @@ void mVUmergeRegs(const xmm& dest, const xmm& src, int xyzw, bool modXYZW)
 			}
 			xyzw = ((xyzw & 1) << 3) | ((xyzw & 2) << 1) | ((xyzw & 4) >> 1) | ((xyzw & 8) >> 3);
 			xBLEND.PS(dest, src, xyzw);
+		}
+		else
+		{
+			switch (xyzw)
+			{
+				case 1:
+					if (modXYZW)
+						mVUunpack_xyzw(src, src, 0);
+					xMOVHL.PS(src, dest); // src = Sw Sz Dw Dz
+					xSHUF.PS(dest, src, 0xc4); // 11 00 01 00
+					break;
+				case 2:
+					if (modXYZW)
+						mVUunpack_xyzw(src, src, 0);
+					xMOVHL.PS(src, dest);
+					xSHUF.PS(dest, src, 0x64);
+					break;
+				case 3:
+					xSHUF.PS(dest, src, 0xe4);
+					break;
+				case 4:
+					if (modXYZW)
+						mVUunpack_xyzw(src, src, 0);
+					xMOVSS(src, dest);
+					xMOVSD(dest, src);
+					break;
+				case 5:
+					xSHUF.PS(dest, src, 0xd8);
+					xPSHUF.D(dest, dest, 0xd8);
+					break;
+				case 6:
+					xSHUF.PS(dest, src, 0x9c);
+					xPSHUF.D(dest, dest, 0x78);
+					break;
+				case 7:
+					xMOVSS(src, dest);
+					xMOVAPS(dest, src);
+					break;
+				case 8:
+					xMOVSS(dest, src);
+					break;
+				case 9:
+					xSHUF.PS(dest, src, 0xc9);
+					xPSHUF.D(dest, dest, 0xd2);
+					break;
+				case 10:
+					xSHUF.PS(dest, src, 0x8d);
+					xPSHUF.D(dest, dest, 0x72);
+					break;
+				case 11:
+					xMOVSS(dest, src);
+					xSHUF.PS(dest, src, 0xe4);
+					break;
+				case 12:
+					xMOVSD(dest, src);
+					break;
+				case 13:
+					xMOVHL.PS(dest, src);
+					xSHUF.PS(src, dest, 0x64);
+					xMOVAPS(dest, src);
+					break;
+				case 14:
+					xMOVHL.PS(dest, src);
+					xSHUF.PS(src, dest, 0xc4);
+					xMOVAPS(dest, src);
+					break;
+				default:
+					xMOVAPS(dest, src);
+					break;
+			}
 		}
 	}
 }
