@@ -224,7 +224,15 @@ public:
 
 	__forceinline GSVector4i runion_ordered(const GSVector4i& a) const
 	{
+#if _M_SSE >= 0x401
+
 		return min_i32(a).upl64(max_i32(a).srl<8>());
+
+#else
+
+		return GSVector4i(std::min(x, a.x), std::min(y, a.y), std::max(z, a.z), std::max(w, a.w));
+
+#endif
 	}
 
 	__forceinline GSVector4i rintersect(const GSVector4i& a) const
@@ -294,6 +302,8 @@ public:
 		return (u32)store(v);
 	}
 
+#if _M_SSE >= 0x401
+
 	__forceinline GSVector4i sat_i8(const GSVector4i& a, const GSVector4i& b) const
 	{
 		return max_i8(a).min_i8(b);
@@ -303,6 +313,8 @@ public:
 	{
 		return max_i8(a.xyxy()).min_i8(a.zwzw());
 	}
+
+#endif
 
 	__forceinline GSVector4i sat_i16(const GSVector4i& a, const GSVector4i& b) const
 	{
@@ -314,6 +326,8 @@ public:
 		return max_i16(a.xyxy()).min_i16(a.zwzw());
 	}
 
+#if _M_SSE >= 0x401
+
 	__forceinline GSVector4i sat_i32(const GSVector4i& a, const GSVector4i& b) const
 	{
 		return max_i32(a).min_i32(b);
@@ -323,6 +337,34 @@ public:
 	{
 		return max_i32(a.xyxy()).min_i32(a.zwzw());
 	}
+
+#else
+
+	__forceinline GSVector4i sat_i32(const GSVector4i& a, const GSVector4i& b) const
+	{
+		GSVector4i v;
+
+		v.x = std::min(std::max(x, a.x), b.x);
+		v.y = std::min(std::max(y, a.y), b.y);
+		v.z = std::min(std::max(z, a.z), b.z);
+		v.w = std::min(std::max(w, a.w), b.w);
+
+		return v;
+	}
+
+	__forceinline GSVector4i sat_i32(const GSVector4i& a) const
+	{
+		GSVector4i v;
+
+		v.x = std::min(std::max(x, a.x), a.z);
+		v.y = std::min(std::max(y, a.y), a.w);
+		v.z = std::min(std::max(z, a.x), a.z);
+		v.w = std::min(std::max(w, a.y), a.w);
+
+		return v;
+	}
+
+#endif
 
 	__forceinline GSVector4i sat_u8(const GSVector4i& a, const GSVector4i& b) const
 	{
@@ -334,6 +376,8 @@ public:
 		return max_u8(a.xyxy()).min_u8(a.zwzw());
 	}
 
+#if _M_SSE >= 0x401
+
 	__forceinline GSVector4i sat_u16(const GSVector4i& a, const GSVector4i& b) const
 	{
 		return max_u16(a).min_u16(b);
@@ -343,6 +387,10 @@ public:
 	{
 		return max_u16(a.xyxy()).min_u16(a.zwzw());
 	}
+
+#endif
+
+#if _M_SSE >= 0x401
 
 	__forceinline GSVector4i sat_u32(const GSVector4i& a, const GSVector4i& b) const
 	{
@@ -354,6 +402,10 @@ public:
 		return max_u32(a.xyxy()).min_u32(a.zwzw());
 	}
 
+#endif
+
+#if _M_SSE >= 0x401
+
 	__forceinline GSVector4i min_i8(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_min_epi8(m, a));
@@ -363,6 +415,8 @@ public:
 	{
 		return GSVector4i(_mm_max_epi8(m, a));
 	}
+
+#endif
 
 	__forceinline GSVector4i min_i16(const GSVector4i& a) const
 	{
@@ -374,6 +428,8 @@ public:
 		return GSVector4i(_mm_max_epi16(m, a));
 	}
 
+#if _M_SSE >= 0x401
+
 	__forceinline GSVector4i min_i32(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_min_epi32(m, a));
@@ -384,6 +440,8 @@ public:
 		return GSVector4i(_mm_max_epi32(m, a));
 	}
 
+#endif
+
 	__forceinline GSVector4i min_u8(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_min_epu8(m, a));
@@ -393,6 +451,8 @@ public:
 	{
 		return GSVector4i(_mm_max_epu8(m, a));
 	}
+
+#if _M_SSE >= 0x401
 
 	__forceinline GSVector4i min_u16(const GSVector4i& a) const
 	{
@@ -414,6 +474,8 @@ public:
 		return GSVector4i(_mm_max_epu32(m, a));
 	}
 
+#endif
+
 	__forceinline static int min_i16(int a, int b)
 	{
 		return store(load(a).min_i16(load(b)));
@@ -426,13 +488,33 @@ public:
 
 	__forceinline GSVector4i blend8(const GSVector4i& a, const GSVector4i& mask) const
 	{
+#if _M_SSE >= 0x401
+
 		return GSVector4i(_mm_blendv_epi8(m, a, mask));
+
+#else
+
+		return GSVector4i(_mm_or_si128(_mm_andnot_si128(mask, m), _mm_and_si128(mask, a)));
+
+#endif
 	}
 
 	template <int mask>
 	__forceinline GSVector4i blend16(const GSVector4i& a) const
 	{
+#if _M_SSE >= 0x401
 		return GSVector4i(_mm_blend_epi16(m, a, mask));
+#else
+		int b7 = (mask & 128) ? -1 : 0;
+		int b6 = (mask & 64)  ? -1 : 0;
+		int b5 = (mask & 32)  ? -1 : 0;
+		int b4 = (mask & 16)  ? -1 : 0;
+		int b3 = (mask & 8)   ? -1 : 0;
+		int b2 = (mask & 4)   ? -1 : 0;
+		int b1 = (mask & 2)   ? -1 : 0;
+		int b0 = (mask & 1)   ? -1 : 0;
+		return blend8(a, GSVector4i(b0, b0, b1, b1, b2, b2, b3, b3, b4, b4, b5, b5, b6, b6, b7, b7));
+#endif
 	}
 
 	template <int mask>
@@ -456,13 +538,25 @@ public:
 
 	__forceinline GSVector4i mix16(const GSVector4i& a) const
 	{
+#if _M_SSE >= 0x401
+
 		return blend16<0xaa>(a);
+
+#else
+
+		return blend8(a, GSVector4i::xffff0000());
+
+#endif
 	}
+
+#if _M_SSE >= 0x301
 
 	__forceinline GSVector4i shuffle8(const GSVector4i& mask) const
 	{
 		return GSVector4i(_mm_shuffle_epi8(m, mask));
 	}
+
+#endif
 
 	__forceinline GSVector4i ps16(const GSVector4i& a) const
 	{
@@ -494,6 +588,8 @@ public:
 		return GSVector4i(_mm_packs_epi32(m, m));
 	}
 
+#if _M_SSE >= 0x401
+
 	__forceinline GSVector4i pu32(const GSVector4i& a) const
 	{
 		return GSVector4i(_mm_packus_epi32(m, a));
@@ -503,6 +599,8 @@ public:
 	{
 		return GSVector4i(_mm_packus_epi32(m, m));
 	}
+
+#endif
 
 	__forceinline GSVector4i upl8(const GSVector4i& a) const
 	{
@@ -608,6 +706,8 @@ public:
 		return GSVector4i(_mm_unpackhi_epi64(m, _mm_setzero_si128()));
 	}
 
+#if _M_SSE >= 0x401
+
 	// WARNING!!!
 	//
 	// MSVC (2008, 2010 ctp) believes that there is a "mem, reg" form of the pmovz/sx* instructions,
@@ -673,6 +773,50 @@ public:
 		return GSVector4i(_mm_cvtepu32_epi64(m));
 	}
 
+#else
+
+	__forceinline GSVector4i u8to16() const
+	{
+		return upl8();
+	}
+
+	__forceinline GSVector4i u8to32() const
+	{
+		return upl8().upl16();
+	}
+
+	__forceinline GSVector4i u8to64() const
+	{
+		return upl8().upl16().upl32();
+	}
+
+	__forceinline GSVector4i u16to32() const
+	{
+		return upl16();
+	}
+
+	__forceinline GSVector4i u16to64() const
+	{
+		return upl16().upl32();
+	}
+
+	__forceinline GSVector4i u32to64() const
+	{
+		return upl32();
+	}
+
+	__forceinline GSVector4i i8to16() const
+	{
+		return zero().upl8(*this).sra16(8);
+	}
+
+	__forceinline GSVector4i i16to32() const
+	{
+		return zero().upl16(*this).sra32(16);
+	}
+
+#endif
+
 	template <int i>
 	__forceinline GSVector4i srl() const
 	{
@@ -682,7 +826,25 @@ public:
 	template <int i>
 	__forceinline GSVector4i srl(const GSVector4i& v)
 	{
+#if _M_SSE >= 0x301
+
 		return GSVector4i(_mm_alignr_epi8(v.m, m, i));
+
+#else
+
+		// The `& 0xF` keeps the compiler happy on cases that won't actually be hit
+		if (i == 0)
+			return *this;
+		else if (i < 16)
+			return srl<i & 0xF>() | v.sll<(16 - i) & 0xF>();
+		else if (i == 16)
+			return v;
+		else if (i < 32)
+			return v.srl<(i - 16) & 0xF>();
+		else
+			return zero();
+
+#endif
 	}
 
 	template <int i>
@@ -887,10 +1049,14 @@ public:
 		return GSVector4i(_mm_mullo_epi16(m, v.m));
 	}
 
+#if _M_SSE >= 0x301
+
 	__forceinline GSVector4i mul16hrs(const GSVector4i& v) const
 	{
 		return GSVector4i(_mm_mulhrs_epi16(m, v.m));
 	}
+
+#endif
 
 	GSVector4i madd(const GSVector4i& v) const
 	{
@@ -932,21 +1098,33 @@ public:
 	__forceinline GSVector4i modulate16(const GSVector4i& f) const
 	{
 		// a * f << shift
+#if _M_SSE >= 0x301
 		if (shift == 0)
 		{
 			return mul16hrs(f);
 		}
+#endif
 
 		return sll16(shift + 1).mul16hs(f);
 	}
 
 	__forceinline bool eq(const GSVector4i& v) const
 	{
+#if _M_SSE >= 0x401
+
 		// pxor, ptest, je
 
 		GSVector4i t = *this ^ v;
 
 		return _mm_testz_si128(t, t) != 0;
+
+#else
+
+		// pcmpeqd, pmovmskb, cmp, je
+
+		return eq32(v).alltrue();
+
+#endif
 	}
 
 	__forceinline GSVector4i eq8(const GSVector4i& v) const
@@ -1026,8 +1204,18 @@ public:
 
 	__forceinline bool allfalse() const
 	{
+#if _M_SSE >= 0x401
+
 		return _mm_testz_si128(m, m) != 0;
+
+#else
+
+		return mask() == 0;
+
+#endif
 	}
+
+#if _M_SSE >= 0x401
 
 	template <int i>
 	__forceinline GSVector4i insert8(int a) const
@@ -1035,10 +1223,20 @@ public:
 		return GSVector4i(_mm_insert_epi8(m, a, i));
 	}
 
+#endif
+
 	template <int i>
 	__forceinline int extract8() const
 	{
+#if _M_SSE >= 0x401
+
 		return _mm_extract_epi8(m, i);
+
+#else
+
+		return (int)U8[i];
+
+#endif
 	}
 
 	template <int i>
@@ -1053,11 +1251,15 @@ public:
 		return _mm_extract_epi16(m, i);
 	}
 
+#if _M_SSE >= 0x401
+
 	template <int i>
 	__forceinline GSVector4i insert32(int a) const
 	{
 		return GSVector4i(_mm_insert_epi32(m, a, i));
 	}
+
+#endif
 
 	template <int i>
 	__forceinline int extract32() const
@@ -1065,10 +1267,20 @@ public:
 		if (i == 0)
 			return GSVector4i::store(*this);
 
+#if _M_SSE >= 0x401
+
 		return _mm_extract_epi32(m, i);
+
+#else
+
+		return I32[i];
+
+#endif
 	}
 
 #ifdef _M_AMD64
+
+#if _M_SSE >= 0x401
 
 	template <int i>
 	__forceinline GSVector4i insert64(s64 a) const
@@ -1076,16 +1288,28 @@ public:
 		return GSVector4i(_mm_insert_epi64(m, a, i));
 	}
 
+#endif
+
 	template <int i>
 	__forceinline s64 extract64() const
 	{
 		if (i == 0)
 			return GSVector4i::storeq(*this);
 
+#if _M_SSE >= 0x401
+
 		return _mm_extract_epi64(m, i);
+
+#else
+
+		return I64[i];
+
+#endif
 	}
 
 #endif
+
+#if _M_SSE >= 0x401
 
 	template <int src, class T>
 	__forceinline GSVector4i gather8_4(const T* ptr) const
@@ -1166,6 +1390,8 @@ public:
 
 		return v;
 	}
+
+#endif
 
 	template <int src, class T>
 	__forceinline GSVector4i gather16_4(const T* ptr) const
@@ -1248,6 +1474,8 @@ public:
 		return v;
 	}
 
+#if _M_SSE >= 0x401
+
 	template <int src, class T>
 	__forceinline GSVector4i gather32_4(const T* ptr) const
 	{
@@ -1312,7 +1540,61 @@ public:
 		return v;
 	}
 
-#if defined(_M_AMD64)
+#else
+
+	template <int src, class T>
+	__forceinline GSVector4i gather32_4(const T* ptr) const
+	{
+		return GSVector4i(
+			(int)ptr[extract8<src + 0>() & 0xf],
+			(int)ptr[extract8<src + 0>() >> 4],
+			(int)ptr[extract8<src + 1>() & 0xf],
+			(int)ptr[extract8<src + 1>() >> 4]);
+	}
+
+	template <int src, class T>
+	__forceinline GSVector4i gather32_8(const T* ptr) const
+	{
+		return GSVector4i(
+			(int)ptr[extract8<src + 0>()],
+			(int)ptr[extract8<src + 1>()],
+			(int)ptr[extract8<src + 2>()],
+			(int)ptr[extract8<src + 3>()]);
+	}
+
+	template <int src, class T>
+	__forceinline GSVector4i gather32_16(const T* ptr) const
+	{
+		return GSVector4i(
+			(int)ptr[extract16<src + 0>()],
+			(int)ptr[extract16<src + 1>()],
+			(int)ptr[extract16<src + 2>()],
+			(int)ptr[extract16<src + 3>()]);
+	}
+
+	template <class T>
+	__forceinline GSVector4i gather32_32(const T* ptr) const
+	{
+		return GSVector4i(
+			(int)ptr[extract32<0>()],
+			(int)ptr[extract32<1>()],
+			(int)ptr[extract32<2>()],
+			(int)ptr[extract32<3>()]);
+	}
+
+	template <class T1, class T2>
+	__forceinline GSVector4i gather32_32(const T1* ptr1, const T2* ptr2) const
+	{
+		return GSVector4i(
+			(int)ptr2[ptr1[extract32<0>()]],
+			(int)ptr2[ptr1[extract32<1>()]],
+			(int)ptr2[ptr1[extract32<2>()]],
+			(int)ptr2[ptr1[extract32<3>()]]);
+	}
+
+#endif
+
+#if defined(_M_AMD64) && _M_SSE >= 0x401
 
 	template <int src, class T>
 	__forceinline GSVector4i gather64_4(const T* ptr) const
@@ -1413,6 +1695,8 @@ public:
 
 #endif
 
+#if _M_SSE >= 0x401
+
 	template <class T>
 	__forceinline void gather8_4(const T* RESTRICT ptr, GSVector4i* RESTRICT dst) const
 	{
@@ -1424,6 +1708,8 @@ public:
 	{
 		dst[0] = gather8_8<>(ptr);
 	}
+
+#endif
 
 	template <class T>
 	__forceinline void gather16_4(const T* RESTRICT ptr, GSVector4i* RESTRICT dst) const
@@ -1544,7 +1830,15 @@ public:
 
 	__forceinline static GSVector4i loadnt(const void* p)
 	{
+#if _M_SSE >= 0x401
+
 		return GSVector4i(_mm_stream_load_si128((__m128i*)p));
+
+#else
+
+		return GSVector4i(_mm_load_si128((__m128i*)p));
+
+#endif
 	}
 
 	__forceinline static GSVector4i loadl(const void* p)

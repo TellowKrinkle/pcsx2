@@ -25,6 +25,8 @@ namespace SSEVersion
 		AVX2  = 0x501,
 		AVX   = 0x500,
 		SSE41 = 0x401,
+		SSE3  = 0x301,
+		SSE2  = 0x200,
 	};
 }
 
@@ -32,12 +34,16 @@ namespace SSEVersion
 struct CPUInfo
 {
 	bool hasFMA = false;
-	SSEVersion::SSEVersion sseVersion = SSEVersion::SSE41;
+	SSEVersion::SSEVersion sseVersion = SSEVersion::SSE2;
 
 	CPUInfo() = default;
 	CPUInfo(const Xbyak::util::Cpu& cpu)
 	{
-		auto version = SSEVersion::SSE41;
+		auto version = SSEVersion::SSE2;
+		if (cpu.has(cpu.tSSE3))
+			version = SSEVersion::SSE3;
+		if (cpu.has(cpu.tSSE41))
+			version = SSEVersion::SSE41;
 		if (cpu.has(cpu.tAVX))
 			version = SSEVersion::AVX;
 		if (cpu.has(cpu.tAVX2))
@@ -157,7 +163,7 @@ public:
 	static T32 choose3264(T32 t32, T64 t64) { return t32; }
 #endif
 
-	const bool hasAVX, hasAVX2, hasFMA;
+	const bool hasSSE2, hasSSE3, hasSSE41, hasAVX, hasAVX2, hasFMA;
 
 	const Xmm xmm0{0}, xmm1{1}, xmm2{2}, xmm3{3}, xmm4{4}, xmm5{5}, xmm6{6}, xmm7{7}, xmm8{8}, xmm9{9}, xmm10{10}, xmm11{11}, xmm12{12}, xmm13{13}, xmm14{14}, xmm15{15};
 	const Ymm ymm0{0}, ymm1{1}, ymm2{2}, ymm3{3}, ymm4{4}, ymm5{5}, ymm6{6}, ymm7{7}, ymm8{8}, ymm9{9}, ymm10{10}, ymm11{11}, ymm12{12}, ymm13{13}, ymm14{14}, ymm15{15};
@@ -171,6 +177,9 @@ public:
 
 	GSNewCodeGenerator(Xbyak::CodeGenerator* actual, CPUInfo cpu)
 		: actual(*actual)
+		, hasSSE2(cpu.sseVersion >= SSEVersion::SSE2)
+		, hasSSE3(cpu.sseVersion >= SSEVersion::SSE3)
+		, hasSSE41(cpu.sseVersion >= SSEVersion::SSE41)
 		, hasAVX(cpu.sseVersion >= SSEVersion::AVX)
 		, hasAVX2(cpu.sseVersion >= SSEVersion::AVX2)
 		, hasFMA(cpu.hasFMA)

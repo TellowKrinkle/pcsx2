@@ -203,7 +203,7 @@ void GSDrawScanlineCodeGenerator2::broadcastGPRToVec(const XYm& vec, const Xbyak
 
 void GSDrawScanlineCodeGenerator2::modulate16(const XYm& a, const Operand& f, u8 shift)
 {
-	if (shift == 0)
+	if (shift == 0 && hasSSE3)
 	{
 		pmulhrsw(a, f);
 	}
@@ -231,12 +231,23 @@ void GSDrawScanlineCodeGenerator2::lerp16_4(const XYm& a, const XYm& b, const XY
 
 void GSDrawScanlineCodeGenerator2::mix16(const XYm& a, const XYm& b, const XYm& temp)
 {
-	pblendw(a, b, 0xaa);
+	if (hasSSE41)
+	{
+		pblendw(a, b, 0xaa);
+	}
+	else
+	{
+		pcmpeqd(temp, temp);
+		psrld(temp, 16);
+		pand(a, temp);
+		pandn(temp, b);
+		por(a, temp);
+	}
 }
 
 void GSDrawScanlineCodeGenerator2::clamp16(const XYm& a, const XYm& temp)
 {
-	if (isXmm)
+	if (hasSSE41 && isXmm)
 	{
 		packuswb(a, a);
 		pmovzxbw(a, a);
@@ -281,7 +292,10 @@ void GSDrawScanlineCodeGenerator2::blendr(const XYm& b, const XYm& a, const XYm&
 
 void GSDrawScanlineCodeGenerator2::blend8(const XYm& a, const XYm& b)
 {
-	pblendvb(a, b /*, xym0 */);
+	if (hasSSE41)
+		pblendvb(a, b /*, xym0 */);
+	else
+		blend(a, b, xym0);
 }
 
 void GSDrawScanlineCodeGenerator2::blend8r(const XYm& b, const XYm& a)
@@ -290,10 +304,14 @@ void GSDrawScanlineCodeGenerator2::blend8r(const XYm& b, const XYm& a)
 	{
 		vpblendvb(b, a, b, xym0);
 	}
-	else
+	else if (hasSSE41)
 	{
 		pblendvb(a, b);
 		movdqa(b, a);
+	}
+	else
+	{
+		blendr(b, a, xym0);
 	}
 }
 
@@ -1216,9 +1234,23 @@ void GSDrawScanlineCodeGenerator2::TestZ(const XYm& temp1, const XYm& temp2)
 		if (m_sel.zclamp)
 		{
 			const u8 amt = (u8)((m_sel.zpsm & 0x3) * 8);
-			pcmpeqd(temp1, temp1);
-			psrld(temp1, amt);
-			pminsd(xym0, temp1);
+			if (hasSSE41)
+			{
+				pcmpeqd(temp1, temp1);
+				psrld(temp1, amt);
+				pminsd(xym0, temp1);
+			}
+			else
+			{
+				pcmpeqd(temp1, temp1);
+				psrld(temp1, amt);
+				pcmpgtd(temp1, xym0);
+				pand(xym0, temp1);
+				pcmpeqd(temp2, temp2);
+				pxor(temp1, temp2);
+				psrld(temp1, amt);
+				por(xym0, temp1);
+			}
 		}
 
 		if (m_sel.zwrite)
@@ -1304,7 +1336,7 @@ void GSDrawScanlineCodeGenerator2::SampleTexture()
 		}
 	}
 
-	const bool needsMoreRegs = isYmm;
+	const bool needsMoreRegs = !hasSSE41 || isYmm;
 
 	if (!m_sel.fst)
 	{
@@ -1406,7 +1438,7 @@ void GSDrawScanlineCodeGenerator2::SampleTexture()
 /// Destroys all registers except outputs, xmm4 and xmm7
 void GSDrawScanlineCodeGenerator2::SampleTexture_TexelReadHelper(int mip_offset)
 {
-	const bool needsMoreRegs = isYmm;
+	const bool needsMoreRegs = !hasSSE41 || isYmm;
 
 	// GSVector4i x0 = uv0.upl16();
 	// GSVector4i y0 = uv0.uph16() << tw;
@@ -1681,9 +1713,19 @@ void GSDrawScanlineCodeGenerator2::Wrap(const XYm& uv0, const XYm& uv1)
 	}
 	else
 	{
+		const XYm& mask2 = is64 ? xym7 : xym4; // <SSE4.1 only
 		broadcasti128(min, _rip_global(t.min));
 		broadcasti128(max, _rip_global(t.max));
-		broadcasti128(mask, _rip_global(t.mask));
+		if (hasSSE41)
+		{
+			broadcasti128(mask, _rip_global(t.mask));
+		}
+		else
+		{
+			movdqa(mask, _rip_global(t.invmask));
+			movdqa(mask2, mask);
+		}
+
 
 		for (const XYm& uv : {uv0, uv1})
 		{
@@ -1695,7 +1737,10 @@ void GSDrawScanlineCodeGenerator2::Wrap(const XYm& uv0, const XYm& uv1)
 			pmaxsw(uv, min);
 			pminsw(uv, max);
 			// clamp.blend8(repeat, m_local.gd->t.mask);
-			pblendvb(uv, tmp /*, xym0==mask */);
+			if (hasSSE41)
+				pblendvb(uv, tmp /*, xym0==mask */);
+			else
+				blendr(uv, tmp, uv == uv0 ? mask : mask2);
 		}
 	}
 }
@@ -1722,7 +1767,7 @@ void GSDrawScanlineCodeGenerator2::SampleTextureLOD()
 		}
 	}
 
-	const bool needsMoreRegs = isYmm;
+	const bool needsMoreRegs = !hasSSE41 || isYmm;
 
 	if (is64)
 		movdqa(xym4, _q);
@@ -2213,7 +2258,16 @@ void GSDrawScanlineCodeGenerator2::WrapLOD(const XYm& uv0, const XYm& uv1)
 	}
 	else
 	{
-		broadcasti128(mask, _rip_global(t.mask));
+		const XYm& mask2 = is64 ? xym7 : xym4; // <SSE4.1 only
+		if (hasSSE41)
+		{
+			broadcasti128(mask, _rip_global(t.mask));
+		}
+		else
+		{
+			movdqa(mask, _rip_global(t.invmask));
+			movdqa(mask2, mask);
+		}
 
 		for (const XYm& uv : {uv0, uv1})
 		{
@@ -2225,7 +2279,10 @@ void GSDrawScanlineCodeGenerator2::WrapLOD(const XYm& uv0, const XYm& uv1)
 			pmaxsw(uv, min);
 			pminsw(uv, max);
 			// clamp.blend8(repeat, m_local.gd->t.mask);*
-			pblendvb(uv, tmp /*, xym0==mask */);
+			if (hasSSE41)
+				pblendvb(uv, tmp /*, xym0==mask */);
+			else
+				blendr(uv, tmp, uv == uv0 ? mask : mask2);
 		}
 	}
 }
@@ -2744,9 +2801,23 @@ void GSDrawScanlineCodeGenerator2::WriteZBuf()
 	if (m_sel.zclamp)
 	{
 		const u8 amt = (u8)((m_sel.zpsm & 0x3) * 8);
-		pcmpeqd(xym7, xym7);
-		psrld(xym7, amt);
-		pminsd(xym1, xym7);
+		if (hasSSE41)
+		{
+			pcmpeqd(xym7, xym7);
+			psrld(xym7, amt);
+			pminsd(xym1, xym7);
+		}
+		else
+		{
+			pcmpeqd(xym7, xym7);
+			psrld(xym7, amt);
+			pcmpgtd(xym7, xym1);
+			pand(xym1, xym7);
+			pcmpeqd(xym0, xym0);
+			pxor(xym7, xym0);
+			psrld(xym7, amt);
+			por(xym1, xym7);
+		}
 	}
 
 	bool fast = m_sel.ztest ? m_sel.zpsm < 2 : m_sel.zpsm == 0 && m_sel.notest;
@@ -3011,6 +3082,13 @@ void GSDrawScanlineCodeGenerator2::AlphaBlend()
 
 	if (m_sel.pabe)
 	{
+		if (!hasSSE41)
+		{
+			// doh, previous blend8r overwrote xym0 (sse41+ uses pblendvb)
+			THREEARG(pslld, xym0, _ga, 8);
+			psrad(xym0, 31);
+		}
+
 		psrld(xym0, 16); // zero out high words to select the source alpha in blend (so it also does mix16)
 
 		// ga = c[1].blend8(ga, mask).mix16(c[1]);
@@ -3285,13 +3363,33 @@ void GSDrawScanlineCodeGenerator2::WritePixel(const Xmm& src, const AddressReg& 
 			if (j == 0)
 				movd(dst, src);
 			else
-				pextrd(dst, src, j);
+			{
+				if (hasSSE41)
+				{
+					pextrd(dst, src, j);
+				}
+				else
+				{
+					pshufd(xmm0, src, _MM_SHUFFLE(j, j, j, j));
+					movd(dst, xmm0);
+				}
+			}
 			break;
 		case 1:
 			if (j == 0)
 				movd(eax, src);
 			else
-				pextrd(eax, src, j);
+			{
+				if (hasSSE41)
+				{
+					pextrd(eax, src, j);
+				}
+				else
+				{
+					pshufd(xmm0, src, _MM_SHUFFLE(j, j, j, j));
+					movd(eax, xmm0);
+				}
+			}
 			xor(eax, dst);
 			and(eax, 0xffffff);
 			xor(dst, eax);
@@ -3347,7 +3445,10 @@ void GSDrawScanlineCodeGenerator2::ReadTexelImpl(
 {
 	mip_offset *= wordsize;
 #if USING_XMM
-	ReadTexelImplSSE4(d0, d1, d2s0, d3s1, s2, s3, pixels, mip_offset);
+	if (hasSSE41)
+		ReadTexelImplSSE4(d0, d1, d2s0, d3s1, s2, s3, pixels, mip_offset);
+	else
+		ReadTexelImplSSE3(d0, d1, d2s0, d3s1, s2, s3, tmp1, tmp2, pixels, mip_offset);
 #else
 	ReadTexelImplYmm(d0, d1, d2s0, d3s1, s2, s3, tmp1, pixels, mip_offset);
 #endif
@@ -3479,6 +3580,120 @@ void GSDrawScanlineCodeGenerator2::ReadTexelImplSSE4(
 			{
 				ReadTexelImpl(dst[i], src[i], j, texInRBX, preserve);
 			}
+		}
+	}
+}
+
+void GSDrawScanlineCodeGenerator2::ReadTexelImplSSE3(
+	const Xmm& d0,   const Xmm& d1,
+	const Xmm& d2s0, const Xmm& d3s1,
+	const Xmm& s2,   const Xmm& s3,
+	const Xmm& tmp1, const Xmm& tmp2,
+	int pixels,      int mip_offset)
+{
+	bool texInRBX = is32;
+	auto Read = [&](const Xmm& dst, const Xmm& src)
+	{
+		ReadTexelImpl(dst, src, 0, texInRBX, /*preserveDst=*/false);
+	};
+
+	// Note: Should use d1 and tmp1 as temp if pixels == 1
+	if (use_lod && !m_sel.lcm)
+	{
+		texInRBX = true;
+		if (pixels == 1)
+		{
+			ReadTexelImplLoadTexLOD(0, mip_offset);
+			Read(d0, d2s0);
+			psrldq(d2s0, 4);
+
+			ReadTexelImplLoadTexLOD(1, mip_offset);
+			Read(d1, d2s0);
+			psrldq(d2s0, 4);
+
+			punpckldq(d0, d1);
+
+			ReadTexelImplLoadTexLOD(2, mip_offset);
+			Read(d1, d2s0);
+			psrldq(d2s0, 4);
+
+			ReadTexelImplLoadTexLOD(3, mip_offset);
+			Read(tmp1, d2s0);
+
+			punpckldq(d1, tmp1);
+
+			punpcklqdq(d0, d1);
+		}
+		else
+		{
+			movdqa(_rip_local(temp.test), tmp2);
+
+			Xmm dst[2][2] = {{d0,   d1}, {d2s0, d3s1}};
+			Xmm src[2][2] = {{d2s0, d3s1}, {s2,   s3}};
+
+			for (int i = 0; i < 2; i++)
+			{
+				ReadTexelImplLoadTexLOD(0, mip_offset);
+				Read(dst[i][0], src[i][0]);
+				psrldq(src[i][0], 4);
+				Read(dst[i][1], src[i][1]);
+				psrldq(src[i][1], 4);
+
+				ReadTexelImplLoadTexLOD(1, mip_offset);
+				Read(tmp1, src[i][0]);
+				psrldq(src[i][0], 4);
+				Read(tmp2, src[i][1]);
+				psrldq(src[i][1], 4);
+
+				punpckldq(dst[i][0], tmp1);
+				punpckldq(dst[i][0], tmp2);
+
+				ReadTexelImplLoadTexLOD(2, mip_offset);
+				Read(tmp1, src[i][0]);
+				psrldq(src[i][0], 4);
+				Read(tmp2, src[i][1]);
+				psrldq(src[i][1], 4);
+
+				ReadTexelImplLoadTexLOD(3, mip_offset);
+				Read(src[i][0], src[i][0]);
+				Read(src[i][1], src[i][1]);
+
+				punpckldq(tmp1, src[i][0]);
+				punpckldq(tmp2, src[i][1]);
+
+				punpcklqdq(dst[i][0], tmp1);
+				punpcklqdq(dst[i][1], tmp2);
+			}
+
+			movdqa(tmp2, _rip_local(temp.test));
+		}
+	}
+	else
+	{
+		if(use_lod && m_sel.lcm)
+		{
+			ReadTexelImplLoadTexLOD(0, mip_offset);
+			texInRBX = true;
+		}
+
+		const Xmm dst[] = { d0,   d1,   d2s0, d3s1 };
+		const Xmm src[] = { d2s0, d3s1,   s2,   s3 };
+		const Xmm tmp[] = { d1,   d2s0, d3s1,   s2 };
+
+		for (int i = 0; i < pixels; i++)
+		{
+			Read(dst[i], src[i]);
+			psrldq(src[i], 4);
+			Read(tmp[i], src[i]);
+			psrldq(src[i], 4);
+			punpckldq(dst[i], tmp[i]);
+
+			Read(tmp[i], src[i]);
+			psrldq(src[i], 4);
+			Read(src[i], src[i]);
+			punpckldq(tmp[i], src[i]);
+
+			punpcklqdq(dst[i], tmp[i]);
 		}
 	}
 }
