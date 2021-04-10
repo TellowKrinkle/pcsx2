@@ -50,8 +50,8 @@ void mVUreserveCache(microVU& mVU)
 void mVUinit(microVU& mVU, uint vuIndex)
 {
 
-	if (!x86caps.hasStreamingSIMD4Extensions)
-		mVUthrowHardwareDeficiency(L"SSE4", vuIndex);
+	if (!x86caps.hasStreamingSIMD2Extensions)
+		mVUthrowHardwareDeficiency(L"SSE2", vuIndex);
 
 	memzero(mVU.prog);
 
