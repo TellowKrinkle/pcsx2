@@ -130,6 +130,7 @@
     <MASM Include="FastJmp.asm">
       <FileType>Document</FileType>
       <PreprocessorDefinitions Condition="'$(Platform)'=='Win32'">_M_X86_32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <UseSafeExceptionHandlers Condition="'$(Platform)'=='Win32'">true</UseSafeExceptionHandlers>
       <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_M_X86_64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </MASM>
     <None Include="Vulkan\EntryPoints.inl" />
