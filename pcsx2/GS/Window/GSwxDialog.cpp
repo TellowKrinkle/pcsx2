@@ -325,7 +325,6 @@ HacksTab::HacksTab(wxWindow* parent)
 	upscale_hacks_box->AddSpacer(5);
 	upscale_hacks_box->Add(upscale_hack_choice_grid, wxSizerFlags().Expand());
 
-	tab_box->Add(hacks_check, wxSizerFlags().Left());
 	tab_box->Add(rend_hacks_box, wxSizerFlags().Centre().Expand());
 	tab_box->Add(upscale_hacks_box, wxSizerFlags().Centre().Expand());
 
