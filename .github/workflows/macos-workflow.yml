@@ -103,7 +103,7 @@ jobs:
           fi
 
       - name: Generate CMake Files
-        run: cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_BUILD_PO=FALSE -DLTO_PCSX2_CORE=ON -B build .
+        run: cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_BUILD_PO=FALSE -DLTO_PCSX2_CORE=ON -DARCH_FLAG="-g -march=penryn" -B build .
 
       - name: Build PCSX2
         working-directory: build
