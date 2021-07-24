@@ -23,6 +23,9 @@
 #include "common/StringUtil.h"
 #if defined(__unix__)
 #include <X11/keysym.h>
+#elif defined(__APPLE__)
+#include "gui/AppConfig.h"
+#include <Carbon/Carbon.h>
 #endif
 
 const unsigned int s_mipmap_nb = 3;
@@ -433,6 +436,24 @@ void GSRenderer::VSync(u32 field)
 	g_gs_device->RestoreAPIState();
 
 	// snapshot
+
+#ifdef __APPLE__
+	// Let people on macOS make GSdumps even though everything else is broken
+	bool newf8 = CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, kVK_F8);
+	if (m_snapshot.empty() && newf8 != m_f8_key && newf8)
+	{
+		GSmakeSnapshot(g_Conf->Folders.Snapshots.ToUTF8().data());
+	}
+	m_f8_key = newf8;
+	m_shift_key =
+		CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, kVK_Shift) ||
+		CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, kVK_RightShift);
+	m_control_key =
+		CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, kVK_Control) ||
+		CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, kVK_RightControl) ||
+		CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, kVK_Command) ||
+		CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, kVK_RightCommand);
+#endif
 
 	if (!m_snapshot.empty())
 	{
