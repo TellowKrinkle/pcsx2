@@ -15,6 +15,7 @@
 
 #include "PrecompiledHeader.h"
 #include "GSwxDialog.h"
+#include "GS/resource.h"
 
 using namespace GSSettingsDialog;
 
