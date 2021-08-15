@@ -577,7 +577,6 @@ Dialog::Dialog()
 	book->AddPage(m_osd_panel, "OSD");
 	book->AddPage(m_rec_panel, "Recording");
 	book->AddPage(m_debug_panel, "Debug/OGL");
-	book->SetPadding(wxSize(0, 0));
 
 	m_top_box->Add(top_grid, wxSizerFlags().Centre());
 	m_top_box->Add(book, wxSizerFlags().Centre().Expand());
