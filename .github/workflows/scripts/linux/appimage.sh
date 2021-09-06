@@ -53,8 +53,8 @@ cp "$GITHUB_WORKSPACE"/bin/docs/{Configuration_Guide.pdf,PCSX2_FAQ.pdf} "$GITHUB
 cp "$GITHUB_WORKSPACE"/bin/cheats_ws.zip "$GITHUB_WORKSPACE"/squashfs-root/usr/bin/app
 cp ./bin/GameIndex.yaml "$GITHUB_WORKSPACE"/squashfs-root/usr/bin/app/GameIndex.yaml
 cp /usr/lib/$LIBARCH/libthai.so.0 "$GITHUB_WORKSPACE"/squashfs-root/usr/lib/
-cp --dereference /usr/lib/$LIBARCH/libstdc++.so.6 "$GITHUB_WORKSPACE"/squashfs-root/usr/optional/libstdc++/libstdc++.so.6
-cp --dereference /lib/$LIBARCH/libgcc_s.so.1"$GITHUB_WORKSPACE"/squashfs-root/usr/optional/libgcc_s/libgcc_s.so.1
+cp --dereference /usr/lib/"$LIBARCH"/libstdc++.so.6 "$GITHUB_WORKSPACE"/squashfs-root/usr/optional/libstdc++/libstdc++.so.6
+cp --dereference /lib/"$LIBARCH"/libgcc_s.so.1 "$GITHUB_WORKSPACE"/squashfs-root/usr/optional/libgcc_s/libgcc_s.so.1
 export UPD_INFO="gh-releases-zsync|PCSX2|pcsx2|latest|$name.AppImage.zsync"
 export OUTPUT="$name.AppImage"
 /tmp/squashfs-root/AppRun --appdir="$GITHUB_WORKSPACE"/squashfs-root/ --plugin gtk -d "$GITHUB_WORKSPACE"/squashfs-root/PCSX2.desktop -i "$GITHUB_WORKSPACE"/squashfs-root/PCSX2.png --output appimage
