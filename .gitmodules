@@ -17,3 +17,6 @@
 	path = 3rdparty/wil
 	url = https://github.com/microsoft/wil.git
 	branch = master
+[submodule "3rdparty/qt"]
+	path = 3rdparty/qt
+	url = https://github.com/stenzek/duckstation-ext-qt-minimal.git
