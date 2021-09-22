@@ -3,7 +3,7 @@
   <Import Project="$(SolutionDir)common\vsprops\BaseProjectConfig.props" />
   <Import Project="$(SolutionDir)common\vsprops\WinSDK.props" />
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{88FB34EC-845E-4F21-A552-F1573B9ED167}</ProjectGuid>
+    <ProjectGuid>{1EC8B3C0-8FB3-46DE-A2E0-A9121203F266}</ProjectGuid>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
@@ -30,35 +30,17 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_NONSTDC_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\glad\include;$(ProjectDir)include;$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="include\imconfig.h" />
-    <ClInclude Include="include\imgui.h" />
-    <ClInclude Include="include\imgui_impl_dx11.h" />
-    <ClInclude Include="include\imgui_impl_opengl3.h" />
-    <ClInclude Include="include\imgui_stdlib.h" />
-    <ClInclude Include="src\imgui_internal.h" />
-    <ClInclude Include="src\imstb_rectpack.h" />
-    <ClInclude Include="src\imstb_textedit.h" />
-    <ClInclude Include="src\imstb_truetype.h" />
+    <ClCompile Include="src\ConvertUTF.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\imgui.cpp" />
-    <ClCompile Include="src\imgui_draw.cpp" />
-    <ClCompile Include="src\imgui_impl_dx11.cpp" />
-    <ClCompile Include="src\imgui_impl_opengl3.cpp" />
-    <ClCompile Include="src\imgui_stdlib.cpp" />
-    <ClCompile Include="src\imgui_tables.cpp" />
-    <ClCompile Include="src\imgui_widgets.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\glad\glad.vcxproj">
-      <Project>{c0293b32-5acf-40f0-aa6c-e6da6f3bf33a}</Project>
-    </ProjectReference>
+    <ClInclude Include="include\ConvertUTF.h" />
+    <ClInclude Include="include\SimpleIni.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
