@@ -18,18 +18,11 @@
 #include "GLState.h"
 #include "GS/GS.h"
 
-#ifdef _WIN32
-#include "GS/resource.h"
-#else
-#include "GS_res.h"
-#endif
 
 GSShaderOGL::GSShaderOGL(bool debug)
 	: m_pipeline(0)
 	, m_debug_shader(debug)
 {
-	theApp.LoadResource(IDR_COMMON_GLSL, m_common_header);
-
 	// Create a default pipeline
 	m_pipeline = LinkPipeline("HW pipe", 0, 0, 0);
 	BindPipeline(m_pipeline);
@@ -319,7 +312,7 @@ std::string GSShaderOGL::GenGlslHeader(const std::string& entry, GLenum type, co
 	return header;
 }
 
-GLuint GSShaderOGL::Compile(const std::string& glsl_file, const std::string& entry, GLenum type, const char* glsl_h_code, const std::string& macro_sel)
+GLuint GSShaderOGL::Compile(const char* glsl_file, const std::string& entry, GLenum type, const std::string& common_header, const char* glsl_h_code, const std::string& macro_sel /* = "" */)
 {
 	ASSERT(glsl_h_code != NULL);
 
@@ -333,7 +326,7 @@ GLuint GSShaderOGL::Compile(const std::string& glsl_file, const std::string& ent
 	std::string header = GenGlslHeader(entry, type, macro_sel);
 
 	sources[0] = header.c_str();
-	sources[1] = m_common_header.data();
+	sources[1] = common_header.c_str();
 	sources[2] = glsl_h_code;
 
 	program = glCreateShaderProgramv(type, shader_nb, sources);
@@ -344,7 +337,7 @@ GLuint GSShaderOGL::Compile(const std::string& glsl_file, const std::string& ent
 	if (!status)
 	{
 		// print extra info
-		fprintf(stderr, "%s (entry %s, prog %d) :", glsl_file.c_str(), entry.c_str(), program);
+		fprintf(stderr, "%s (entry %s, prog %d) :", glsl_file, entry.c_str(), program);
 		fprintf(stderr, "\n%s", macro_sel.c_str());
 		fprintf(stderr, "\n");
 	}
@@ -355,7 +348,7 @@ GLuint GSShaderOGL::Compile(const std::string& glsl_file, const std::string& ent
 }
 
 // Same as above but for not-separated build
-GLuint GSShaderOGL::CompileShader(const std::string& glsl_file, const std::string& entry, GLenum type, const char* glsl_h_code, const std::string& macro_sel)
+GLuint GSShaderOGL::CompileShader(const char* glsl_file, const std::string& entry, GLenum type, const std::string& common_header, const char* glsl_h_code, const std::string& macro_sel /* = "" */)
 {
 	ASSERT(glsl_h_code != NULL);
 
@@ -369,7 +362,7 @@ GLuint GSShaderOGL::CompileShader(const std::string& glsl_file, const std::strin
 	std::string header = GenGlslHeader(entry, type, macro_sel);
 
 	sources[0] = header.c_str();
-	sources[1] = m_common_header.data();
+	sources[1] = common_header.data();
 	sources[2] = glsl_h_code;
 
 	shader = glCreateShader(type);
@@ -381,7 +374,7 @@ GLuint GSShaderOGL::CompileShader(const std::string& glsl_file, const std::strin
 	if (!status)
 	{
 		// print extra info
-		fprintf(stderr, "%s (entry %s, prog %d) :", glsl_file.c_str(), entry.c_str(), shader);
+		fprintf(stderr, "%s (entry %s, prog %d) :", glsl_file, entry.c_str(), shader);
 		fprintf(stderr, "\n%s", macro_sel.c_str());
 		fprintf(stderr, "\n");
 	}
