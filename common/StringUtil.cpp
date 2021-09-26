@@ -22,6 +22,8 @@
 
 #ifdef _WIN32
 #include "RedtapeWindows.h"
+#else
+#include <iconv.h>
 #endif
 
 namespace StringUtil
@@ -206,8 +208,6 @@ namespace StringUtil
 		return ss.str();
 	}
 
-#ifdef _WIN32
-
 	std::wstring UTF8StringToWideString(const std::string_view& str)
 	{
 		std::wstring ret;
@@ -219,6 +219,7 @@ namespace StringUtil
 
 	bool UTF8StringToWideString(std::wstring& dest, const std::string_view& str)
 	{
+#ifdef _WIN32
 		int wlen = MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.length()), nullptr, 0);
 		if (wlen < 0)
 			return false;
@@ -228,19 +229,39 @@ namespace StringUtil
 			return false;
 
 		return true;
+#else
+		iconv_t conv = iconv_open("WCHAR_T", "UTF8");
+		if (conv == (iconv_t)-1)
+			return false;
+
+		dest.resize(str.length());
+
+		size_t bytes_in = str.size(), bytes_out = dest.size() * sizeof(wchar_t);
+		char* buf_in = (char*)str.data(), * buf_out = reinterpret_cast<char*>(dest.data());
+		bool result = false;
+		if (iconv(conv, &buf_in, &bytes_in, &buf_out, &bytes_out) != (size_t)-1)
+		{
+			dest.resize(bytes_out / sizeof(wchar_t));
+			result = true;
+		}
+
+		iconv_close(conv);
+		return result;
+#endif
 	}
 
 	std::string WideStringToUTF8String(const std::wstring_view& str)
 	{
 		std::string ret;
 		if (!WideStringToUTF8String(ret, str))
-			return {};
+			ret.clear();
 
 		return ret;
 	}
 
 	bool WideStringToUTF8String(std::string& dest, const std::wstring_view& str)
 	{
+#ifdef _WIN32
 		int mblen = WideCharToMultiByte(CP_UTF8, 0, str.data(), static_cast<int>(str.length()), nullptr, 0, nullptr, nullptr);
 		if (mblen < 0)
 			return false;
@@ -253,8 +274,24 @@ namespace StringUtil
 		}
 
 		return true;
-	}
+#else
+		iconv_t conv = iconv_open("UTF8", "WCHAR_T");
+		if (conv == (iconv_t)-1)
+			return false;
 
+		dest.resize(str.length() * 4);
+
+		size_t bytes_in = str.size() * sizeof(wchar_t), bytes_out = dest.size();
+		char *buf_in = (char*)str.data(), *buf_out = dest.data();
+		bool result = false;
+		if (iconv(conv, &buf_in, &bytes_in, &buf_out, &bytes_out) != (size_t)-1)
+		{
+			dest.resize(bytes_out);
+			result = true;
+		}
+
+		iconv_close(conv);
+		return result;
 #endif
-
+	}
 } // namespace StringUtil
