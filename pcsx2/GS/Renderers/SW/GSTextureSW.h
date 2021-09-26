@@ -29,6 +29,8 @@ public:
 	GSTextureSW(int type, int width, int height);
 	virtual ~GSTextureSW();
 
+	void* GetNativeHandle() const override;
+
 	bool Update(const GSVector4i& r, const void* data, int pitch, int layer = 0);
 	bool Map(GSMap& m, const GSVector4i* r = NULL, int layer = 0);
 	void Unmap();

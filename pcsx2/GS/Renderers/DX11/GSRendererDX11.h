@@ -33,6 +33,8 @@ private:
 	bool m_bind_rtsample;
 
 private:
+	__fi GSDevice11* GetDevice11() { return static_cast<GSDevice11*>(m_dev.get()); }
+
 	inline void ResetStates();
 	inline void SetupIA(const float& sx, const float& sy);
 	inline void EmulateZbuffer();
@@ -54,8 +56,10 @@ private:
 	GSDevice11::GSConstantBuffer gs_cb;
 
 public:
-	GSRendererDX11();
+	GSRendererDX11(std::unique_ptr<GSDevice> dev);
 	virtual ~GSRendererDX11() {}
+
+	const char* GetName() const override;
 
 	void DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Source* tex) final;
 };

@@ -39,8 +39,7 @@ protected:
 	}
 
 public:
-	GSRendererNull()
-		: GSRenderer()
-	{
-	}
+	GSRendererNull(std::unique_ptr<GSDevice> dev);
+
+	const char* GetName() const override;
 };

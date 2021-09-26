@@ -403,7 +403,6 @@ private:
 	void DoFXAA(GSTexture* sTex, GSTexture* dTex) final;
 	void DoShadeBoost(GSTexture* sTex, GSTexture* dTex) final;
 	void DoExternalFX(GSTexture* sTex, GSTexture* dTex) final;
-	void RenderOsd(GSTexture* dt);
 	void BeforeDraw();
 	void AfterDraw();
 
@@ -506,12 +505,11 @@ private:
 	wil::com_ptr_nothrow<ID3D11SamplerState> m_palette_ss;
 	std::unordered_map<u32, wil::com_ptr_nothrow<ID3D11DepthStencilState>> m_om_dss;
 	std::unordered_map<u32, wil::com_ptr_nothrow<ID3D11BlendState>> m_om_bs;
+	wil::com_ptr_nothrow<ID3D11RasterizerState> m_rs;
 
 	VSConstantBuffer m_vs_cb_cache;
 	GSConstantBuffer m_gs_cb_cache;
 	PSConstantBuffer m_ps_cb_cache;
-
-	std::unique_ptr<GSTexture> m_font;
 
 	std::string m_tfx_source;
 
@@ -529,10 +527,10 @@ public:
 	bool SetFeatureLevel(D3D_FEATURE_LEVEL level, bool compat_mode);
 	void GetFeatureLevel(D3D_FEATURE_LEVEL& level) const { level = m_shader.level; }
 
-	bool Create(const WindowInfo& wi);
-	bool Reset(int w, int h);
-	void Flip();
-	void SetVSync(int vsync) final;
+	bool Create(HostDisplay* display);
+
+	void ResetAPIState() override;
+	void RestoreAPIState() override;
 
 	void DrawPrimitive() final;
 	void DrawIndexedPrimitive();

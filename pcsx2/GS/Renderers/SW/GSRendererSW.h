@@ -100,6 +100,8 @@ protected:
 	bool GetScanlineGlobalData(SharedData* data);
 
 public:
-	GSRendererSW(int threads);
+	GSRendererSW(std::unique_ptr<GSDevice> dev, int threads);
 	virtual ~GSRendererSW();
+
+	const char* GetName() const override;
 };

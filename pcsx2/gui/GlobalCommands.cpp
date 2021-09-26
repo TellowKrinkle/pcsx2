@@ -35,9 +35,6 @@
 #include "SPU2/spu2.h"
 #include "gui/Dialogs/ModalPopups.h"
 
-// renderswitch - tells GS to go into dx9 sw if "renderswitch" is set.
-bool renderswitch = false;
-
 static bool g_Pcsx2Recording = false; // true if recording video and sound
 
 
@@ -127,8 +124,6 @@ namespace Implementations
 			}
 		}
 
-		gsUpdateFrequency(g_Conf->EmuOptions);
-
 		pauser.AllowResume();
 	}
 
@@ -152,8 +147,6 @@ namespace Implementations
 			OSDlog(Color_StrongRed, true, "(FrameLimiter) SlowMotion ENABLED.");
 			g_Conf->EmuOptions.GS.FrameLimitEnable = true;
 		}
-
-		gsUpdateFrequency(g_Conf->EmuOptions);
 
 		pauser.AllowResume();
 	}
@@ -387,15 +380,7 @@ namespace Implementations
 		{
 			reentrant = true;
 			ScopedCoreThreadPause paused_core;
-			freezeData fP = {0, nullptr};
-			MTGS_FreezeData sstate = {&fP, 0};
-			GetMTGS().Freeze(FreezeAction::Size, sstate);
-			fP.data = new u8[fP.size];
-			GetMTGS().Freeze(FreezeAction::Save, sstate);
-			GetMTGS().Suspend(true);
-			renderswitch = !renderswitch;
-			GetMTGS().Freeze(FreezeAction::Load, sstate);
-			delete[] fP.data;
+			GetMTGS().ToggleSoftwareRendering();
 			paused_core.AllowResume();
 			reentrant = false;
 		}

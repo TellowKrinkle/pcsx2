@@ -252,8 +252,6 @@ GSTextureOGL::GSTextureOGL(int type, int w, int h, int format, GLuint fbo_read, 
 
 	switch (m_type)
 	{
-		case GSTexture::Backbuffer:
-			return; // backbuffer isn't a real texture
 		case GSTexture::Offscreen:
 			// Offscreen is only used to read color. So it only requires 4B by pixel
 			m_local_buffer = (u8*)_aligned_malloc(m_size.x * m_size.y * 4, 32);
@@ -364,6 +362,11 @@ GSTextureOGL::~GSTextureOGL()
 
 	if (m_local_buffer)
 		_aligned_free(m_local_buffer);
+}
+
+void* GSTextureOGL::GetNativeHandle() const
+{
+	return reinterpret_cast<void*>(static_cast<uintptr_t>(m_texture_id));
 }
 
 void GSTextureOGL::Clear(const void* data)
@@ -595,11 +598,7 @@ bool GSTextureOGL::Save(const std::string& fn)
 	GSPng::Format fmt = GSPng::RGB_PNG;
 #endif
 
-	if (IsBackbuffer())
-	{
-		glReadPixels(0, 0, m_committed_size.x, m_committed_size.y, GL_RGBA, GL_UNSIGNED_BYTE, image.get());
-	}
-	else if (IsDss())
+	if (IsDss())
 	{
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_fbo_read);
 

@@ -18,6 +18,7 @@
 #include "GS/Renderers/HW/GSRendererHW.h"
 #include "GSTextureCacheOGL.h"
 #include "GS/Renderers/HW/GSVertexHW.h"
+#include "GS/Renderers/OpenGL/GSDeviceOGL.h"
 
 class GSRendererOGL final : public GSRendererHW
 {
@@ -59,6 +60,8 @@ private:
 	GSDeviceOGL::OMDepthStencilSelector m_om_dssel;
 
 private:
+	__fi GSDeviceOGL* GetGLDevice() { return static_cast<GSDeviceOGL*>(m_dev.get()); }
+
 	inline void ResetStates();
 	inline void SetupIA(const float& sx, const float& sy);
 	inline void EmulateTextureShuffleAndFbmask();
@@ -68,8 +71,10 @@ private:
 	inline void EmulateZbuffer();
 
 public:
-	GSRendererOGL();
+	GSRendererOGL(std::unique_ptr<GSDevice> dev);
 	virtual ~GSRendererOGL() {}
+
+	const char* GetName() const override;
 
 	void DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Source* tex) final;
 

@@ -20,6 +20,7 @@
 #include "R5900OpcodeTables.h"
 #include "R5900Exceptions.h"
 #include "System/SysThreads.h"
+#include "VMManager.h"
 
 #include "Elfheader.h"
 
@@ -60,7 +61,9 @@ void intBreakpoint(bool memcheck)
 	}
 
 	CBreakPoints::SetBreakpointTriggered(true);
+#ifndef PCSX2_CORE
 	GetCoreThread().PauseSelfDebug();
+#endif
 	throw Exception::ExitCpuExecute();
 }
 
@@ -582,8 +585,13 @@ static void intExecute()
 
 static void intCheckExecutionState()
 {
+#ifndef PCSX2_CORE
 	if( GetCoreThread().HasPendingStateChangeRequest() )
 		throw Exception::ExitCpuExecute();
+#else
+	if (VMManager::Internal::IsExecutionInterrupted())
+		throw Exception::ExitCpuExecute();
+#endif
 }
 
 static void intStep()

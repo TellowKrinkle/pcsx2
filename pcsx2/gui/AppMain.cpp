@@ -763,8 +763,6 @@ void Pcsx2App::OpenGsPanel()
 		gsFrame->SetSize( oldsize );
 	}
 
-    pxAssertDev( !gsopen_done, "GS must be closed prior to opening a new Gs Panel!" );
-
 	gsFrame->ShowFullScreen(g_Conf->GSWindow.IsFullscreen);
 	wxApp::ProcessPendingEvents();
 

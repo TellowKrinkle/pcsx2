@@ -26,7 +26,6 @@ private:
 	int m_height;
 	int m_custom_width;
 	int m_custom_height;
-	bool m_reset;
 	int m_upscale_multiplier;
 	int m_userhacks_ts_half_bottom;
 
@@ -160,12 +159,13 @@ protected:
 	int m_sw_blending;
 
 	bool m_channel_shuffle;
+	bool m_reset;
 
 	GSVector2i m_lod; // Min & Max level of detail
 	void CustomResolutionScaling();
 
 public:
-	GSRendererHW(GSTextureCache* tc);
+	GSRendererHW(std::unique_ptr<GSDevice> dev, GSTextureCache* tc);
 	virtual ~GSRendererHW();
 
 	void SetGameCRC(u32 crc, int options);
@@ -182,7 +182,7 @@ public:
 
 	void Reset();
 	void VSync(int field);
-	void ResetDevice();
+
 	GSTexture* GetOutput(int i, int& y_offset);
 	GSTexture* GetFeedbackOutput();
 	void InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, const GSVector4i& r);

@@ -274,6 +274,9 @@
     <Filter Include="System\Ps2\GS\GIF">
       <UniqueIdentifier>{78f5077b-255e-435e-9a51-352171dfaee8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Host">
+      <UniqueIdentifier>{65f21394-287a-471b-a0c1-d8f0d5d95a81}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="Utilities\folderdesc.txt">
@@ -1583,9 +1586,6 @@
     <ClCompile Include="GS\Renderers\Common\GSFunctionMap.cpp">
       <Filter>System\Ps2\GS\Renderers\Common</Filter>
     </ClCompile>
-    <ClCompile Include="GS\Renderers\Common\GSOsdManager.cpp">
-      <Filter>System\Ps2\GS\Renderers\Common</Filter>
-    </ClCompile>
     <ClCompile Include="GS\GSCapture.cpp">
       <Filter>System\Ps2\GS\Window</Filter>
     </ClCompile>
@@ -1642,6 +1642,21 @@
     <ClCompile Include="GS\Renderers\SW\GSSetupPrimCodeGenerator.all.cpp" />
     <ClCompile Include="PerformanceMetrics.cpp">
       <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="HostDisplay.cpp">
+      <Filter>Host</Filter>
+    </ClCompile>
+    <ClCompile Include="Frontend\OpenGLHostDisplay.cpp">
+      <Filter>Host</Filter>
+    </ClCompile>
+    <ClCompile Include="Frontend\D3D11HostDisplay.cpp">
+      <Filter>Host</Filter>
+    </ClCompile>
+    <ClCompile Include="gui\AppHost.cpp">
+      <Filter>AppHost</Filter>
+    </ClCompile>
+    <ClCompile Include="Frontend\ImGuiManager.cpp">
+      <Filter>Host</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -2689,9 +2704,6 @@
     <ClInclude Include="GS\Renderers\Common\GSFunctionMap.h">
       <Filter>System\Ps2\GS\Renderers\Common</Filter>
     </ClInclude>
-    <ClInclude Include="GS\Renderers\Common\GSOsdManager.h">
-      <Filter>System\Ps2\GS\Renderers\Common</Filter>
-    </ClInclude>
     <ClInclude Include="GS\GSCapture.h">
       <Filter>System\Ps2\GS\Window</Filter>
     </ClInclude>
@@ -2737,9 +2749,6 @@
     <ClInclude Include="MemoryCardFile.h">
       <Filter>System\Ps2\Iop</Filter>
     </ClInclude>
-    <ClInclude Include="Host.h">
-      <Filter>System\Include</Filter>
-    </ClInclude>
     <ClInclude Include="gui\wxSettingsInterface.h">
       <Filter>AppHost</Filter>
     </ClInclude>
@@ -2751,7 +2760,31 @@
       <Filter>System\Ps2\PAD</Filter>
     </ClInclude>
     <ClInclude Include="PerformanceMetrics.h">
-      <Filter>System</Filter>
+      <Filter>System\Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Host.h">
+      <Filter>Host</Filter>
+    </ClInclude>
+    <ClInclude Include="HostDisplay.h">
+      <Filter>Host</Filter>
+    </ClInclude>
+    <ClInclude Include="Frontend\OpenGLHostDisplay.h">
+      <Filter>Host</Filter>
+    </ClInclude>
+    <ClInclude Include="Frontend\D3D11HostDisplay.h">
+      <Filter>Host</Filter>
+    </ClInclude>
+    <ClInclude Include="gui\AppHost.h">
+      <Filter>AppHost\Include</Filter>
+    </ClInclude>
+    <ClInclude Include="Frontend\ImGuiManager.h">
+      <Filter>Host</Filter>
+    </ClInclude>
+    <ClInclude Include="Host.h">
+      <Filter>Host</Filter>
+    </ClInclude>
+    <ClInclude Include="VMManager.h">
+      <Filter>System\Include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

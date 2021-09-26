@@ -20,11 +20,12 @@
 #include "GSTexture.h"
 #include "GSVertex.h"
 #include "GS/GSAlignedClass.h"
-#include "GSOsdManager.h"
 #include <array>
 #ifdef _WIN32
 #include <dxgi.h>
 #endif
+
+class HostDisplay;
 
 enum ShaderConvert
 {
@@ -149,9 +150,8 @@ protected:
 	static const int m_NO_BLEND = 0;
 	static const int m_MERGE_BLEND = m_blendMap.size() - 1;
 
-	int m_vsync;
 	bool m_rbswapped;
-	GSTexture* m_backbuffer;
+	HostDisplay* m_display;
 	GSTexture* m_merge;
 	GSTexture* m_weavebob;
 	GSTexture* m_blend;
@@ -166,7 +166,6 @@ protected:
 		size_t start, count, limit;
 	} m_index;
 	unsigned int m_frame; // for ageing the pool
-	bool m_linear_present;
 
 	virtual GSTexture* CreateSurface(int type, int w, int h, int format) = 0;
 	virtual GSTexture* FetchSurface(int type, int w, int h, int format);
@@ -179,10 +178,10 @@ protected:
 	virtual u16 ConvertBlendEnum(u16 generic) = 0; // Convert blend factors/ops from the generic enum to DX11/OGl specific.
 
 public:
-	GSOsdManager m_osd;
-
 	GSDevice();
 	virtual ~GSDevice();
+
+	__fi HostDisplay* GetDisplay() const { return m_display; }
 
 	void Recycle(GSTexture* t);
 
@@ -193,14 +192,11 @@ public:
 		DontCare
 	};
 
-	virtual bool Create(const WindowInfo& wi);
-	virtual bool Reset(int w, int h);
-	virtual bool IsLost(bool update = false) { return false; }
-	virtual void Present(const GSVector4i& r, int shader);
-	virtual void Present(GSTexture* sTex, GSTexture* dTex, const GSVector4& dRect, int shader = 0);
-	virtual void Flip() {}
+	virtual bool Create(HostDisplay* display);
+	virtual void Destroy();
 
-	virtual void SetVSync(int vsync) { m_vsync = vsync; }
+	virtual void ResetAPIState();
+	virtual void RestoreAPIState();
 
 	virtual void BeginScene() {}
 	virtual void DrawPrimitive() {};
@@ -235,14 +231,13 @@ public:
 	virtual void PSSetShaderResource(int i, GSTexture* sRect) {}
 	virtual void OMSetRenderTargets(GSTexture* rt, GSTexture* ds, const GSVector4i* scissor = NULL) {}
 
-	GSTexture* GetCurrent();
+	__fi GSTexture* GetCurrent() { return m_current; }
 
 	void Merge(GSTexture* sTex[3], GSVector4* sRect, GSVector4* dRect, const GSVector2i& fs, const GSRegPMODE& PMODE, const GSRegEXTBUF& EXTBUF, const GSVector4& c);
 	void Interlace(const GSVector2i& ds, int field, int mode, float yoffset);
 	void FXAA();
 	void ShadeBoost();
 	void ExternalFX();
-	virtual void RenderOsd(GSTexture* dt) {};
 
 	bool ResizeTexture(GSTexture** t, int type, int w, int h);
 	bool ResizeTexture(GSTexture** t, int w, int h);
@@ -250,8 +245,6 @@ public:
 	bool ResizeTarget(GSTexture** t);
 
 	bool IsRBSwapped() { return m_rbswapped; }
-	int GetBackbufferWidth() const { return m_backbuffer ? m_backbuffer->GetWidth() : 0; }
-	int GetBackbufferHeight() const { return m_backbuffer ? m_backbuffer->GetHeight() : 0; }
 
 	void AgePool();
 	void PurgePool();

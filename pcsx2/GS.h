@@ -19,6 +19,7 @@
 #include "System/SysThreads.h"
 #include "Gif.h"
 #include "GS/GS.h"
+#include <functional>
 
 extern double GetVerticalFrequency();
 alignas(16) extern u8 g_RealGSMem[Ps2MemSize::GSregs];
@@ -295,6 +296,7 @@ enum MTGS_RingCommand
 	GS_RINGTYPE_MTVU_GSPACKET,
 	GS_RINGTYPE_INIT_READ_FIFO1,
 	GS_RINGTYPE_INIT_READ_FIFO2,
+	GS_RINGTYPE_ASYNC_CALL,
 };
 
 
@@ -302,6 +304,14 @@ struct MTGS_FreezeData
 {
 	freezeData*	fdata;
 	s32			retval;		// value returned from the call, valid only after an mtgsWaitGS()
+};
+
+struct MTGS_MemoryScreenshotData
+{
+	u32 width = 0;
+	u32 height = 0;
+	std::vector<u32> pixels;		// width * height
+	bool success = false;
 };
 
 // --------------------------------------------------------------------------------------
@@ -312,6 +322,8 @@ class SysMtgsThread : public SysThreadBase
 	typedef SysThreadBase _parent;
 
 public:
+	using AsyncCallType = std::function<void()>;
+
 	// note: when m_ReadPos == m_WritePos, the fifo is empty
 	// Threading info: m_ReadPos is updated by the MTGS thread. m_WritePos is updated by the EE thread
 	std::atomic<unsigned int> m_ReadPos;  // cur pos gs is reading from
@@ -377,6 +389,16 @@ public:
 
 	bool IsGSOpened() const { return m_Opened; }
 
+	void RunOnGSThread(AsyncCallType func);
+	void ApplySettings();
+	void ResizeDisplayWindow(int width, int height, float scale);
+	void UpdateDisplayWindow();
+	void SetVSync(VsyncMode mode, float present_fps_limit);
+	void SwitchRenderer(GSRendererType renderer);
+	void SetSoftwareRendering(bool software);
+	void ToggleSoftwareRendering();
+	bool SaveMemorySnapshot(u32 width, u32 height, std::vector<u32>* pixels);
+
 protected:
 	void OpenGS();
 	void CloseGS();
@@ -413,6 +435,7 @@ extern void gsSetVideoMode(GS_VideoMode mode);
 extern void gsResetFrameSkip();
 extern void gsPostVsyncStart();
 extern void gsFrameSkip();
+extern bool gsIsSkippingCurrentFrame();
 extern void gsUpdateFrequency(Pcsx2Config& config);
 
 // Some functions shared by both the GS and MTGS

@@ -183,7 +183,11 @@ void SysCoreThread::ApplySettings(const Pcsx2Config& src)
 	m_resetProfilers = (src.Profiler != EmuConfig.Profiler);
 	m_resetVsyncTimers = (src.GS != EmuConfig.GS);
 
+	const bool gs_settings_changed = (EmuConfig.GS != src.GS);
+
 	EmuConfig.CopyConfig(src);
+	if (gs_settings_changed && GetMTGS().IsOpen())
+		GetMTGS().ApplySettings();
 }
 
 // --------------------------------------------------------------------------------------

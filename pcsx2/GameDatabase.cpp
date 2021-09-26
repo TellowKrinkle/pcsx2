@@ -142,7 +142,7 @@ static bool parseAndInsert(std::string serial, const YAML::Node& node)
 			bool fixValidated = false;
 			for (GamefixId id = GamefixId_FIRST; id < pxEnumEnd; id++)
 			{
-				std::string validFix = fmt::format("{}Hack", wxString(EnumToString(id)).ToUTF8());
+				std::string validFix = fmt::format("{}Hack", EnumToString(id));
 				if (validFix == fix)
 				{
 					fixValidated = true;
@@ -168,7 +168,7 @@ static bool parseAndInsert(std::string serial, const YAML::Node& node)
 				bool speedHackValidated = false;
 				for (SpeedhackId id = SpeedhackId_FIRST; id < pxEnumEnd; id++)
 				{
-					std::string validSpeedHack = fmt::format("{}SpeedHack", wxString(EnumToString(id)).ToUTF8());
+					std::string validSpeedHack = fmt::format("{}SpeedHack", EnumToString(id));
 					if (validSpeedHack == speedHack)
 					{
 						speedHackValidated = true;

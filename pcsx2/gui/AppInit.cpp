@@ -19,6 +19,7 @@
 #include "ConsoleLogger.h"
 #include "MSWstuff.h"
 #include "MTVU.h" // for thread cancellation on shutdown
+#include "GameDatabase.h"
 
 #include "common/IniInterface.h"
 #include "common/StringUtil.h"

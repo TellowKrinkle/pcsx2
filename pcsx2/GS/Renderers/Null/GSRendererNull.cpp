@@ -15,3 +15,13 @@
 
 #include "PrecompiledHeader.h"
 #include "GSRendererNull.h"
+
+GSRendererNull::GSRendererNull(std::unique_ptr<GSDevice> dev)
+	: GSRenderer(std::move(dev))
+{
+}
+
+const char* GSRendererNull::GetName() const
+{
+	return "Null";
+}

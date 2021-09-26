@@ -41,7 +41,6 @@ public:
 		DepthStencil,
 		Texture,
 		Offscreen,
-		Backbuffer,
 		SparseRenderTarget,
 		SparseDepthStencil
 	};
@@ -55,6 +54,9 @@ public:
 		pxAssert(0);
 		return false;
 	}
+
+	// Returns the native handle of a texture.
+	virtual void* GetNativeHandle() const = 0;
 
 	virtual bool Update(const GSVector4i& r, const void* data, int pitch, int layer = 0) = 0;
 	virtual bool Map(GSMap& m, const GSVector4i* r = NULL, int layer = 0) = 0;

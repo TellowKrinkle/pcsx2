@@ -83,7 +83,7 @@ extern u32 OutputModule;
 extern int SndOutLatencyMS;
 extern int SynchMode;
 
-#ifndef __POSIX__
+#if defined(_WIN32) && !defined(PCSX2_CORE)
 extern wchar_t dspPlugin[];
 extern int dspPluginModule;
 

@@ -88,7 +88,10 @@ SndOutModule* mods[] =
 #if defined(SPU2X_PORTAUDIO)
 		PortaudioOut,
 #endif
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(SPU2X_CUBEB)
+		CubebOut,
+#endif
+#if defined(SDL_BUILD) && !defined(PCSX2_CORE)
 		SDLOut,
 #endif
 		nullptr // signals the end of our list
@@ -236,10 +239,8 @@ void SndBuffer::_ReadSamples_Safe(StereoOut32* bData, int nSamples)
 // the sample output is determined by the SndOutVolumeShift, which is the number of bits
 // to shift right to get a 16 bit result.
 template <typename T>
-void SndBuffer::ReadSamples(T* bData)
+void SndBuffer::ReadSamples(T* bData, int nSamples)
 {
-	int nSamples = SndOutPacketSize;
-
 	// Problem:
 	//  If the SPU2 gets even the least bit out of sync with the SndOut device,
 	//  the readpos of the circular buffer will overtake the writepos,
@@ -296,26 +297,26 @@ void SndBuffer::ReadSamples(T* bData)
 	std::fill_n(bData, quietSamples, T{});
 }
 
-template void SndBuffer::ReadSamples(StereoOut16*);
-template void SndBuffer::ReadSamples(StereoOut32*);
+template void SndBuffer::ReadSamples(StereoOut16*, int);
+template void SndBuffer::ReadSamples(StereoOut32*, int);
 
 //template void SndBuffer::ReadSamples(StereoOutFloat*);
-template void SndBuffer::ReadSamples(Stereo21Out16*);
-template void SndBuffer::ReadSamples(Stereo40Out16*);
-template void SndBuffer::ReadSamples(Stereo41Out16*);
-template void SndBuffer::ReadSamples(Stereo51Out16*);
-template void SndBuffer::ReadSamples(Stereo51Out16Dpl*);
-template void SndBuffer::ReadSamples(Stereo51Out16DplII*);
-template void SndBuffer::ReadSamples(Stereo71Out16*);
+template void SndBuffer::ReadSamples(Stereo21Out16*, int);
+template void SndBuffer::ReadSamples(Stereo40Out16*, int);
+template void SndBuffer::ReadSamples(Stereo41Out16*, int);
+template void SndBuffer::ReadSamples(Stereo51Out16*, int);
+template void SndBuffer::ReadSamples(Stereo51Out16Dpl*, int);
+template void SndBuffer::ReadSamples(Stereo51Out16DplII*, int);
+template void SndBuffer::ReadSamples(Stereo71Out16*, int);
 
-template void SndBuffer::ReadSamples(Stereo20Out32*);
-template void SndBuffer::ReadSamples(Stereo21Out32*);
-template void SndBuffer::ReadSamples(Stereo40Out32*);
-template void SndBuffer::ReadSamples(Stereo41Out32*);
-template void SndBuffer::ReadSamples(Stereo51Out32*);
-template void SndBuffer::ReadSamples(Stereo51Out32Dpl*);
-template void SndBuffer::ReadSamples(Stereo51Out32DplII*);
-template void SndBuffer::ReadSamples(Stereo71Out32*);
+template void SndBuffer::ReadSamples(Stereo20Out32*, int);
+template void SndBuffer::ReadSamples(Stereo21Out32*, int);
+template void SndBuffer::ReadSamples(Stereo40Out32*, int);
+template void SndBuffer::ReadSamples(Stereo41Out32*, int);
+template void SndBuffer::ReadSamples(Stereo51Out32*, int);
+template void SndBuffer::ReadSamples(Stereo51Out32Dpl*, int);
+template void SndBuffer::ReadSamples(Stereo51Out32DplII*, int);
+template void SndBuffer::ReadSamples(Stereo71Out32*, int);
 
 void SndBuffer::_WriteSamples(StereoOut32* bData, int nSamples)
 {
@@ -461,7 +462,7 @@ void SndBuffer::Write(const StereoOut32& Sample)
 		// Play silence
 		std::fill_n(sndTempBuffer, SndOutPacketSize, StereoOut32{});
 	}
-#ifndef __POSIX__
+#if defined(_WIN32) && !defined(PCSX2_CORE)
 	if (dspPluginEnabled)
 	{
 		// Convert in, send to winamp DSP, and convert out.

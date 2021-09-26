@@ -26,8 +26,8 @@ CONSTINIT const GSVector4 GSRendererSW::m_pos_scale = GSVector4::cxpr(1.0f / 16,
 CONSTINIT const GSVector8 GSRendererSW::m_pos_scale2 = GSVector8::cxpr(1.0f / 16, 1.0f / 16, 1.0f, 128.0f, 1.0f / 16, 1.0f / 16, 1.0f, 128.0f);
 #endif
 
-GSRendererSW::GSRendererSW(int threads)
-	: m_fzb(NULL)
+GSRendererSW::GSRendererSW(std::unique_ptr<GSDevice> dev, int threads)
+	: GSRenderer(std::move(dev)), m_fzb(NULL)
 {
 	m_nativeres = true; // ignore ini, sw is always native
 
@@ -80,6 +80,11 @@ GSRendererSW::~GSRendererSW()
 	delete m_rl;
 
 	_aligned_free(m_output);
+}
+
+const char* GSRendererSW::GetName() const
+{
+	return "SW";
 }
 
 void GSRendererSW::Reset()

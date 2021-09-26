@@ -74,7 +74,7 @@ GSState::GSState()
 
 	m_crc_hack_level = theApp.GetConfigT<CRCHackLevel>("crc_hack_level");
 	if (m_crc_hack_level == CRCHackLevel::Automatic)
-		m_crc_hack_level = GSUtil::GetRecommendedCRCHackLevel(theApp.GetCurrentRendererType());
+		m_crc_hack_level = GSUtil::GetRecommendedCRCHackLevel(GSConfig.Renderer);
 
 	memset(&m_v, 0, sizeof(m_v));
 	memset(&m_vertex, 0, sizeof(m_vertex));
@@ -148,13 +148,6 @@ GSState::~GSState()
 		_aligned_free(m_vertex.buff);
 	if (m_index.buff)
 		_aligned_free(m_index.buff);
-}
-
-void GSState::SetRegsMem(u8* basemem)
-{
-	ASSERT(basemem);
-
-	m_regs = (GSPrivRegSet*)basemem;
 }
 
 void GSState::SetFrameSkip(int skip)
@@ -723,9 +716,7 @@ __forceinline void GSState::ApplyPRIM(u32 prim)
 	if (GSUtil::GetPrimClass(m_env.PRIM.PRIM) == GSUtil::GetPrimClass(prim & 7)) // NOTE: assume strips/fans are converted to lists
 	{
 		u32 prim_mask = 0x7f8;
-		const bool is_hardware_renderer =
-			((theApp.GetCurrentRendererType() == GSRendererType::OGL_HW) || (theApp.GetCurrentRendererType() == GSRendererType::DX1011_HW));
-		if (is_hardware_renderer && GSUtil::GetPrimClass(prim & 7) == GS_TRIANGLE_CLASS)
+		if (GSConfig.UseHardwareRenderer() && GSUtil::GetPrimClass(prim & 7) == GS_TRIANGLE_CLASS)
 			prim_mask &= ~0x80; // Mask out AA1.
 
 		if (m_env.PRMODECONT.AC == 1 && (m_env.PRIM.U32[0] ^ prim) & prim_mask) // all fields except PRIM
@@ -1062,9 +1053,7 @@ void GSState::GIFRegHandlerPRMODE(const GIFReg* RESTRICT r)
 	if (!m_env.PRMODECONT.AC)
 	{
 		u32 prim_mask = 0x7f8;
-		const bool is_hardware_renderer =
-			((theApp.GetCurrentRendererType() == GSRendererType::OGL_HW) || (theApp.GetCurrentRendererType() == GSRendererType::DX1011_HW));
-		if (is_hardware_renderer && GSUtil::GetPrimClass(m_env.PRIM.PRIM) == GS_TRIANGLE_CLASS)
+		if (GSConfig.UseHardwareRenderer() && GSUtil::GetPrimClass(m_env.PRIM.PRIM) == GS_TRIANGLE_CLASS)
 			prim_mask &= ~0x80; // Mask out AA1.
 
 		if ((m_env.PRIM.U32[0] ^ r->PRMODE.U32[0]) & prim_mask)

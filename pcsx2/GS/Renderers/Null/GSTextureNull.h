@@ -28,6 +28,8 @@ public:
 	GSTextureNull();
 	GSTextureNull(int type, int w, int h, int format);
 
+	void* GetNativeHandle() const override;
+
 	int GetType() const { return m_desc.type; }
 	int GetFormat() const { return m_desc.format; }
 

@@ -17,6 +17,7 @@
 #include "App.h"
 #include "GSFrame.h"
 #include "AppAccelerators.h"
+#include "AppHost.h"
 #include "AppSaveStates.h"
 #include "Counters.h"
 #include "GS.h"
@@ -362,7 +363,7 @@ void GSPanel::OnResize(wxSizeEvent& event)
 	g_gs_window_info.surface_height = height;
 	g_gs_window_info.surface_scale = scale;
 
-	GSResizeWindow(width, height);
+	Host::GSWindowResized(width, height);
 }
 
 void GSPanel::OnCloseWindow(wxCloseEvent& evt)
@@ -841,7 +842,7 @@ void GSFrame::AppStatusEvent_OnSettingsApplied()
 
 	if( g_Conf->GSWindow.CloseOnEsc )
 	{
-		if (IsShown() && !gsopen_done)
+		if (IsShown())
 			Show( false );
 	}
 }
@@ -866,18 +867,8 @@ void GSFrame::OnUpdateTitle( wxTimerEvent& evt )
 		cpuUsage.Write(L" | GS: %3.0f%%", PerformanceMetrics::GetGSThreadUsage());
 
 		if (THREAD_VU1)
-		{
 			cpuUsage.Write(L" | VU: %3.0f%%", PerformanceMetrics::GetVUThreadUsage());
-			OSDmonitor(Color_StrongGreen, "VU:", std::to_string(lround(PerformanceMetrics::GetVUThreadUsage())).c_str());
-		}
-		
-		OSDmonitor(Color_StrongGreen, "EE:", std::to_string(lround(PerformanceMetrics::GetCPUThreadUsage())).c_str());
-		OSDmonitor(Color_StrongGreen, "GS:", std::to_string(lround(PerformanceMetrics::GetGSThreadUsage())).c_str());
 	}
-
-	std::ostringstream out;
-	out << std::fixed << std::setprecision(2) << PerformanceMetrics::GetFPS();
-	OSDmonitor(Color_StrongGreen, "FPS:", out.str());
 
 #ifdef __linux__
 	// Important Linux note: When the title is set in fullscreen the window is redrawn. Unfortunately
@@ -887,9 +878,10 @@ void GSFrame::OnUpdateTitle( wxTimerEvent& evt )
 
 	AppConfig::UiTemplateOptions& templates = g_Conf->Templates;
 
-	char gsDest[128];
-	gsDest[0] = 0; // No need to set whole array to NULL.
-	GSgetTitleInfo2( gsDest, sizeof(gsDest) );
+	FastFormatAscii gsStats;
+	int gsWidth, gsHeight;
+	GSgetInternalResolution(&gsWidth, &gsHeight);
+	gsStats.Write("%dx%d", gsWidth, gsHeight);
 
 	wxString limiterStr = templates.LimiterUnlimited;
 
@@ -929,7 +921,7 @@ void GSFrame::OnUpdateTitle( wxTimerEvent& evt )
 	title.Replace(L"${cpuusage}",	cpuUsage);
 	title.Replace(L"${omodef}",		omodef);
 	title.Replace(L"${omodei}",		omodei);
-	title.Replace(L"${gsdx}",		fromUTF8(gsDest));
+	title.Replace(L"${gsdx}", gsStats.GetString());
 	title.Replace(L"${videomode}",	ReportVideoMode());
 	if (CoreThread.IsPaused() && !GSDump::isRunning)
 		title = templates.Paused + title;

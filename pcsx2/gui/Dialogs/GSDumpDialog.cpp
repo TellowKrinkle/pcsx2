@@ -24,6 +24,8 @@
 #include "common/EmbeddedImage.h"
 #include "gui/Resources/NoIcon.h"
 #include "GS.h"
+#include "HostDisplay.h"
+#include "PerformanceMetrics.h"
 
 #include "PathDefs.h"
 #include "gui/AppConfig.h"
@@ -654,6 +656,8 @@ void Dialogs::GSDumpDialog::ProcessDumpEvent(const GSData& event, char* regs)
 		case VSync:
 		{
 			GSvsync((*((int*)(regs + 4096)) & 0x2000) > 0 ? (u8)1 : (u8)0);
+			PerformanceMetrics::Update();
+			Host::BeginFrame();
 			g_FrameCount++;
 			Pcsx2App* app = (Pcsx2App*)wxApp::GetInstance();
 			if (app)
@@ -775,12 +779,13 @@ void Dialogs::GSDumpDialog::GSThread::ExecuteTaskInThread()
 		g_FrameCount = 0;
 	}
 
-	GSsetBaseMem((u8*)regs);
-	if (GSopen2(g_gs_window_info, (renderer_override<<24)) != 0)
+	if (!GSopen(g_Conf->EmuOptions.GS, static_cast<GSRendererType>(renderer_override), (u8*)regs))
 	{
 		OnStop();
 		return;
 	}
+
+	Host::BeginFrame();
 
 	GSsetGameCRC((int)crc, 0);
 
@@ -788,7 +793,7 @@ void Dialogs::GSDumpDialog::GSThread::ExecuteTaskInThread()
 		GSDump::isRunning = false;
 	GSvsync(1);
 	GSreset();
-	GSsetBaseMem((u8*)regs);
+	//GSsetBaseMem((u8*)regs);
 	GSfreeze(FreezeAction::Load, &fd);
 
 	size_t i = 0;

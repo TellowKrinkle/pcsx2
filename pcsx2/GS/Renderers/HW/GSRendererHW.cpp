@@ -19,12 +19,12 @@
 
 const float GSRendererHW::SSR_UV_TOLERANCE = 1e-3f;
 
-GSRendererHW::GSRendererHW(GSTextureCache* tc)
-	: m_width(default_rt_size.x)
+GSRendererHW::GSRendererHW(std::unique_ptr<GSDevice> dev, GSTextureCache* tc)
+	: GSRenderer(std::move(dev))
+	, m_width(default_rt_size.x)
 	, m_height(default_rt_size.y)
 	, m_custom_width(1024)
 	, m_custom_height(1024)
-	, m_reset(false)
 	, m_userhacks_ts_half_bottom(-1)
 	, m_tc(tc)
 	, m_src(nullptr)
@@ -32,6 +32,7 @@ GSRendererHW::GSRendererHW(GSTextureCache* tc)
 	, m_userhacks_tcoffset_x(0)
 	, m_userhacks_tcoffset_y(0)
 	, m_channel_shuffle(false)
+	, m_reset(false)
 	, m_lod(GSVector2i(0, 0))
 {
 	m_mipmap = theApp.GetConfigI("mipmap_hw");
@@ -300,13 +301,6 @@ void GSRendererHW::VSync(int field)
 
 	m_skip = 0;
 	m_skip_offset = 0;
-}
-
-void GSRendererHW::ResetDevice()
-{
-	m_tc->RemoveAll();
-
-	GSRenderer::ResetDevice();
 }
 
 GSTexture* GSRendererHW::GetOutput(int i, int& y_offset)
@@ -1185,7 +1179,7 @@ void GSRendererHW::RoundSpriteOffset()
 
 void GSRendererHW::Draw()
 {
-	if (m_dev->IsLost() || IsBadFrame())
+	if (IsBadFrame())
 	{
 		GL_INS("Warning skipping a draw call (%d)", s_n);
 		return;

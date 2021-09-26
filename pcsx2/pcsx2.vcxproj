@@ -35,12 +35,12 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\xbyak;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\xz\xz\src\liblzma\api;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\baseclasses;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\zlib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\libpng;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\glad\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\imgui\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ExceptionHandling>Async</ExceptionHandling>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
@@ -301,6 +301,9 @@
     <ClCompile Include="DEV9\Win32\DEV9WinConfig.cpp" />
     <ClCompile Include="DEV9\net.cpp" />
     <ClCompile Include="DEV9\Win32\tap-win32.cpp" />
+    <ClCompile Include="Frontend\D3D11HostDisplay.cpp" />
+    <ClCompile Include="Frontend\ImGuiManager.cpp" />
+    <ClCompile Include="Frontend\OpenGLHostDisplay.cpp" />
     <ClCompile Include="GameDatabase.cpp" />
     <ClCompile Include="Gif_Logger.cpp" />
     <ClCompile Include="Gif_Unit.cpp" />
@@ -329,6 +332,7 @@
     <ClCompile Include="gui\ThreadingDialogs.cpp" />
     <ClCompile Include="gui\wxAppWithHelpers.cpp" />
     <ClCompile Include="gui\wxSettingsInterface.cpp" />
+    <ClCompile Include="HostDisplay.cpp" />
     <ClCompile Include="IopGte.cpp" />
     <ClCompile Include="IPC.cpp" />
     <ClCompile Include="FW.cpp" />
@@ -479,7 +483,6 @@
     <ClCompile Include="GS\GSLocalMemory.cpp" />
     <ClCompile Include="GS\GSLzma.cpp" />
     <ClCompile Include="GS\GSPerfMon.cpp" />
-    <ClCompile Include="GS\Renderers\Common\GSOsdManager.cpp" />
     <ClCompile Include="GS\GSPng.cpp" />
     <ClCompile Include="GS\GSRingHeap.cpp" />
     <ClCompile Include="GS\Renderers\SW\GSRasterizer.cpp" />
@@ -742,10 +745,14 @@
     <ClInclude Include="DEV9\smap.h" />
     <ClInclude Include="DEV9\Win32\pcap_io_win32_funcs.h" />
     <ClInclude Include="DEV9\Win32\tap.h" />
+    <ClInclude Include="Frontend\D3D11HostDisplay.h" />
+    <ClInclude Include="Frontend\ImGuiManager.h" />
+    <ClInclude Include="Frontend\OpenGLHostDisplay.h" />
     <ClInclude Include="GameDatabase.h" />
     <ClInclude Include="Gif_Unit.h" />
     <ClInclude Include="GS\Renderers\DX11\D3D.h" />
     <ClInclude Include="GS\Window\GSwxDialog.h" />
+    <ClInclude Include="gui\AppHost.h" />
     <ClInclude Include="gui\CheckedStaticBox.h" />
     <ClInclude Include="gui\i18n.h" />
     <ClInclude Include="gui\DriveList.h" />
@@ -767,6 +774,8 @@
     <ClInclude Include="gui\wxAppWithHelpers.h" />
     <ClInclude Include="gui\wxSettingsInterface.h" />
     <ClInclude Include="Host.h" />
+    <ClInclude Include="HostDisplay.h" />
+    <ClInclude Include="VMManager.h" />
     <ClInclude Include="IopGte.h" />
     <ClInclude Include="IPC.h" />
     <ClInclude Include="FW.h" />
@@ -842,7 +851,6 @@
     <ClInclude Include="GS\GSLocalMemory.h" />
     <ClInclude Include="GS\GSLzma.h" />
     <ClInclude Include="GS\GSPerfMon.h" />
-    <ClInclude Include="GS\Renderers\Common\GSOsdManager.h" />
     <ClInclude Include="GS\GSPng.h" />
     <ClInclude Include="GS\GSRingHeap.h" />
     <ClInclude Include="GS\Renderers\SW\GSRasterizer.h" />
@@ -1109,9 +1117,6 @@
     <ProjectReference Include="$(SolutionDir)3rdparty\fmt\fmt.vcxproj">
       <Project>{449ad25e-424a-4714-babc-68706cdcc33b}</Project>
     </ProjectReference>
-    <ProjectReference Include="$(SolutionDir)3rdparty\freetype\builds\windows\freetype.vcxproj">
-      <Project>{78b079bd-9fc7-4b9e-b4a6-96da0f00248b}</Project>
-    </ProjectReference>
     <ProjectReference Include="$(SolutionDir)3rdparty\libjpeg\libjpeg.vcxproj">
       <Project>{bc236261-77e8-4567-8d09-45cd02965eb6}</Project>
     </ProjectReference>
@@ -1159,6 +1164,9 @@
     </ProjectReference>
     <ProjectReference Include="$(SolutionDir)3rdparty\jpgd\jpgd.vcxproj">
       <Project>{ed2f21fd-0a36-4a8f-9b90-e7d92a2acb63}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\3rdparty\imgui\imgui.vcxproj">
+      <Project>{88fb34ec-845e-4f21-a552-f1573b9ed167}</Project>
     </ProjectReference>
     <ProjectReference Include="..\common\common.vcxproj">
       <Project>{4639972e-424e-4e13-8b07-ca403c481346}</Project>

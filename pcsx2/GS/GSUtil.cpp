@@ -184,8 +184,26 @@ bool GSUtil::CheckSSE()
 
 CRCHackLevel GSUtil::GetRecommendedCRCHackLevel(GSRendererType type)
 {
-	return type == GSRendererType::OGL_HW ? CRCHackLevel::Partial : CRCHackLevel::Full;
+	return type == GSRendererType::OGL ? CRCHackLevel::Partial : CRCHackLevel::Full;
 }
+
+#ifdef _WIN32
+
+#include "GS/Renderers/DX11/D3D.h"
+
+GSRendererType GSGetBestRenderer()
+{
+	return D3D::ShouldPreferD3D() ? GSRendererType::DX11 : GSRendererType::OGL;
+}
+
+#else
+
+GSRendererType GSGetBestRenderer()
+{
+	return GSRendererType::OGL;
+}
+
+#endif
 
 #ifdef _WIN32
 void GSmkdir(const wchar_t* dir)

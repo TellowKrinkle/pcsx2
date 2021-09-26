@@ -19,9 +19,7 @@
 #include "GS/GS.h"
 
 GSDevice::GSDevice()
-	: m_vsync(false)
-	, m_rbswapped(false)
-	, m_backbuffer(NULL)
+	: m_rbswapped(false)
 	, m_merge(NULL)
 	, m_weavebob(NULL)
 	, m_blend(NULL)
@@ -31,7 +29,6 @@ GSDevice::GSDevice()
 {
 	memset(&m_vertex, 0, sizeof(m_vertex));
 	memset(&m_index, 0, sizeof(m_index));
-	m_linear_present = theApp.GetConfigB("linear_present");
 }
 
 GSDevice::~GSDevice()
@@ -39,70 +36,28 @@ GSDevice::~GSDevice()
 	for (auto t : m_pool)
 		delete t;
 
-	delete m_backbuffer;
 	delete m_merge;
 	delete m_weavebob;
 	delete m_blend;
 	delete m_target_tmp;
 }
 
-bool GSDevice::Create(const WindowInfo& wi)
+bool GSDevice::Create(HostDisplay* display)
 {
+	m_display = display;
 	return true;
 }
 
-bool GSDevice::Reset(int w, int h)
+void GSDevice::Destroy()
 {
-	for (auto t : m_pool)
-		delete t;
-
-	m_pool.clear();
-
-	delete m_backbuffer;
-	delete m_merge;
-	delete m_weavebob;
-	delete m_blend;
-	delete m_target_tmp;
-
-	m_backbuffer = NULL;
-	m_merge = NULL;
-	m_weavebob = NULL;
-	m_blend = NULL;
-	m_target_tmp = NULL;
-
-	m_current = NULL; // current is special, points to other textures, no need to delete
-	return true;
 }
 
-void GSDevice::Present(const GSVector4i& r, int shader)
+void GSDevice::ResetAPIState()
 {
-	GL_PUSH("Present");
-
-#ifndef PCSX2_CORE
-	int new_width, new_height;
-	if (GSCheckForWindowResize(&new_width, &new_height) && !Reset(new_width, new_height))
-		return;
-#endif
-
-	// FIXME is it mandatory, it could be slow
-	ClearRenderTarget(m_backbuffer, 0);
-
-	if (m_current)
-	{
-		static int s_shader[5] = {ShaderConvert_COPY, ShaderConvert_SCANLINE,
-			ShaderConvert_DIAGONAL_FILTER, ShaderConvert_TRIANGULAR_FILTER,
-			ShaderConvert_COMPLEX_FILTER}; // FIXME
-
-		Present(m_current, m_backbuffer, GSVector4(r), s_shader[shader]);
-		RenderOsd(m_backbuffer);
-	}
-
-	Flip();
 }
 
-void GSDevice::Present(GSTexture* sTex, GSTexture* dTex, const GSVector4& dRect, int shader)
+void GSDevice::RestoreAPIState()
 {
-	StretchRect(sTex, dTex, dRect, shader, m_linear_present);
 }
 
 GSTexture* GSDevice::FetchSurface(int type, int w, int h, int format)
@@ -226,11 +181,6 @@ GSTexture* GSDevice::CreateOffscreen(int w, int h, int format)
 void GSDevice::StretchRect(GSTexture* sTex, GSTexture* dTex, const GSVector4& dRect, int shader, bool linear)
 {
 	StretchRect(sTex, GSVector4(0, 0, 1, 1), dTex, dRect, shader, linear);
-}
-
-GSTexture* GSDevice::GetCurrent()
-{
-	return m_current;
 }
 
 void GSDevice::Merge(GSTexture* sTex[3], GSVector4* sRect, GSVector4* dRect, const GSVector2i& fs, const GSRegPMODE& PMODE, const GSRegEXTBUF& EXTBUF, const GSVector4& c)

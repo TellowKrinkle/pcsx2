@@ -321,7 +321,7 @@ RendererTab::RendererTab(wxWindow* parent)
 void RendererTab::UpdateBlendMode(GSRendererType renderer)
 {
 #ifdef _WIN32
-	if (renderer == GSRendererType::DX1011_HW)
+	if (renderer == GSRendererType::DX11)
 	{
 		m_blend_mode_d3d11.first ->Show();
 		m_blend_mode_d3d11.second->Show();
@@ -514,30 +514,25 @@ OSDTab::OSDTab(wxWindow* parent)
 	const int space = wxSizerFlags().Border().GetBorderInPixels();
 	PaddedBoxSizer<wxBoxSizer> tab_box(wxVERTICAL);
 
-	CheckboxPrereq monitor_check(m_ui.addCheckBox(tab_box.inner, "Enable Monitor", "osd_monitor_enabled", IDC_OSD_MONITOR));
-
-	PaddedBoxSizer<wxStaticBoxSizer> font_box(wxVERTICAL, this, "Font");
+	PaddedBoxSizer<wxStaticBoxSizer> font_box(wxVERTICAL, this, "Visuals");
 	auto* font_grid = new wxFlexGridSizer(2, space, space);
 	font_grid->AddGrowableCol(1);
 
-	m_ui.addSpinAndLabel(font_grid, "Size:", "osd_fontsize", 1, 100, 25, -1, monitor_check);
-
-	m_ui.addSliderAndLabel(font_grid, "Red:",     "osd_color_r",       0, 255,   0, -1, monitor_check);
-	m_ui.addSliderAndLabel(font_grid, "Green:",   "osd_color_g",       0, 255,   0, -1, monitor_check);
-	m_ui.addSliderAndLabel(font_grid, "Blue:",    "osd_color_b",       0, 255,   0, -1, monitor_check);
-	m_ui.addSliderAndLabel(font_grid, "Opacity:", "osd_color_opacity", 0, 100, 100, -1, monitor_check);
+	m_ui.addSliderAndLabel(font_grid, "Scale:",   "osd_scale", 50, 300, 100, -1);
 
 	font_box->Add(font_grid, wxSizerFlags().Expand());
 	tab_box->Add(font_box.outer, wxSizerFlags().Expand());
-
-	CheckboxPrereq log_check(m_ui.addCheckBox(tab_box.inner, "Enable Log", "osd_log_enabled", IDC_OSD_LOG));
 
 	PaddedBoxSizer<wxStaticBoxSizer> log_box(wxVERTICAL, this, "Log Messages");
 	auto* log_grid = new wxFlexGridSizer(2, space, space);
 	log_grid->AddGrowableCol(1);
 
-	m_ui.addSpinAndLabel(log_grid, "Timeout (seconds):",      "osd_log_timeout",      2, 10, 4,              -1, log_check);
-	m_ui.addSpinAndLabel(log_grid, "Max On-Screen Messages:", "osd_max_log_messages", 1, 10, 2, IDC_OSD_MAX_LOG, log_check);
+	m_ui.addCheckBox(log_grid, "Show Messages", "osd_show_messages", -1);
+	m_ui.addCheckBox(log_grid, "Show Speed", "osd_show_speed", -1);
+	m_ui.addCheckBox(log_grid, "Show FPS", "osd_show_fps", -1);
+	m_ui.addCheckBox(log_grid, "Show CPU Usage", "osd_show_cpu", -1);
+	m_ui.addCheckBox(log_grid, "Show Resolution", "osd_show_resolution", -1);
+	m_ui.addCheckBox(log_grid, "Show Statistics", "osd_show_gs_stats", -1);
 
 	log_box->Add(log_grid, wxSizerFlags().Expand());
 	tab_box->Add(log_box.outer, wxSizerFlags().Expand());
@@ -559,10 +554,7 @@ DebugTab::DebugTab(wxWindow* parent)
 		PaddedBoxSizer<wxStaticBoxSizer> debug_box(wxVERTICAL, this, "Debug");
 		auto* debug_check_box = new wxWrapSizer(wxHORIZONTAL);
 		m_ui.addCheckBox(debug_check_box, "GLSL compilation", "debug_glsl_shader");
-		m_ui.addCheckBox(debug_check_box, "Print GL error", "debug_opengl");
-#ifdef _WIN32
-		m_ui.addCheckBox(debug_check_box, "D3D Debug Layer", "debug_d3d");
-#endif
+		m_ui.addCheckBox(debug_check_box, "Use Debug Device", "debug_device");
 		m_ui.addCheckBox(debug_check_box, "Dump GS data", "dump");
 
 		auto* debug_save_check_box = new wxWrapSizer(wxHORIZONTAL);
@@ -691,24 +683,23 @@ void Dialog::RendererChange()
 	GSRendererType renderer = GetSelectedRendererType();
 	m_adapter_select->Clear();
 
-	if (renderer == GSRendererType::DX1011_HW)
+	if (renderer == GSRendererType::DX11)
 	{
 		auto factory = D3D::CreateFactory(false);
 		auto adapter_list = D3D::GetAdapterList(factory.get());
 
-		wxArrayString adapter_arr_string;
+		const std::string current_adapter(theApp.GetConfigS("adapter"));
+
 		for (const auto name : adapter_list)
 		{
-			adapter_arr_string.push_back(
-				convert_utf8_to_utf16(name)
+			m_adapter_select->Insert(
+				convert_utf8_to_utf16(name), m_adapter_select->GetCount()
 			);
+			if (current_adapter == name)
+				m_adapter_select->SetSelection(m_adapter_select->GetCount() - 1);
 		}
 
-		m_adapter_select->Insert(adapter_arr_string, 0);
 		m_adapter_select->Enable();
-		m_adapter_select->SetSelection(
-			theApp.GetConfigI("adapter_index")
-		);
 	}
 	else
 	{
@@ -725,8 +716,8 @@ void Dialog::Load()
 	m_ui.Load();
 #ifdef _WIN32
 	GSRendererType renderer = GSRendererType(theApp.GetConfigI("Renderer"));
-	if (renderer == GSRendererType::Undefined)
-		renderer = D3D::ShouldPreferD3D() ? GSRendererType::DX1011_HW : GSRendererType::OGL_HW;
+	if (renderer == GSRendererType::Auto)
+		renderer = D3D::ShouldPreferD3D() ? GSRendererType::DX11 : GSRendererType::OGL;
 	m_renderer_select->SetSelection(get_config_index(theApp.m_gs_renderers, static_cast<int>(renderer)));
 #endif
 
@@ -746,13 +737,8 @@ void Dialog::Save()
 #ifdef _WIN32
 	// only save the adapter when it makes sense to
 	// prevents changing the adapter, switching to another renderer and saving
-	if (GetSelectedRendererType() == GSRendererType::DX1011_HW)
-	{
-		const int current_adapter =
-			m_adapter_select->GetSelection();
-
-		theApp.SetConfig("adapter_index", current_adapter);
-	}
+	if (GetSelectedRendererType() == GSRendererType::DX11)
+		theApp.SetConfig("adapter", m_adapter_select->GetStringSelection().c_str());
 #endif
 
 	m_hacks_panel->Save();
@@ -780,16 +766,16 @@ void Dialog::Update()
 	else
 	{
 		// cross-tab dependencies yay
-		const bool is_hw = renderer == GSRendererType::OGL_HW || renderer == GSRendererType::DX1011_HW;
+		const bool is_hw = renderer == GSRendererType::OGL || renderer == GSRendererType::DX11;
 		const bool is_upscale = m_renderer_panel->m_internal_resolution->GetSelection() != 0;
 		const bool is_nearest_filter = m_bifilter_select->GetSelection() == static_cast<int>(BiFiltering::Nearest);
 		m_hacks_panel->m_is_native_res = !is_hw || !is_upscale;
 		m_hacks_panel->m_is_hardware = is_hw;
-		m_hacks_panel->m_is_ogl_hw = renderer == GSRendererType::OGL_HW;
+		m_hacks_panel->m_is_ogl_hw = renderer == GSRendererType::OGL;
 		m_renderer_panel->m_is_hardware = is_hw;
 		m_renderer_panel->m_is_native_res = !is_hw || !is_upscale;
 		m_renderer_panel->m_is_nearest_filter = is_nearest_filter;
-		m_debug_panel->m_is_ogl_hw = renderer == GSRendererType::OGL_HW;
+		m_debug_panel->m_is_ogl_hw = renderer == GSRendererType::OGL;
 
 		m_ui.Update();
 		m_hacks_panel->DoUpdate();

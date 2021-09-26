@@ -16,17 +16,22 @@
 #include "PrecompiledHeader.h"
 #include "GSRendererDX11.h"
 
-GSRendererDX11::GSRendererDX11()
-	: GSRendererHW(new GSTextureCache11(this))
+GSRendererDX11::GSRendererDX11(std::unique_ptr<GSDevice> dev)
+	: GSRendererHW(std::move(dev), new GSTextureCache11(this))
 {
 	m_sw_blending = theApp.GetConfigI("accurate_blending_unit_d3d11");
 
 	ResetStates();
 }
 
+const char* GSRendererDX11::GetName() const
+{
+	return "D3D11";
+}
+
 void GSRendererDX11::SetupIA(const float& sx, const float& sy)
 {
-	GSDevice11* dev = (GSDevice11*)m_dev;
+	GSDevice11* dev = GetDevice11();
 
 	D3D11_PRIMITIVE_TOPOLOGY t{};
 
@@ -283,7 +288,7 @@ void GSRendererDX11::EmulateTextureShuffleAndFbmask()
 
 void GSRendererDX11::EmulateChannelShuffle(GSTexture** rt, const GSTextureCache::Source* tex)
 {
-	GSDevice11* dev = (GSDevice11*)m_dev;
+	GSDevice11* dev = GetDevice11();
 
 	// Uncomment to disable HLE emulation (allow to trace the draw call)
 	// m_channel_shuffle = false;
@@ -782,7 +787,7 @@ void GSRendererDX11::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sou
 	vs_cb.Texture_Scale_Offset = GSVector4(0.0f);
 
 	ASSERT(m_dev != NULL);
-	GSDevice11* dev = (GSDevice11*)m_dev;
+	GSDevice11* dev = GetDevice11();
 
 	// HLE implementation of the channel selection effect
 	//
