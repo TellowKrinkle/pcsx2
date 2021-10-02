@@ -79,6 +79,9 @@ void MSW_OutputDebugString(const wxString& text)
 	static bool hasDebugger = wxIsDebuggerRunning();
 	if (hasDebugger)
 		OutputDebugString(text);
+
+	fputs(text.utf8_str(), stdout);
+	fflush(stdout);
 #else
 	fputs(text.utf8_str(), stdout_fp);
 	fflush(stdout_fp);
