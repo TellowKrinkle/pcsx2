@@ -1,0 +1,159 @@
+#include "PrecompiledHeader.h"
+
+#include "QtHost.h"
+#include "SettingsDialog.h"
+
+#include "BIOSSettingsWidget.h"
+#include "DisplaySettingsWidget.h"
+#include "EmulationSettingsWidget.h"
+#include "GameListSettingsWidget.h"
+#include "GraphicsSettingsWidget.h"
+#include "InterfaceSettingsWidget.h"
+#include "SystemSettingsWidget.h"
+#include "OSDSettingsWidget.h"
+
+#include <QtWidgets/QMessageBox>
+#include <QtWidgets/QTextEdit>
+
+static constexpr char DEFAULT_SETTING_HELP_TEXT[] = "";
+
+SettingsDialog::SettingsDialog(QWidget* parent /* = nullptr */) : QDialog(parent)
+{
+  m_ui.setupUi(this);
+  setCategoryHelpTexts();
+
+  setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
+
+  m_interface_settings = new InterfaceSettingsWidget(m_ui.settingsContainer, this);
+  m_game_list_settings = new GameListSettingsWidget(m_ui.settingsContainer, this);
+  m_bios_settings = new BIOSSettingsWidget(m_ui.settingsContainer, this);
+  m_emulation_settings = new EmulationSettingsWidget(m_ui.settingsContainer, this);
+  m_system_settings = new SystemSettingsWidget(m_ui.settingsContainer, this);
+  m_display_settings = new DisplaySettingsWidget(m_ui.settingsContainer, this);
+  m_osd_settings = new OSDSettingsWidget(m_ui.settingsContainer, this);
+  m_graphics_settings = new GraphicsSettingsWidget(m_ui.settingsContainer, this);
+
+  connect(m_graphics_settings, &GraphicsSettingsWidget::fullscreenModesChanged, m_display_settings,
+          &DisplaySettingsWidget::onFullscreenModesChanged);
+  m_graphics_settings->updateRendererDependentOptions();
+
+  m_ui.settingsContainer->insertWidget(static_cast<int>(Category::InterfaceSettings), m_interface_settings);
+  m_ui.settingsContainer->insertWidget(static_cast<int>(Category::GameListSettings), m_game_list_settings);
+  m_ui.settingsContainer->insertWidget(static_cast<int>(Category::BIOSSettings), m_bios_settings);
+  m_ui.settingsContainer->insertWidget(static_cast<int>(Category::EmulationSettings), m_emulation_settings);
+  m_ui.settingsContainer->insertWidget(static_cast<int>(Category::SystemSettings), m_system_settings);
+  m_ui.settingsContainer->insertWidget(static_cast<int>(Category::DisplaySettings), m_display_settings);
+  m_ui.settingsContainer->insertWidget(static_cast<int>(Category::OSDSettings), m_osd_settings);
+  m_ui.settingsContainer->insertWidget(static_cast<int>(Category::GraphicsSettings), m_graphics_settings);
+
+  m_ui.settingsCategory->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+  m_ui.settingsCategory->setCurrentRow(0);
+  m_ui.settingsContainer->setCurrentIndex(0);
+  m_ui.helpText->setText(m_category_help_text[0]);
+  connect(m_ui.settingsCategory, &QListWidget::currentRowChanged, this, &SettingsDialog::onCategoryCurrentRowChanged);
+  connect(m_ui.closeButton, &QPushButton::clicked, this, &SettingsDialog::accept);
+  connect(m_ui.restoreDefaultsButton, &QPushButton::clicked, this, &SettingsDialog::onRestoreDefaultsClicked);
+}
+
+SettingsDialog::~SettingsDialog() = default;
+
+void SettingsDialog::setCategoryHelpTexts()
+{
+  m_category_help_text[static_cast<int>(Category::InterfaceSettings)] =
+    tr("<strong>Interface Settings</strong><hr>These options control how the software looks and behaves.<br><br>Mouse "
+       "over "
+       "an option for additional information.");
+  m_category_help_text[static_cast<int>(Category::SystemSettings)] =
+    tr("<strong>System Settings</strong><hr>These options determine the configuration of the simulated "
+       "console.<br><br>Mouse over an option for additional information.");
+  m_category_help_text[static_cast<int>(Category::GameListSettings)] =
+    tr("<strong>Game List Settings</strong><hr>The list above shows the directories which will be searched by "
+       "PCSX2 to populate the game list. Search directories can be added, removed, and switched to "
+       "recursive/non-recursive.");
+  m_category_help_text[static_cast<int>(Category::HotkeySettings)] = tr(
+    "<strong>Hotkey Settings</strong><hr>Binding a hotkey allows you to trigger events such as a resetting or taking "
+    "screenshots at the press of a key/controller button. Hotkey titles are self-explanatory. Clicking a binding will "
+    "start a countdown, in which case you should press the key or controller button/axis you wish to bind. If no "
+    "button  is pressed and the timer lapses, the binding will be unchanged. To clear a binding, right-click the "
+    "button. To  bind multiple buttons, hold Shift and click the button.");
+  m_category_help_text[static_cast<int>(Category::MemoryCardSettings)] =
+    tr("<strong>Memory Card Settings</strong><hr>This page lets you control what mode the memory card emulation will "
+       "function in, and where the images for these cards will be stored on disk.");
+  m_category_help_text[static_cast<int>(Category::DisplaySettings)] = tr(
+    "<strong>Game Display Settings</strong><hr>These options control the how the frames generated by the console are "
+    "displayed on the screen.");
+  m_category_help_text[static_cast<int>(Category::OSDSettings)] =
+    tr("<strong>On-Screen Display Settings</strong><hr>These options control the how the frames generated by the "
+       "console are "
+       "displayed on the screen.");
+  m_category_help_text[static_cast<int>(Category::AudioSettings)] =
+    tr("<strong>Audio Settings</strong><hr>These options control the audio output of the console. Mouse over an option "
+       "for additional information.");
+}
+
+void SettingsDialog::setCategory(Category category)
+{
+  if (category >= Category::Count)
+    return;
+
+  m_ui.settingsCategory->setCurrentRow(static_cast<int>(category));
+}
+
+void SettingsDialog::onCategoryCurrentRowChanged(int row)
+{
+  Q_ASSERT(row < static_cast<int>(Category::Count));
+  m_ui.settingsContainer->setCurrentIndex(row);
+  m_ui.helpText->setText(m_category_help_text[row]);
+}
+
+void SettingsDialog::onRestoreDefaultsClicked()
+{
+  if (QMessageBox::question(this, tr("Confirm Restore Defaults"),
+                            tr("Are you sure you want to restore the default settings? Any preferences will be lost."),
+                            QMessageBox::Yes, QMessageBox::No) != QMessageBox::Yes)
+  {
+    return;
+  }
+
+  // m_host_interface->setDefaultSettings();
+}
+
+void SettingsDialog::registerWidgetHelp(QObject* object, QString title, QString recommended_value, QString text)
+{
+  // construct rich text with formatted description
+  QString full_text;
+  full_text += "<table width='100%' cellpadding='0' cellspacing='0'><tr><td><strong>";
+  full_text += title;
+  full_text += "</strong></td><td align='right'><strong>";
+  full_text += tr("Recommended Value");
+  full_text += ": </strong>";
+  full_text += recommended_value;
+  full_text += "</td></table><hr>";
+  full_text += text;
+
+  m_widget_help_text_map[object] = std::move(full_text);
+  object->installEventFilter(this);
+}
+
+bool SettingsDialog::eventFilter(QObject* object, QEvent* event)
+{
+  if (event->type() == QEvent::Enter)
+  {
+    auto iter = m_widget_help_text_map.constFind(object);
+    if (iter != m_widget_help_text_map.end())
+    {
+      m_current_help_widget = object;
+      m_ui.helpText->setText(iter.value());
+    }
+  }
+  else if (event->type() == QEvent::Leave)
+  {
+    if (m_current_help_widget)
+    {
+      m_current_help_widget = nullptr;
+      m_ui.helpText->setText(m_category_help_text[m_ui.settingsCategory->currentRow()]);
+    }
+  }
+
+  return QDialog::eventFilter(object, event);
+}

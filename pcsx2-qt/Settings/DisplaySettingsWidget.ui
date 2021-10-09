@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DisplaySettingsWidget</class>
+ <widget class="QWidget" name="DisplaySettingsWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>604</width>
+    <height>469</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,1">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QGroupBox" name="groupBox_3">
+     <property name="title">
+      <string>Game Display</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Aspect Ratio:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="aspectRatio">
+        <item>
+         <property name="text">
+          <string>Fit to Window/Screen</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Standard (4:3)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Widescreen (16:9)</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>FMV Aspect Ratio:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QComboBox" name="fmvAspectRatio">
+        <item>
+         <property name="text">
+          <string>Off (Default)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Standard (4:3)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Widescreen (16:9)</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Interlacing:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="2">
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="0" column="1">
+         <widget class="QCheckBox" name="bilinearFiltering">
+          <property name="text">
+           <string>Bilinear Filtering</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QCheckBox" name="integerScaling">
+          <property name="text">
+           <string>Integer Upscaling</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="2" column="1">
+       <widget class="QComboBox" name="interlacing">
+        <item>
+         <property name="text">
+          <string>None</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Weave (Top Field First, Sawtooth)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Weave (Bottom Field First, Sawtooth)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Bob (Top Field First)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Bob (Bottom Field First)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Blend (Top Field First, Half FPS)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Blend (Bottom Field First, Half FPS)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Automatic (Default)</string>
+         </property>
+        </item>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="title">
+      <string>Window Settings</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_3">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_10">
+        <property name="text">
+         <string>Fullscreen Mode:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="fullscreenModes"/>
+      </item>
+      <item row="1" column="0" colspan="2">
+       <layout class="QGridLayout" name="gridLayout_3">
+        <item row="0" column="0">
+         <widget class="QCheckBox" name="startFullscreen">
+          <property name="text">
+           <string>Start Fullscreen</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QCheckBox" name="hideMouseCursor">
+          <property name="text">
+           <string>Hide Mouse Cursor</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QCheckBox" name="renderToMainWindow">
+          <property name="text">
+           <string>Render To Main Window</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QCheckBox" name="doubleClickTogglesFullscreen">
+          <property name="text">
+           <string>Double-Click Toggles Fullscreen</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QCheckBox" name="internalResolutionScreenshots">
+          <property name="text">
+           <string>Internal Resolution Screenshots</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QCheckBox" name="disableWindowResizing">
+          <property name="text">
+           <string>Disable Window Resizing</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
