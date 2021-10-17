@@ -62,6 +62,9 @@ protected:
 	void AppStatusEvent_OnSettingsApplied();
 
 	void OnResize(wxSizeEvent& event);
+#if wxCHECK_VERSION(3, 1, 3)
+	void OnDPIChange(wxDPIChangedEvent& event);
+#endif
 	void OnMouseEvent( wxMouseEvent& evt );
 	void OnHideMouseTimeout( wxTimerEvent& evt );
 	void OnKeyDownOrUp( wxKeyEvent& evt );

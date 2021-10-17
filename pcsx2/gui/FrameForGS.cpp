@@ -212,6 +212,9 @@ GSPanel::GSPanel( wxWindow* parent )
 	}
 
 	Bind(wxEVT_SIZE, &GSPanel::OnResize, this);
+#if wxCHECK_VERSION(3, 1, 2)
+	Bind(wxEVT_DPI_CHANGED, &GSPanel::OnDPIChange, this);
+#endif
 	Bind(wxEVT_KEY_UP, &GSPanel::OnKeyDownOrUp, this);
 	Bind(wxEVT_KEY_DOWN, &GSPanel::OnKeyDownOrUp, this);
 
@@ -376,6 +379,24 @@ void GSPanel::OnResize(wxSizeEvent& event)
 
 	Host::GSWindowResized(width, height);
 }
+
+#if wxCHECK_VERSION(3, 1, 2)
+void GSPanel::OnDPIChange(wxDPIChangedEvent& event)
+{
+	if( IsBeingDeleted() ) return;
+	event.Skip();
+
+	if (g_gs_window_info.type == WindowInfo::Type::Surfaceless)
+		return;
+
+	const wxSize size = GetClientSize();
+	g_gs_window_info.surface_width  = size.GetWidth();
+	g_gs_window_info.surface_height = size.GetHeight();
+	g_gs_window_info.surface_scale  = GetContentScaleFactor();
+
+	Host::GSWindowResized(g_gs_window_info.surface_width, g_gs_window_info.surface_height);
+}
+#endif
 
 void GSPanel::OnMouseEvent( wxMouseEvent& evt )
 {
