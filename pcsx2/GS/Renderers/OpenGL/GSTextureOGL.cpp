@@ -31,9 +31,11 @@ namespace PboPool
 	const u32 m_seg_size = 16 * 1024 * 1024;
 
 	GLuint m_buffer;
+	void* m_tmp_buffer = nullptr;
 	uptr m_offset;
 	char* m_map;
 	u32 m_size;
+	u32 m_tmp_buffer_size = 0;
 	bool m_texture_storage;
 	GLsync m_fence[m_pbo_size / m_seg_size];
 
@@ -94,12 +96,16 @@ namespace PboPool
 		}
 		else
 		{
+			if (m_tmp_buffer_size < m_size)
+			{
+				m_tmp_buffer = realloc(m_tmp_buffer, m_size);
+				m_tmp_buffer_size = m_size;
+			}
 			if (m_offset + m_size > m_pbo_size)
 			{
 				m_offset = 0;
 			}
-			GLbitfield flags = GL_MAP_WRITE_BIT | GL_MAP_UNSYNCHRONIZED_BIT | GL_MAP_INVALIDATE_RANGE_BIT;
-			map = (char*)glMapBufferRange(GL_PIXEL_UNPACK_BUFFER, m_offset, m_size, flags);
+			map = static_cast<char*>(m_tmp_buffer);
 		}
 
 		return map;
@@ -113,7 +119,7 @@ namespace PboPool
 		}
 		else
 		{
-			glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+			glBufferSubData(GL_PIXEL_UNPACK_BUFFER, m_offset, m_size, m_tmp_buffer);
 		}
 	}
 
@@ -133,6 +139,13 @@ namespace PboPool
 			{
 				glDeleteSync(fence);
 			}
+		}
+
+		if (m_tmp_buffer)
+		{
+			free(m_tmp_buffer);
+			m_tmp_buffer = nullptr;
+			m_tmp_buffer_size = 0;
 		}
 
 		glDeleteBuffers(1, &m_buffer);
