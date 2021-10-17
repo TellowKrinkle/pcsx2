@@ -193,6 +193,22 @@ namespace GL
 		if (m_context == nil)
 			return false;
 
+		bool useThreads = true;
+		if (const char* flag = getenv("THREAD_GL"))
+			useThreads = flag[0] != '0' && flag[0] != 'n' && flag[0] != 'N';
+		if (useThreads)
+		{
+			CGLError error = CGLEnable([m_context CGLContextObj], kCGLCEMPEngine);
+			if (error == kCGLNoError)
+				Console.WriteLn("Using threaded OpenGL engine");
+			else
+				Console.Warning("Failed to enable threaded OpenGL engine: %s", CGLErrorString(error));
+		}
+		else
+		{
+			Console.WriteLn("Threaded OpenGL engine disabled");
+		}
+
 		if (m_wi.type == WindowInfo::Type::MacOS)
 			BindContextToView();
 
