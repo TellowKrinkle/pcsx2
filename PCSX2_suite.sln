@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31606.5
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31729.503
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "3rdparty", "3rdparty", "{78EBE642-7A4D-4EA7-86BE-5639C6646C38}"
 	ProjectSection(SolutionItems) = preProject
@@ -58,6 +58,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "glad", "3rdparty\glad\glad.vcxproj", "{C0293B32-5ACF-40F0-AA6C-E6DA6F3BF33A}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "imgui", "3rdparty\imgui\imgui.vcxproj", "{88FB34EC-845E-4F21-A552-F1573B9ED167}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "glslang", "3rdparty\glslang\glslang.vcxproj", "{EF6834A9-11F3-4331-BC34-21B325ABB180}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -603,6 +605,30 @@ Global
 		{88FB34EC-845E-4F21-A552-F1573B9ED167}.Release|Win32.Build.0 = Release|Win32
 		{88FB34EC-845E-4F21-A552-F1573B9ED167}.Release|x64.ActiveCfg = Release|x64
 		{88FB34EC-845E-4F21-A552-F1573B9ED167}.Release|x64.Build.0 = Release|x64
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Debug AVX2|Win32.ActiveCfg = Debug|Win32
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Debug AVX2|Win32.Build.0 = Debug|Win32
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Debug AVX2|x64.ActiveCfg = Debug|x64
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Debug AVX2|x64.Build.0 = Debug|x64
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Debug|Win32.ActiveCfg = Debug|Win32
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Debug|Win32.Build.0 = Debug|Win32
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Debug|x64.ActiveCfg = Debug|x64
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Debug|x64.Build.0 = Debug|x64
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Devel AVX2|Win32.ActiveCfg = Devel|Win32
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Devel AVX2|Win32.Build.0 = Devel|Win32
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Devel AVX2|x64.ActiveCfg = Devel|x64
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Devel AVX2|x64.Build.0 = Devel|x64
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Devel|Win32.ActiveCfg = Devel|Win32
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Devel|Win32.Build.0 = Devel|Win32
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Devel|x64.ActiveCfg = Devel|x64
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Devel|x64.Build.0 = Devel|x64
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Release AVX2|Win32.ActiveCfg = Release|Win32
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Release AVX2|Win32.Build.0 = Release|Win32
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Release AVX2|x64.ActiveCfg = Release|x64
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Release AVX2|x64.Build.0 = Release|x64
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Release|Win32.ActiveCfg = Release|Win32
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Release|Win32.Build.0 = Release|Win32
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Release|x64.ActiveCfg = Release|x64
+		{EF6834A9-11F3-4331-BC34-21B325ABB180}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -628,6 +654,7 @@ Global
 		{ED2F21FD-0A36-4A8F-9B90-E7D92A2ACB63} = {78EBE642-7A4D-4EA7-86BE-5639C6646C38}
 		{C0293B32-5ACF-40F0-AA6C-E6DA6F3BF33A} = {78EBE642-7A4D-4EA7-86BE-5639C6646C38}
 		{88FB34EC-845E-4F21-A552-F1573B9ED167} = {78EBE642-7A4D-4EA7-86BE-5639C6646C38}
+		{EF6834A9-11F3-4331-BC34-21B325ABB180} = {78EBE642-7A4D-4EA7-86BE-5639C6646C38}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0BC474EA-3628-45D3-9DBC-E22D0B7E0F77}
