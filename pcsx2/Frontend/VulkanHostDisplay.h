@@ -1,18 +1,23 @@
 #pragma once
-
-// GLAD has to come first so that Qt doesn't pull in the system GL headers, which are incompatible with glad.
-#include <glad.h>
-
-#include "HostDisplay.h"
-#include "common/GL/Context.h"
+#include "common/Vulkan/Loader.h"
+#include "common/Vulkan/StagingTexture.h"
+#include "common/Vulkan/StreamBuffer.h"
+#include "common/Vulkan/SwapChain.h"
 #include "common/WindowInfo.h"
+#include "pcsx2/HostDisplay.h"
 #include <memory>
+#include <string_view>
 
-class OpenGLHostDisplay final : public HostDisplay
+namespace Vulkan {
+class StreamBuffer;
+class SwapChain;
+} // namespace Vulkan
+
+class VulkanHostDisplay final : public HostDisplay
 {
 public:
-  OpenGLHostDisplay();
-  ~OpenGLHostDisplay();
+  VulkanHostDisplay();
+  ~VulkanHostDisplay();
 
   RenderAPI GetRenderAPI() const override;
   void* GetRenderDevice() const override;
@@ -47,15 +52,13 @@ public:
   bool BeginPresent(bool frame_skip) override;
   void EndPresent() override;
 
-protected:
-  const char* GetGLSLVersionString() const;
-  std::string GetGLSLVersionHeader() const;
+  static AdapterAndModeList StaticGetAdapterAndModeList(const WindowInfo* wi);
 
+protected:
   bool CreateImGuiContext() override;
   void DestroyImGuiContext() override;
   bool UpdateImGuiFontTexture() override;
 
-  std::unique_ptr<GL::Context> m_gl_context;
-
-  VsyncMode m_vsync_mode = VsyncMode::Off;
+  std::unique_ptr<Vulkan::SwapChain> m_swap_chain;
+  Vulkan::StagingTexture m_upload_staging_texture;
 };

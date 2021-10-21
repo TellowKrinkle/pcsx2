@@ -105,7 +105,7 @@ HostDisplay* Host::AcquireHostDisplay(HostDisplay::RenderAPI api)
 	pxAssert(g_gs_window_info.type != WindowInfo::Type::Surfaceless);
 	
 	const std::string adapter(GSGetConfigString("adapter"));
-	if (!s_host_display->CreateRenderDevice(g_gs_window_info, adapter, GSConfig.UseDebugDevice) ||
+	if (!s_host_display->CreateRenderDevice(g_gs_window_info, adapter, false, GSConfig.UseDebugDevice) ||
 		!s_host_display->InitializeRenderDevice(StringUtil::wxStringToUTF8String(EmuFolders::Cache.ToString()), GSConfig.UseDebugDevice) ||
 		!ImGuiManager::Initialize())
 	{

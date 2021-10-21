@@ -303,7 +303,9 @@
     <ClCompile Include="DEV9\Win32\tap-win32.cpp" />
     <ClCompile Include="Frontend\D3D11HostDisplay.cpp" />
     <ClCompile Include="Frontend\ImGuiManager.cpp" />
+    <ClCompile Include="Frontend\imgui_impl_vulkan.cpp" />
     <ClCompile Include="Frontend\OpenGLHostDisplay.cpp" />
+    <ClCompile Include="Frontend\VulkanHostDisplay.cpp" />
     <ClCompile Include="GameDatabase.cpp" />
     <ClCompile Include="Gif_Logger.cpp" />
     <ClCompile Include="Gif_Unit.cpp" />
@@ -748,6 +750,7 @@
     <ClInclude Include="Frontend\D3D11HostDisplay.h" />
     <ClInclude Include="Frontend\ImGuiManager.h" />
     <ClInclude Include="Frontend\OpenGLHostDisplay.h" />
+    <ClInclude Include="Frontend\VulkanHostDisplay.h" />
     <ClInclude Include="GameDatabase.h" />
     <ClInclude Include="Gif_Unit.h" />
     <ClInclude Include="GS\Renderers\DX11\D3D.h" />

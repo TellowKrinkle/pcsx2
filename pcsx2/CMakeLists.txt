@@ -969,13 +969,18 @@ set(pcsx2DebugToolsHeaders
 # Frontend sources
 set(pcsx2FrontendSources
 	Frontend/ImGuiManager.cpp
+	Frontend/ImGuiManager.cpp
+	Frontend/imgui_impl_vulkan.cpp
 	Frontend/OpenGLHostDisplay.cpp
+	Frontend/VulkanHostDisplay.cpp
 )
 
 # Frontend headers
 set(pcsx2FrontendHeaders
 	Frontend/ImGuiManager.h
+	Frontend/imgui_impl_vulkan.h
 	Frontend/OpenGLHostDisplay.h
+	Frontend/VulkanHostDisplay.h
 )
 
 if(PCSX2_CORE)

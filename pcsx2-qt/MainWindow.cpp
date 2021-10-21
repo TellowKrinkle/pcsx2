@@ -780,6 +780,7 @@ DisplayWidget* MainWindow::createDisplay(bool fullscreen, bool render_to_main)
   }
 
   if (!host_display->CreateRenderDevice(wi.value(), QtHost::GetBaseStringSettingValue("EmuCore/GS", "Adapter", ""),
+                                        QtHost::GetBaseBoolSettingValue("EmuCore/GS", "ThreadedPresentation", false),
                                         QtHost::GetBaseBoolSettingValue("EmuCore/GS", "UseDebugDevice", false)))
   {
     QMessageBox::critical(this, tr("Error"), tr("Failed to create host display device context."));

@@ -678,6 +678,7 @@ void GSLoadConfigFromApp(Pcsx2Config::GSOptions* config)
 	config->UseDebugDevice = theApp.GetConfigB("debug_device");
 	config->UseBlitSwapChain = theApp.GetConfigB("blit_swap_chain");
 	config->ThrottlePresentRate = theApp.GetConfigB("throttle_present_rate");
+	config->ThreadedPresentation = theApp.GetConfigB("threaded_presentation");
 	config->OsdShowMessages = theApp.GetConfigB("osd_show_messages");
 	config->OsdShowSpeed = theApp.GetConfigB("osd_show_speed");
 	config->OsdShowFPS = theApp.GetConfigB("osd_show_fps");
@@ -731,7 +732,8 @@ void GSUpdateConfig(const Pcsx2Config::GSOptions& new_config)
 	// Options which need a full teardown/recreate.
 	if (GSConfig.Renderer != old_config.Renderer ||
 		GSConfig.UseDebugDevice != old_config.UseDebugDevice ||
-		GSConfig.UseBlitSwapChain != old_config.UseBlitSwapChain)
+		GSConfig.UseBlitSwapChain != old_config.UseBlitSwapChain ||
+		GSConfig.ThreadedPresentation != old_config.ThreadedPresentation)
 	{
 		HostDisplay::RenderAPI existing_api = Host::GetHostDisplay()->GetRenderAPI();
 		if (existing_api == HostDisplay::RenderAPI::OpenGLES)

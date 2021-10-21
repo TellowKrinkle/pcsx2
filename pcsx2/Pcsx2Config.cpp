@@ -332,6 +332,7 @@ void Pcsx2Config::GSOptions::LoadSave(SettingsWrapper& wrap)
 	SettingsWrapBitBool(UseDebugDevice);
 	SettingsWrapBitBool(UseBlitSwapChain);
 	SettingsWrapBitBool(ThrottlePresentRate);
+	SettingsWrapBitBool(ThreadedPresentation);
 
 	SettingsWrapBitBool(OsdShowMessages);
 	SettingsWrapBitBool(OsdShowSpeed);
