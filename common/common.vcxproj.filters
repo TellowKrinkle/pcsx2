@@ -142,6 +142,9 @@
     <ClCompile Include="ProgressCallback.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="MD5Digest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Assertions.h">
@@ -325,6 +328,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ProgressCallback.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MD5Digest.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="HashCombine.h">
