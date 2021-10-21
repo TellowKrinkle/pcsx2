@@ -181,6 +181,7 @@ std::tuple<float, float, float, float> HostDisplay::CalculateDrawRect(s32 window
 }
 
 #include "Frontend/OpenGLHostDisplay.h"
+#include "Frontend/VulkanHostDisplay.h"
 
 #ifdef _WIN32
 #include "Frontend/D3D11HostDisplay.h"
@@ -191,13 +192,16 @@ std::unique_ptr<HostDisplay> HostDisplay::CreateDisplayForAPI(RenderAPI api)
 	switch (api)
 	{
 #ifdef _WIN32
-		case HostDisplay::RenderAPI::D3D11:
+		case RenderAPI::D3D11:
 			return std::make_unique<D3D11HostDisplay>();
 #endif
 
-		case HostDisplay::RenderAPI::OpenGL:
-		case HostDisplay::RenderAPI::OpenGLES:
+		case RenderAPI::OpenGL:
+		case RenderAPI::OpenGLES:
 			return std::make_unique<OpenGLHostDisplay>();
+
+		case RenderAPI::Vulkan:
+			return std::make_unique<VulkanHostDisplay>();
 
 		default:
 			Console.Error("Unknown render API %u", static_cast<unsigned>(api));

@@ -11,6 +11,7 @@
 #ifdef _WIN32
 #include "Frontend/D3D11HostDisplay.h"
 #endif
+#include "Frontend/VulkanHostDisplay.h"
 
 struct RendererInfo
 {
@@ -24,6 +25,7 @@ static constexpr RendererInfo s_renderer_info[] = {
   QT_TRANSLATE_NOOP("GraphicsSettingsWidget", "Direct3D 11"), GSRendererType::DX11,
 #endif
   QT_TRANSLATE_NOOP("GraphicsSettingsWidget", "OpenGL"), GSRendererType::OGL,
+  QT_TRANSLATE_NOOP("GraphicsSettingsWidget", "Vulkan"), GSRendererType::VK,
   QT_TRANSLATE_NOOP("GraphicsSettingsWidget", "Software"), GSRendererType::SW,
   QT_TRANSLATE_NOOP("GraphicsSettingsWidget", "Null"), GSRendererType::Null,
 };
@@ -91,7 +93,7 @@ void GraphicsSettingsWidget::updateRendererDependentOptions()
   const bool is_dx11 = false;
 #endif
 
-  const bool is_hardware = (type == GSRendererType::DX11 || type == GSRendererType::OGL);
+  const bool is_hardware = (type == GSRendererType::DX11 || type == GSRendererType::OGL || type == GSRendererType::VK);
   const bool is_software = (type == GSRendererType::SW);
 
   if (m_hardware_renderer_visible != is_hardware)
@@ -127,6 +129,10 @@ void GraphicsSettingsWidget::updateRendererDependentOptions()
     modes = D3D11HostDisplay::StaticGetAdapterAndModeList();
     break;
 #endif
+
+  case GSRendererType::VK:
+    modes = VulkanHostDisplay::StaticGetAdapterAndModeList(nullptr);
+    break;
 
   case GSRendererType::OGL:
   case GSRendererType::SW:

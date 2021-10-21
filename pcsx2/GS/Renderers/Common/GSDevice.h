@@ -150,7 +150,8 @@ protected:
 	static const int m_NO_BLEND = 0;
 	static const int m_MERGE_BLEND = m_blendMap.size() - 1;
 
-	bool m_rbswapped;
+	static constexpr u32 MAX_POOLED_TEXTURES = 300;
+
 	HostDisplay* m_display;
 	GSTexture* m_merge;
 	GSTexture* m_weavebob;
@@ -166,6 +167,8 @@ protected:
 		size_t start, count, limit;
 	} m_index;
 	unsigned int m_frame; // for ageing the pool
+	bool m_rbswapped;
+	bool m_prefer_new_textures;
 
 	virtual GSTexture* CreateSurface(int type, int w, int h, int format) = 0;
 	virtual GSTexture* FetchSurface(int type, int w, int h, int format);
@@ -182,6 +185,7 @@ public:
 	virtual ~GSDevice();
 
 	__fi HostDisplay* GetDisplay() const { return m_display; }
+	__fi unsigned int GetFrameNumber() const { return m_frame; }
 
 	void Recycle(GSTexture* t);
 

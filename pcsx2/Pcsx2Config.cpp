@@ -267,6 +267,7 @@ const char* Pcsx2Config::GSOptions::GetRendererName(GSRendererType type)
 	case GSRendererType::Auto: return "Auto";
 	case GSRendererType::DX11: return "Direct3D 11";
 	case GSRendererType::OGL: return "OpenGL";
+	case GSRendererType::VK: return "Vulkan";
 	case GSRendererType::SW: return "Software";
 	case GSRendererType::Null: return "Null";
 	default: return "";
@@ -384,7 +385,7 @@ void Pcsx2Config::GSOptions::LoadSave(SettingsWrapper& wrap)
 
 bool Pcsx2Config::GSOptions::UseHardwareRenderer() const
 {
-	return (Renderer == GSRendererType::DX11 || Renderer == GSRendererType::OGL);
+	return (Renderer == GSRendererType::DX11 || Renderer == GSRendererType::OGL || Renderer == GSRendererType::VK);
 }
 
 float Pcsx2Config::GSOptions::GetAspectRatioFloat() const

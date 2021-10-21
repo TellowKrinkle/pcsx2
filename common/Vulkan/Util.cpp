@@ -95,6 +95,9 @@ namespace Vulkan
 			// Only contains pixel formats we use.
 			switch (format)
 			{
+				case VK_FORMAT_R8_UNORM:
+					return 1;
+
 				case VK_FORMAT_R5G5B5A1_UNORM_PACK16:
 				case VK_FORMAT_A1R5G5B5_UNORM_PACK16:
 				case VK_FORMAT_R5G6B5_UNORM_PACK16:

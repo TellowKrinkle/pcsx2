@@ -175,7 +175,7 @@ void MainWindow::connectVMThreadSignals(EmuThread* thread)
 #ifdef _WIN32
     GSRendererType::DX11,
 #endif
-    GSRendererType::OGL, GSRendererType::SW, GSRendererType::Null};
+    GSRendererType::OGL, GSRendererType::VK, GSRendererType::SW, GSRendererType::Null};
   for (GSRendererType renderer : renderers)
   {
     connect(

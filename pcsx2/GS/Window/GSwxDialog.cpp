@@ -766,7 +766,7 @@ void Dialog::Update()
 	else
 	{
 		// cross-tab dependencies yay
-		const bool is_hw = renderer == GSRendererType::OGL || renderer == GSRendererType::DX11;
+		const bool is_hw = renderer == GSRendererType::OGL || renderer == GSRendererType::DX11 || renderer == GSRendererType::VK;
 		const bool is_upscale = m_renderer_panel->m_internal_resolution->GetSelection() != 0;
 		const bool is_nearest_filter = m_bifilter_select->GetSelection() == static_cast<int>(BiFiltering::Nearest);
 		m_hacks_panel->m_is_native_res = !is_hw || !is_upscale;

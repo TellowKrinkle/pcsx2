@@ -52,10 +52,10 @@ namespace Vulkan
 		__fi VkImageView GetView() const { return m_view; }
 
 		bool Create(u32 width, u32 height, u32 levels, u32 layers, VkFormat format, VkSampleCountFlagBits samples,
-			VkImageViewType view_type, VkImageTiling tiling, VkImageUsageFlags usage);
+			VkImageViewType view_type, VkImageTiling tiling, VkImageUsageFlags usage, const VkComponentMapping* swizzle = nullptr);
 
 		bool Adopt(VkImage existing_image, VkImageViewType view_type, u32 width, u32 height, u32 levels, u32 layers,
-			VkFormat format, VkSampleCountFlagBits samples);
+			VkFormat format, VkSampleCountFlagBits samples, const VkComponentMapping* swizzle = nullptr);
 
 		void Destroy(bool defer = true);
 

@@ -86,10 +86,11 @@ Dialogs::GSDumpDialog::GSDumpDialog(wxWindow* parent)
 	m_run->SetDefault();
 	wxArrayString rdoverrides;
 	rdoverrides.Add("None");
-	rdoverrides.Add("OGL SW");
-	rdoverrides.Add("OGL HW");
+	rdoverrides.Add("Software");
+	rdoverrides.Add("OpenGL");
+	rdoverrides.Add("Vulkan");
 #if defined(_WIN32)
-	rdoverrides.Add("D3D11 HW");
+	rdoverrides.Add("Direct3D 11");
 #endif
 	m_renderer_overrides->Create(this, wxID_ANY, "Renderer overrides", wxDefaultPosition, wxDefaultSize, rdoverrides, 1);
 
@@ -708,20 +709,23 @@ void Dialogs::GSDumpDialog::GSThread::ExecuteTaskInThread()
 {
 	GSDump::isRunning = true;
 	u32 crc = 0, ss = 0;
-	s8 renderer_override = 0;
+	GSRendererType renderer_override = g_Conf->EmuOptions.GS.Renderer;
 	switch (m_renderer)
 	{
 		// OGL SW
 		case 1:
-			renderer_override = 13;
+			renderer_override = GSRendererType::SW;
 			break;
 		// OGL HW
 		case 2:
-			renderer_override = 12;
+			renderer_override = GSRendererType::OGL;
+			break;
+		case 3:
+			renderer_override = GSRendererType::VK;
 			break;
 		// D3D11 HW
-		case 3:
-			renderer_override = 3;
+		case 4:
+			renderer_override = GSRendererType::DX11;
 			break;
 		default:
 			break;
@@ -779,7 +783,7 @@ void Dialogs::GSDumpDialog::GSThread::ExecuteTaskInThread()
 		g_FrameCount = 0;
 	}
 
-	if (!GSopen(g_Conf->EmuOptions.GS, static_cast<GSRendererType>(renderer_override), (u8*)regs))
+	if (!GSopen(g_Conf->EmuOptions.GS, renderer_override, (u8*)regs))
 	{
 		OnStop();
 		return;

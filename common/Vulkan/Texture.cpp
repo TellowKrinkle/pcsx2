@@ -19,6 +19,10 @@
 #include "common/Assertions.h"
 #include <algorithm>
 
+static constexpr VkComponentMapping s_identity_swizzle{
+	VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
+	VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY};
+
 namespace Vulkan
 {
 	Texture::Texture() = default;
@@ -76,7 +80,7 @@ namespace Vulkan
 	}
 
 	bool Texture::Create(u32 width, u32 height, u32 levels, u32 layers, VkFormat format, VkSampleCountFlagBits samples,
-		VkImageViewType view_type, VkImageTiling tiling, VkImageUsageFlags usage)
+		VkImageViewType view_type, VkImageTiling tiling, VkImageUsageFlags usage, const VkComponentMapping* swizzle /* = nullptr*/)
 	{
 		const VkImageCreateInfo image_info = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 			nullptr,
@@ -112,8 +116,7 @@ namespace Vulkan
 			image,
 			view_type,
 			format,
-			{VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
-				VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY},
+			swizzle ? *swizzle : s_identity_swizzle,
 			{Util::IsDepthFormat(format) ?
                     static_cast<VkImageAspectFlags>(VK_IMAGE_ASPECT_DEPTH_BIT) :
                     static_cast<VkImageAspectFlags>(VK_IMAGE_ASPECT_COLOR_BIT),
@@ -145,7 +148,7 @@ namespace Vulkan
 	}
 
 	bool Texture::Adopt(VkImage existing_image, VkImageViewType view_type, u32 width, u32 height, u32 levels, u32 layers,
-		VkFormat format, VkSampleCountFlagBits samples)
+		VkFormat format, VkSampleCountFlagBits samples, const VkComponentMapping* swizzle /* = nullptr*/)
 	{
 		// Only need to create the image view, this is mainly for swap chains.
 		const VkImageViewCreateInfo view_info = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -154,8 +157,7 @@ namespace Vulkan
 			existing_image,
 			view_type,
 			format,
-			{VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
-				VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY},
+			swizzle ? *swizzle : s_identity_swizzle,
 			{Util::IsDepthFormat(format) ?
                     static_cast<VkImageAspectFlags>(VK_IMAGE_ASPECT_DEPTH_BIT) :
                     static_cast<VkImageAspectFlags>(VK_IMAGE_ASPECT_COLOR_BIT),

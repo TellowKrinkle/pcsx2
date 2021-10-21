@@ -27,6 +27,7 @@ protected:
 	int m_type;
 	int m_format;
 	bool m_sparse;
+	bool m_discarded;
 
 public:
 	struct GSMap
@@ -93,4 +94,12 @@ public:
 
 	// Typical size of a RGBA texture
 	virtual u32 GetMemUsage() { return m_size.x * m_size.y * 4; }
+
+	void SetDiscarded() { m_discarded = true; }
+	bool CheckDiscarded()
+	{
+		bool ret = m_discarded;
+		m_discarded = false;
+		return ret;
+	}
 };

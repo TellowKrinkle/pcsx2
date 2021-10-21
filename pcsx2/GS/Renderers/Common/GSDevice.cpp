@@ -19,13 +19,14 @@
 #include "GS/GS.h"
 
 GSDevice::GSDevice()
-	: m_rbswapped(false)
-	, m_merge(NULL)
+	: m_merge(NULL)
 	, m_weavebob(NULL)
 	, m_blend(NULL)
 	, m_target_tmp(NULL)
 	, m_current(NULL)
 	, m_frame(0)
+	, m_rbswapped(false)
+	, m_prefer_new_textures(false)
 {
 	memset(&m_vertex, 0, sizeof(m_vertex));
 	memset(&m_index, 0, sizeof(m_index));
@@ -64,16 +65,31 @@ GSTexture* GSDevice::FetchSurface(int type, int w, int h, int format)
 {
 	const GSVector2i size(w, h);
 
+	auto fallback = m_pool.end();
+
+	const bool prefer_new_texture = (m_prefer_new_textures && type == GSTexture::Texture);
+
 	for (auto i = m_pool.begin(); i != m_pool.end(); ++i)
 	{
 		GSTexture* t = *i;
 
 		if (t->GetType() == type && t->GetFormat() == format && t->GetSize() == size)
 		{
-			m_pool.erase(i);
+			if (!prefer_new_texture)
+			{
+				m_pool.erase(i);
+				return t;
+			}
 
-			return t;
+			fallback = i;
 		}
+	}
+
+	if (m_pool.size() >= MAX_POOLED_TEXTURES && fallback != m_pool.end())
+	{
+		GSTexture* t = *fallback;
+		m_pool.erase(fallback);
+		return t;
 	}
 
 	return CreateSurface(type, w, h, format);
@@ -111,12 +127,13 @@ void GSDevice::Recycle(GSTexture* t)
 		t->Uncommit();
 #endif
 		t->last_frame_used = m_frame;
+		t->SetDiscarded();
 
 		m_pool.push_front(t);
 
 		//printf("%d\n",m_pool.size());
 
-		while (m_pool.size() > 300)
+		while (m_pool.size() > MAX_POOLED_TEXTURES)
 		{
 			delete m_pool.back();
 

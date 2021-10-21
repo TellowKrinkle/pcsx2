@@ -26,6 +26,8 @@
 #include "Renderers/Null/GSDeviceNull.h"
 #include "Renderers/OpenGL/GSDeviceOGL.h"
 #include "Renderers/OpenGL/GSRendererOGL.h"
+#include "Renderers/Vulkan/GSDeviceVK.h"
+#include "Renderers/Vulkan/GSRendererVK.h"
 #include "GSLzma.h"
 
 #include "common/pxStreams.h"
@@ -131,6 +133,9 @@ static HostDisplay::RenderAPI GetAPIForRenderer(GSRendererType renderer)
 #endif
 			return HostDisplay::RenderAPI::OpenGL;
 
+		case GSRendererType::VK:
+			return HostDisplay::RenderAPI::Vulkan;
+
 #ifdef _WIN32
 		case GSRendererType::DX11:
 		case GSRendererType::SW:
@@ -160,6 +165,10 @@ static bool DoGSOpen(GSRendererType renderer, u8* basemem)
 		case HostDisplay::RenderAPI::OpenGL:
 		case HostDisplay::RenderAPI::OpenGLES:
 			dev = std::make_unique<GSDeviceOGL>();
+			break;
+
+		case HostDisplay::RenderAPI::Vulkan:
+			dev = std::make_unique<GSDeviceVK>();
 			break;
 
 		case HostDisplay::RenderAPI::None:
@@ -193,6 +202,10 @@ static bool DoGSOpen(GSRendererType renderer, u8* basemem)
 				case HostDisplay::RenderAPI::OpenGL:
 				case HostDisplay::RenderAPI::OpenGLES:
 					s_gs = std::make_unique<GSRendererOGL>(std::move(dev));
+					break;
+
+				case HostDisplay::RenderAPI::Vulkan:
+					s_gs = std::make_unique<GSRendererVK>(std::move(dev));
 					break;
 
 				case HostDisplay::RenderAPI::None:
@@ -1122,12 +1135,10 @@ void GSApp::Init()
 
 #ifdef _WIN32
 	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::DX11), "Direct3D 11", ""));
-	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::OGL), "OpenGL", ""));
-	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::SW), "Software", ""));
-#else // Linux
-	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::OGL_HW), "OpenGL", ""));
-	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::OGL_SW), "Software", ""));
 #endif
+	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::OGL), "OpenGL", ""));
+	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::VK), "Vulkan", ""));
+	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::SW), "Software", ""));
 
 	// The null renderer goes third, it has use for benchmarking purposes in a release build
 	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::Null), "Null", ""));
