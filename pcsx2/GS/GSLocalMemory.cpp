@@ -1251,7 +1251,7 @@ void GSLocalMemory::ReadImageX(int& tx, int& ty, u8* dst, int len, GIFRegBITBLTB
 
 			len /= 4;
 
-			GSOffset::PAPtrHelper pa = off.assertSizesMatch(swizzle32).paMulti(m_vm32, 0, y);
+			GSOffset::PAPtrHelper<u32> pa = off.assertSizesMatch(swizzle32).paMulti(m_vm32, 0, y);
 
 			while (len > 0)
 			{

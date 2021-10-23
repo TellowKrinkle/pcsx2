@@ -1703,7 +1703,7 @@ std::vector<FolderMemoryCard::EnumeratedFileEntry> FolderMemoryCard::GetOrderedF
 				wxDateTime creationTime, modificationTime;
 				fileInfo.GetTimes(nullptr, &modificationTime, &creationTime);
 
-				const wxCharTypeBuffer fileNameUTF8(fileName.ToUTF8());
+				const wxCharTypeBuffer<char> fileNameUTF8(fileName.ToUTF8());
 				const YAML::Node& node = index[fileNameUTF8.data()];
 
 				// orderForLegacyFiles will decrement even if it ends up being unused, but that's fine
@@ -1750,7 +1750,7 @@ void FolderMemoryCard::DeleteFromIndex(const wxString& filePath, const wxString&
 
 	YAML::Node index = LoadYAMLFromFile(indexName);
 
-	const wxCharTypeBuffer entryUTF8(entry.ToUTF8());
+	const wxCharTypeBuffer<char> entryUTF8(entry.ToUTF8());
 	index.remove(entryUTF8.data());
 
 	// Write out the changes
@@ -1916,7 +1916,7 @@ void FileAccessHelper::WriteIndex(wxFileName folderName, MemoryCardFileEntry* co
 		folderName.SetName(wxString::FromAscii(cleanName));
 	}
 
-	const wxCharTypeBuffer fileName(folderName.GetName().ToUTF8());
+	const wxCharTypeBuffer<char> fileName(folderName.GetName().ToUTF8());
 	folderName.SetName(L"_pcsx2_index");
 
 	YAML::Node index = LoadYAMLFromFile(folderName.GetFullPath());

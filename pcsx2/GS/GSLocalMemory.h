@@ -280,7 +280,7 @@ public:
 	template <typename VM>
 	PAPtrHelper<VM> paMulti(VM* vm, int x, int y) const
 	{
-		return PAPtrHelper(*this, vm, x, y);
+		return PAPtrHelper<VM>(*this, vm, x, y);
 	}
 
 	/// Loop over the pixels in the given rectangle
