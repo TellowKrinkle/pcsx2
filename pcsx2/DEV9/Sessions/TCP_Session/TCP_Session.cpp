@@ -38,7 +38,7 @@ namespace Sessions
 
 	void TCP_Session::IncrementMyNumber(u32 amount)
 	{
-		std::lock_guard numberlock(myNumberSentry);
+		std::lock_guard<std::mutex> numberlock(myNumberSentry);
 		_OldMyNumbers.push_back(_MySequenceNumber);
 		_OldMyNumbers.erase(_OldMyNumbers.begin());
 
@@ -46,12 +46,12 @@ namespace Sessions
 	}
 	u32 TCP_Session::GetMyNumber()
 	{
-		std::lock_guard numberlock(myNumberSentry);
+		std::lock_guard<std::mutex> numberlock(myNumberSentry);
 		return _MySequenceNumber;
 	}
 	std::tuple<u32, std::vector<u32>> TCP_Session::GetAllMyNumbers()
 	{
-		std::lock_guard numberlock(myNumberSentry);
+		std::lock_guard<std::mutex> numberlock(myNumberSentry);
 
 		std::vector<u32> old;
 		old.reserve(_OldMyNumbers.size());
@@ -61,7 +61,7 @@ namespace Sessions
 	}
 	void TCP_Session::ResetMyNumbers()
 	{
-		std::lock_guard numberlock(myNumberSentry);
+		std::lock_guard<std::mutex> numberlock(myNumberSentry);
 		_MySequenceNumber = 1;
 		_OldMyNumbers.clear();
 		for (int i = 0; i < oldMyNumCount; i++)

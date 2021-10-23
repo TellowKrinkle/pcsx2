@@ -34,39 +34,40 @@ template <class Key, class T>
 class ThreadSafeMap
 {
 #ifdef NO_SHARED_MUTEX
-	std::mutex accessMutex;
+	typedef std::mutex Mutex;
 #else
-	std::shared_mutex accessMutex;
+	typedef std::shared_mutex Mutex;
 #endif
+	Mutex accessMutex;
 
 	std::unordered_map<Key, T> map;
 
 public:
 	void Add(Key key, T value)
 	{
-		std::unique_lock modifyLock(accessMutex);
+		std::unique_lock<Mutex> modifyLock(accessMutex);
 		//Todo, check if key already exists?
 		map[key] = value;
 	}
 
 	void Remove(Key key)
 	{
-		std::unique_lock modifyLock(accessMutex);
+		std::unique_lock<Mutex> modifyLock(accessMutex);
 		map.erase(key);
 	}
 
 	void Clear()
 	{
-		std::unique_lock modifyLock(accessMutex);
+		std::unique_lock<Mutex> modifyLock(accessMutex);
 		map.clear();
 	}
 
 	std::vector<Key> GetKeys()
 	{
 #ifdef NO_SHARED_MUTEX
-		std::unique_lock readLock(accessMutex);
+		std::unique_lock<Mutex> readLock(accessMutex);
 #else
-		std::shared_lock readLock(accessMutex);
+		std::shared_lock<Mutex> readLock(accessMutex);
 #endif
 
 		std::vector<Key> keys;
@@ -82,9 +83,9 @@ public:
 	bool TryGetValue(Key key, T* value)
 	{
 #ifdef NO_SHARED_MUTEX
-		std::unique_lock readLock(accessMutex);
+		std::unique_lock<Mutex> readLock(accessMutex);
 #else
-		std::shared_lock readLock(accessMutex);
+		std::shared_lock<Mutex> readLock(accessMutex);
 #endif
 		auto search = map.find(key);
 		if (search != map.end())
@@ -99,9 +100,9 @@ public:
 	bool ContainsKey(Key key)
 	{
 #ifdef NO_SHARED_MUTEX
-		std::unique_lock readLock(accessMutex);
+		std::unique_lock<Mutex> readLock(accessMutex);
 #else
-		std::shared_lock readLock(accessMutex);
+		std::shared_lock<Mutex> readLock(accessMutex);
 #endif
 		auto search = map.find(key);
 		if (search != map.end())

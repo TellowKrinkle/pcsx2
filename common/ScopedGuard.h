@@ -56,3 +56,9 @@ public:
 private:
 	std::optional<T> m_func;
 };
+
+template <typename T>
+ScopedGuard<T> makeScopedGuard(T&& func)
+{
+	return ScopedGuard<T>(std::forward<T>(func));
+}

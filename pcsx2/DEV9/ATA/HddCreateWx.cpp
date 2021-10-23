@@ -27,7 +27,7 @@ void HddCreateWx::Init()
 		dialogReady = false;
 		wxTheApp->CallAfter([&] { Init(); });
 		//Block until done
-		std::unique_lock loadLock(dialogMutex);
+		std::unique_lock<std::mutex> loadLock(dialogMutex);
 		dialogCV.wait(loadLock, [&] { return dialogReady; });
 		return;
 	}
@@ -36,7 +36,7 @@ void HddCreateWx::Init()
 	//This creates a modeless dialog
 	progressDialog = new wxProgressDialog(_("Creating HDD file"), _("Creating HDD file"), reqMiB, nullptr, wxPD_APP_MODAL | wxPD_AUTO_HIDE | wxPD_CAN_ABORT | wxPD_ELAPSED_TIME | wxPD_REMAINING_TIME);
 	{
-		std::lock_guard dialogLock1(dialogMutex);
+		std::lock_guard<std::mutex> dialogLock1(dialogMutex);
 		dialogReady = true;
 	}
 	dialogCV.notify_all();
@@ -66,7 +66,7 @@ void HddCreateWx::SetError()
 		dialogReady = false;
 		wxTheApp->CallAfter([&] { SetError(); });
 		//Block until done
-		std::unique_lock loadLock(dialogMutex);
+		std::unique_lock<std::mutex> loadLock(dialogMutex);
 		dialogCV.wait(loadLock, [&] { return dialogReady; });
 		return;
 	}
@@ -74,7 +74,7 @@ void HddCreateWx::SetError()
 	wxMessageDialog dialog(nullptr, _("Failed to create HDD file"), _("Info"), wxOK);
 	dialog.ShowModal();
 	{
-		std::lock_guard dialogLock1(dialogMutex);
+		std::lock_guard<std::mutex> dialogLock1(dialogMutex);
 		dialogReady = true;
 	}
 	dialogCV.notify_all();
@@ -87,7 +87,7 @@ void HddCreateWx::Cleanup()
 		dialogReady = false;
 		wxTheApp->CallAfter([&] { Cleanup(); });
 		//Block until done
-		std::unique_lock loadLock(dialogMutex);
+		std::unique_lock<std::mutex> loadLock(dialogMutex);
 		dialogCV.wait(loadLock, [&] { return dialogReady; });
 		return;
 	}
@@ -95,7 +95,7 @@ void HddCreateWx::Cleanup()
 	delete progressDialog;
 
 	{
-		std::lock_guard dialogLock1(dialogMutex);
+		std::lock_guard<std::mutex> dialogLock1(dialogMutex);
 		dialogReady = true;
 	}
 	dialogCV.notify_all();

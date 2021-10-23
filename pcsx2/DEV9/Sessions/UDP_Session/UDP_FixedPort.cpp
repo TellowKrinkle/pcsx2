@@ -167,7 +167,7 @@ namespace Sessions
 			destIP = *(IP_Address*)&sockaddr->sin_addr;
 			iRet->sourcePort = ntohs(sockaddr->sin_port);
 			{
-				std::lock_guard numberlock(connectionSentry);
+				std::lock_guard<std::mutex> numberlock(connectionSentry);
 
 				for (size_t i = 0; i < connections.size(); i++)
 				{
@@ -190,7 +190,7 @@ namespace Sessions
 
 	void UDP_FixedPort::Reset()
 	{
-		std::lock_guard numberlock(connectionSentry);
+		std::lock_guard<std::mutex> numberlock(connectionSentry);
 
 		for (size_t i = 0; i < connections.size(); i++)
 			connections[i]->Reset();
@@ -203,7 +203,7 @@ namespace Sessions
 		s->AddConnectionClosedHandler([&](BaseSession* session) { HandleChildConnectionClosed(session); });
 
 		{
-			std::lock_guard numberlock(connectionSentry);
+			std::lock_guard<std::mutex> numberlock(connectionSentry);
 			connections.push_back(s);
 		}
 		return s;
@@ -211,7 +211,7 @@ namespace Sessions
 
 	void UDP_FixedPort::HandleChildConnectionClosed(BaseSession* sender)
 	{
-		std::lock_guard numberlock(connectionSentry);
+		std::lock_guard<std::mutex> numberlock(connectionSentry);
 
 		auto index = std::find(connections.begin(), connections.end(), sender);
 		if (index != connections.end())

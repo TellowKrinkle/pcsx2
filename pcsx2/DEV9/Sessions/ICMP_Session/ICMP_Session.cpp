@@ -676,7 +676,7 @@ namespace Sessions
 
 	IP_Payload* ICMP_Session::Recv()
 	{
-		std::unique_lock lock(ping_mutex);
+		std::unique_lock<std::mutex> lock(ping_mutex);
 
 		for (size_t i = 0; i < pings.size(); i++)
 		{
@@ -872,7 +872,7 @@ namespace Sessions
 				ping->originalPacket = std::make_unique<IP_Packet>(*packet);
 
 				{
-					std::scoped_lock lock(ping_mutex);
+					std::lock_guard<std::mutex> lock(ping_mutex);
 					pings.push_back(ping);
 				}
 
@@ -892,7 +892,7 @@ namespace Sessions
 
 	ICMP_Session::~ICMP_Session()
 	{
-		std::scoped_lock lock(ping_mutex);
+		std::lock_guard<std::mutex> lock(ping_mutex);
 
 		//Cleanup
 		for (size_t i = 0; i < pings.size(); i++)

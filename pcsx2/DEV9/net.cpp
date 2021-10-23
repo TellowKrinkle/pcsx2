@@ -48,7 +48,7 @@ void NetRxThread()
 	{
 		while (rx_fifo_can_rx() && nif->recv(&tmp))
 		{
-			std::lock_guard rx_lock(rx_mutex);
+			std::lock_guard<std::mutex> rx_lock(rx_mutex);
 			//Check if we can still rx
 			if (rx_fifo_can_rx())
 				rx_process(&tmp);
@@ -208,7 +208,7 @@ NetAdapter::~NetAdapter()
 		internalRxThreadRunning.store(false);
 
 		{
-			std::lock_guard srvlock(internalRxMutex);
+			std::lock_guard<std::mutex> srvlock(internalRxMutex);
 			internalRxHasData = true;
 		}
 
@@ -420,7 +420,7 @@ void NetAdapter::InternalSignalReceived()
 	if (internalRxThreadRunning.load())
 	{
 		{
-			std::lock_guard srvlock(internalRxMutex);
+			std::lock_guard<std::mutex> srvlock(internalRxMutex);
 			internalRxHasData = true;
 		}
 
@@ -433,11 +433,11 @@ void NetAdapter::InternalServerThread()
 	NetPacket tmp;
 	while (internalRxThreadRunning.load())
 	{
-		std::unique_lock srvLock(internalRxMutex);
+		std::unique_lock<std::mutex> srvLock(internalRxMutex);
 		internalRxCV.wait(srvLock, [&] { return internalRxHasData; });
 
 		{
-			std::lock_guard rx_lock(rx_mutex);
+			std::lock_guard<std::mutex> rx_lock(rx_mutex);
 			while (rx_fifo_can_rx() && InternalServerRecv(&tmp))
 				rx_process(&tmp);
 		}
