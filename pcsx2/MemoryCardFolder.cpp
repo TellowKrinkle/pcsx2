@@ -1741,7 +1741,7 @@ std::vector<FolderMemoryCard::EnumeratedFileEntry> FolderMemoryCard::GetOrderedF
 				std::optional<ryml::Tree> yaml = loadYamlFile(wxFileName(dirPath, "_pcsx2_index").GetFullPath());
 
 				EnumeratedFileEntry entry{fileName, creationTime.GetTicks(), modificationTime.GetTicks(), true};
-				const wxCharTypeBuffer fileNameUTF8(fileName.ToUTF8());
+				const wxCharTypeBuffer<char> fileNameUTF8(fileName.ToUTF8());
 				int64_t newOrder = orderForLegacyFiles--;
 				if (yaml.has_value() && !yaml.value().empty())
 				{
@@ -1843,7 +1843,7 @@ void FolderMemoryCard::DeleteFromIndex(const wxString& filePath, const wxString&
 	if (yaml.has_value() && !yaml.value().empty())
 	{
 		ryml::NodeRef index = yaml.value().rootref();
-		const wxCharTypeBuffer key(entry.ToUTF8());
+		const wxCharTypeBuffer<char> key(entry.ToUTF8());
 		index.remove_child(c4::to_csubstr(key));
 
 		// Write out the changes
@@ -2010,7 +2010,7 @@ void FileAccessHelper::WriteIndex(wxFileName folderName, MemoryCardFileEntry* co
 		folderName.SetName(wxString::FromAscii(cleanName));
 	}
 
-	const wxCharTypeBuffer fileName(folderName.GetName().ToUTF8());
+	const wxCharTypeBuffer<char> fileName(folderName.GetName().ToUTF8());
 	folderName.SetName(L"_pcsx2_index");
 
 	const c4::csubstr key = c4::to_csubstr(fileName);
