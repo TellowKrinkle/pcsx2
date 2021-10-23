@@ -688,7 +688,7 @@ void GSsetExclusive(int enabled)
 #ifndef PCSX2_CORE
 void GSResizeWindow(int width, int height)
 {
-	std::unique_lock lock(s_gs_window_resized_lock);
+	std::unique_lock<std::mutex> lock(s_gs_window_resized_lock);
 	s_new_gs_window_width = width;
 	s_new_gs_window_height = height;
 	s_gs_window_resized.store(true);
@@ -699,7 +699,7 @@ bool GSCheckForWindowResize(int* new_width, int* new_height)
 	if (!s_gs_window_resized.load())
 		return false;
 
-	std::unique_lock lock(s_gs_window_resized_lock);
+	std::unique_lock<std::mutex> lock(s_gs_window_resized_lock);
 	*new_width = s_new_gs_window_width;
 	*new_height = s_new_gs_window_height;
 	s_gs_window_resized.store(false);
