@@ -183,7 +183,7 @@ static float s_new_gs_window_scale = 1;
 
 void Host::GSWindowResized(int width, int height, float scale)
 {
-	std::unique_lock lock(s_gs_window_resized_lock);
+	std::unique_lock<std::mutex> lock(s_gs_window_resized_lock);
 	s_new_gs_window_width = width;
 	s_new_gs_window_height = height;
 	s_new_gs_window_scale = scale;
@@ -198,7 +198,7 @@ void Host::CheckForGSWindowResize()
 	int width, height;
 	float scale;
 	{
-		std::unique_lock lock(s_gs_window_resized_lock);
+		std::unique_lock<std::mutex> lock(s_gs_window_resized_lock);
 		width = s_new_gs_window_width;
 		height = s_new_gs_window_height;
 		scale = s_new_gs_window_scale;

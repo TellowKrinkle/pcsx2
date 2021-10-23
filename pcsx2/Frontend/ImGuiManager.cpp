@@ -387,7 +387,7 @@ static void AcquirePendingOSDMessages()
 	if (s_osd_posted_messages.empty())
 		return;
 
-	std::unique_lock lock(s_osd_messages_lock);
+	std::unique_lock<std::mutex> lock(s_osd_messages_lock);
 	for (;;)
 	{
 		if (s_osd_posted_messages.empty())

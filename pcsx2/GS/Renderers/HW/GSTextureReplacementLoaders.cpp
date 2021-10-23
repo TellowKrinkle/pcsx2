@@ -171,7 +171,7 @@ bool PNGLoader(const std::string& filename, GSTextureReplacements::ReplacementTe
 		return false;
 	}
 
-	ScopedGuard cleanup([&png_ptr, &info_ptr]() {
+	auto cleanup = makeScopedGuard([&png_ptr, &info_ptr]() {
 		png_destroy_read_struct(&png_ptr, &info_ptr, nullptr);
 	});
 
@@ -247,7 +247,7 @@ bool GSTextureReplacements::SavePNGImage(const std::string& filename, u32 width,
 		return false;
 	}
 
-	ScopedGuard cleanup([&png_ptr, &info_ptr]() {
+	auto cleanup = makeScopedGuard([&png_ptr, &info_ptr]() {
 		png_destroy_write_struct(&png_ptr, &info_ptr);
 	});
 

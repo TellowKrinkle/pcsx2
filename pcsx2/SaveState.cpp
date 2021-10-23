@@ -801,7 +801,7 @@ static bool SaveState_CompressScreenshot(SaveStateScreenshotData* data, wxZipOut
 	vent->SetMethod(wxZIP_METHOD_STORE);
 	gzfp->PutNextEntry(vent);
 
-	ScopedGuard cleanup([&png_ptr, &info_ptr, gzfp]() {
+	auto cleanup = makeScopedGuard([&png_ptr, &info_ptr, gzfp]() {
 		if (png_ptr)
 			png_destroy_write_struct(&png_ptr, info_ptr ? &info_ptr : nullptr);
 		gzfp->CloseEntry();
