@@ -17,6 +17,7 @@
 #include <limits.h>
 #include "GSTextureOGL.h"
 #include "GLState.h"
+#include "GS/GSPerfMon.h"
 #include "GS/GSPng.h"
 
 #ifdef ENABLE_OGL_DEBUG_MEM_BW
@@ -410,6 +411,7 @@ bool GSTextureOGL::Update(const GSVector4i& r, const void* data, int pitch, int 
 #endif
 
 	GL_PUSH("Upload Texture %d", m_texture_id);
+	g_perfmon.Put(GSPerfMon::TextureUploads, 1);
 
 	// The easy solution without PBO
 #if 0
@@ -465,6 +467,8 @@ bool GSTextureOGL::Map(GSMap& m, const GSVector4i* _r, int layer)
 
 	if (m_type == GSTexture::Offscreen)
 	{
+		g_perfmon.Put(GSPerfMon::Readbacks, 1);
+
 		// The fastest way will be to use a PBO to read the data asynchronously. Unfortunately GS
 		// architecture is waiting the data right now.
 
@@ -495,6 +499,7 @@ bool GSTextureOGL::Map(GSMap& m, const GSVector4i* _r, int layer)
 	else if (m_type == GSTexture::Texture || m_type == GSTexture::RenderTarget)
 	{
 		GL_PUSH_("Upload Texture %d", m_texture_id); // POP is in Unmap
+		g_perfmon.Put(GSPerfMon::TextureUploads, 1);
 
 		m_clean = false;
 

@@ -18,6 +18,7 @@
 #include "GSDevice11.h"
 #include "GS/Renderers/DX11/D3D.h"
 #include "GS/GSExtra.h"
+#include "GS/GSPerfMon.h"
 #include "GS/GSUtil.h"
 #include "Host.h"
 #include "HostDisplay.h"
@@ -377,6 +378,8 @@ void GSDevice11::RestoreAPIState()
 
 void GSDevice11::BeforeDraw()
 {
+	g_perfmon.Put(GSPerfMon::DrawCalls, 1);
+
 	// DX can't read from the FB
 	// So let's copy it and send that to the shader instead
 
@@ -572,6 +575,7 @@ GSTexture* GSDevice11::CopyOffscreen(GSTexture* src, const GSVector4& sRect, int
 
 		if (dst)
 		{
+			g_perfmon.Put(GSPerfMon::Readbacks, 1);
 			m_ctx->CopyResource(*(GSTexture11*)dst, *(GSTexture11*)rt);
 		}
 
@@ -588,6 +592,8 @@ void GSDevice11::CopyRect(GSTexture* sTex, GSTexture* dTex, const GSVector4i& r)
 		ASSERT(0);
 		return;
 	}
+
+	g_perfmon.Put(GSPerfMon::TextureCopies, 1);
 
 	D3D11_BOX box = {(UINT)r.left, (UINT)r.top, 0U, (UINT)r.right, (UINT)r.bottom, 1U};
 

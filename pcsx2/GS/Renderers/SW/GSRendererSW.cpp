@@ -35,7 +35,7 @@ GSRendererSW::GSRendererSW(std::unique_ptr<GSDevice> dev, int threads)
 
 	memset(m_texture, 0, sizeof(m_texture));
 
-	m_rl = GSRasterizerList::Create<GSDrawScanline>(threads, &m_perfmon);
+	m_rl = GSRasterizerList::Create<GSDrawScanline>(threads, &g_perfmon);
 
 	m_output = (u8*)_aligned_malloc(1024 * 1024 * sizeof(u32), 32);
 
@@ -102,7 +102,7 @@ void GSRendererSW::VSync(int field)
 
 	if (0) if (LOG)
 	{
-		fprintf(s_fp, "%llu\n", m_perfmon.GetFrame());
+		fprintf(s_fp, "%llu\n", g_perfmon.GetFrame());
 
 		GSVector4i dr = GetDisplayRect();
 		GSVector4i fr = GetFrameRect();
@@ -177,7 +177,7 @@ GSTexture* GSRendererSW::GetOutput(int i, int& y_offset)
 		{
 			if (s_savef && s_n >= s_saven)
 			{
-				m_texture[i]->Save(m_dump_root + format("%05d_f%lld_fr%d_%05x_%s.bmp", s_n, m_perfmon.GetFrame(), i, (int)DISPFB.Block(), psm_str(DISPFB.PSM)));
+				m_texture[i]->Save(m_dump_root + format("%05d_f%lld_fr%d_%05x_%s.bmp", s_n, g_perfmon.GetFrame(), i, (int)DISPFB.Block(), psm_str(DISPFB.PSM)));
 			}
 		}
 	}
@@ -376,7 +376,7 @@ void GSRendererSW::Draw()
 
 	sd->scissor = scissor;
 	sd->bbox = bbox;
-	sd->frame = m_perfmon.GetFrame();
+	sd->frame = g_perfmon.GetFrame();
 
 	if (!GetScanlineGlobalData(sd))
 	{
@@ -448,7 +448,7 @@ void GSRendererSW::Draw()
 	{
 		Sync(2);
 
-		u64 frame = m_perfmon.GetFrame();
+		u64 frame = g_perfmon.GetFrame();
 		// Dump the texture in 32 bits format. It helps to debug texture shuffle effect
 		// It will breaks the few games that really uses 16 bits RT
 		bool texture_shuffle = ((context->FRAME.PSM & 0x2) && ((context->TEX0.PSM & 3) == 2) && (m_vt.m_primclass == GS_SPRITE_CLASS));
@@ -597,7 +597,7 @@ void GSRendererSW::Sync(int reason)
 {
 	//printf("sync %d\n", reason);
 
-	GSPerfMonAutoTimer pmat(&m_perfmon, GSPerfMon::Sync);
+	GSPerfMonAutoTimer pmat(&g_perfmon, GSPerfMon::Sync);
 
 	u64 t = __rdtsc();
 
@@ -609,14 +609,14 @@ void GSRendererSW::Sync(int reason)
 
 		if (s_save)
 		{
-			s = format("%05d_f%lld_rt1_%05x_%s.bmp", s_n, m_perfmon.GetFrame(), m_context->FRAME.Block(), psm_str(m_context->FRAME.PSM));
+			s = format("%05d_f%lld_rt1_%05x_%s.bmp", s_n, g_perfmon.GetFrame(), m_context->FRAME.Block(), psm_str(m_context->FRAME.PSM));
 
 			m_mem.SaveBMP(m_dump_root + s, m_context->FRAME.Block(), m_context->FRAME.FBW, m_context->FRAME.PSM, GetFrameRect().width(), 512);
 		}
 
 		if (s_savez)
 		{
-			s = format("%05d_f%lld_zb1_%05x_%s.bmp", s_n, m_perfmon.GetFrame(), m_context->ZBUF.Block(), psm_str(m_context->ZBUF.PSM));
+			s = format("%05d_f%lld_zb1_%05x_%s.bmp", s_n, g_perfmon.GetFrame(), m_context->ZBUF.Block(), psm_str(m_context->ZBUF.PSM));
 
 			m_mem.SaveBMP(m_dump_root + s, m_context->ZBUF.Block(), m_context->FRAME.FBW, m_context->ZBUF.PSM, GetFrameRect().width(), 512);
 		}
@@ -632,7 +632,7 @@ void GSRendererSW::Sync(int reason)
 		fflush(s_fp);
 	}
 
-	m_perfmon.Put(GSPerfMon::Fillrate, pixels);
+	g_perfmon.Put(GSPerfMon::Fillrate, pixels);
 }
 
 void GSRendererSW::InvalidateVideoMem(const GIFRegBITBLTBUF& BITBLTBUF, const GSVector4i& r)
@@ -1556,7 +1556,7 @@ void GSRendererSW::SharedData::UpdateSource()
 
 	if (m_parent->s_dump)
 	{
-		u64 frame = m_parent->m_perfmon.GetFrame();
+		u64 frame = g_perfmon.GetFrame();
 
 		std::string s;
 
