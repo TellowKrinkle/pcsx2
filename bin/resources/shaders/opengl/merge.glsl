@@ -1,13 +1,11 @@
 //#version 420 // Keep it for editor detection
 
-struct PSInStruct
+in SHADER
 {
     vec4 p;
     vec2 t;
     vec4 c;
-};
-
-layout(location = 0) in PSInStruct PSin;
+} PSin;
 
 #ifdef FRAGMENT_SHADER
 

@@ -391,15 +391,14 @@ bool GSDeviceOGL::Create(const WindowInfo& wi)
 		if (!shader.has_value())
 			return false;
 
-		vs = m_shader->Compile("convert.glsl", "vs_main", GL_VERTEX_SHADER, m_shader_common_header, shader->c_str());
+		vs = m_shader->CompileShader("convert.glsl", "vs_main", GL_VERTEX_SHADER, m_shader_common_header, shader->c_str());
 
 		m_convert.vs = vs;
 		for (size_t i = 0; i < std::size(m_convert.ps); i++)
 		{
 			const char* name = shaderName(static_cast<ShaderConvert>(i));
-			ps = m_shader->Compile("convert.glsl", name, GL_FRAGMENT_SHADER, m_shader_common_header, shader->c_str());
-			std::string pretty_name = std::string("Convert pipe ") + name;
-			m_convert.ps[i] = m_shader->LinkPipeline(pretty_name, vs, 0, ps);
+			ps = m_shader->CompileShader("convert.glsl", name, GL_FRAGMENT_SHADER, m_shader_common_header, shader->c_str());
+			m_convert.ps[i] = m_shader->LinkProgram(vs, 0, ps);
 		}
 
 		PSSamplerSelector point;
@@ -429,9 +428,8 @@ bool GSDeviceOGL::Create(const WindowInfo& wi)
 
 		for (size_t i = 0; i < std::size(m_merge_obj.ps); i++)
 		{
-			ps = m_shader->Compile("merge.glsl", format("ps_main%d", i), GL_FRAGMENT_SHADER, m_shader_common_header, shader->c_str());
-			std::string pretty_name = "Merge pipe " + std::to_string(i);
-			m_merge_obj.ps[i] = m_shader->LinkPipeline(pretty_name, vs, 0, ps);
+			ps = m_shader->CompileShader("merge.glsl", format("ps_main%d", i), GL_FRAGMENT_SHADER, m_shader_common_header, shader->c_str());
+			m_merge_obj.ps[i] = m_shader->LinkProgram(vs, 0, ps);
 		}
 	}
 
@@ -449,9 +447,8 @@ bool GSDeviceOGL::Create(const WindowInfo& wi)
 
 		for (size_t i = 0; i < std::size(m_interlace.ps); i++)
 		{
-			ps = m_shader->Compile("interlace.glsl", format("ps_main%d", i), GL_FRAGMENT_SHADER, m_shader_common_header, shader->c_str());
-			std::string pretty_name = "Interlace pipe " + std::to_string(i);
-			m_interlace.ps[i] = m_shader->LinkPipeline(pretty_name, vs, 0, ps);
+			ps = m_shader->CompileShader("interlace.glsl", format("ps_main%d", i), GL_FRAGMENT_SHADER, m_shader_common_header, shader->c_str());
+			m_interlace.ps[i] = m_shader->LinkProgram(vs, 0, ps);
 		}
 	}
 
@@ -472,8 +469,8 @@ bool GSDeviceOGL::Create(const WindowInfo& wi)
 		if (!shader.has_value())
 			return false;
 
-		ps = m_shader->Compile("shadeboost.glsl", "ps_main", GL_FRAGMENT_SHADER, m_shader_common_header, shader->c_str(), shade_macro);
-		m_shadeboost.ps = m_shader->LinkPipeline("ShadeBoost pipe", vs, 0, ps);
+		ps = m_shader->CompileShader("shadeboost.glsl", "ps_main", GL_FRAGMENT_SHADER, m_shader_common_header, shader->c_str(), shade_macro);
+		m_shadeboost.ps = m_shader->LinkProgram(vs, 0, ps);
 	}
 
 	// ****************************************************************
@@ -1352,7 +1349,7 @@ void GSDeviceOGL::StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture
 
 	GSVector2i ds = dTex->GetSize();
 
-	m_shader->BindPipeline(ps);
+	m_shader->BindProgram(ps);
 
 	// ************************************
 	// om
@@ -1440,7 +1437,7 @@ void GSDeviceOGL::RenderOsd(GSTexture* dt)
 {
 	BeginScene();
 
-	m_shader->BindPipeline(m_convert.ps[static_cast<int>(ShaderConvert::OSD)]);
+	m_shader->BindProgram(m_convert.ps[static_cast<int>(ShaderConvert::OSD)]);
 
 
 	OMSetDepthStencilState(m_convert.dss);
@@ -1570,8 +1567,8 @@ void GSDeviceOGL::DoFXAA(GSTexture* sTex, GSTexture* dTex)
 		if (!shader.has_value())
 			return;
 
-		GLuint ps = m_shader->Compile("fxaa.fx", "ps_main", GL_FRAGMENT_SHADER, m_shader_common_header, shader->c_str(), fxaa_macro);
-		m_fxaa.ps = m_shader->LinkPipeline("FXAA pipe", m_convert.vs, 0, ps);
+		GLuint ps = m_shader->CompileShader("fxaa.fx", "ps_main", GL_FRAGMENT_SHADER, m_shader_common_header, shader->c_str(), fxaa_macro);
+		m_fxaa.ps = m_shader->LinkProgram(m_convert.vs, 0, ps);
 	}
 
 	GL_PUSH("DoFxaa");
@@ -1617,8 +1614,8 @@ void GSDeviceOGL::DoExternalFX(GSTexture* sTex, GSTexture* dTex)
 
 
 		m_shaderfx.cb = new GSUniformBufferOGL("eFX UBO", g_fx_cb_index, sizeof(ExternalFXConstantBuffer));
-		GLuint ps = m_shader->Compile("Extra", "ps_main", GL_FRAGMENT_SHADER, m_shader_common_header, shader.str().c_str(), config.str());
-		m_shaderfx.ps = m_shader->LinkPipeline("eFX pipie", m_convert.vs, 0, ps);
+		GLuint ps = m_shader->CompileShader("Extra", "ps_main", GL_FRAGMENT_SHADER, m_shader_common_header, shader.str().c_str(), config.str());
+		m_shaderfx.ps = m_shader->LinkProgram(m_convert.vs, 0, ps);
 	}
 
 	GL_PUSH("DoExternalFX");
@@ -1665,7 +1662,7 @@ void GSDeviceOGL::SetupDATE(GSTexture* rt, GSTexture* ds, const GSVertexPT1* ver
 
 	ClearStencil(ds, 0);
 
-	m_shader->BindPipeline(m_convert.ps[static_cast<int>(datm ? ShaderConvert::DATM_1 : ShaderConvert::DATM_0)]);
+	m_shader->BindProgram(m_convert.ps[static_cast<int>(datm ? ShaderConvert::DATM_1 : ShaderConvert::DATM_0)]);
 
 	// om
 
