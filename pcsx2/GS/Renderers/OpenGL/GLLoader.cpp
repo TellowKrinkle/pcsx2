@@ -223,7 +223,7 @@ namespace GLLoader
 			vendor_id_amd = true;
 		else if (strstr(vendor, "NVIDIA Corporation"))
 			vendor_id_nvidia = true;
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__APPLE__)
 		else if (strstr(vendor, "Intel"))
 			vendor_id_intel = true;
 #else
