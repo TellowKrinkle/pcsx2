@@ -1249,6 +1249,7 @@ void GSApp::Init()
 	m_default_configuration["fxaa"]                                       = "0";
 	m_default_configuration["HWDisableReadbacks"]                         = "0";
 	m_default_configuration["IntegerScaling"]                             = "0";
+	m_default_configuration["fulldepth"]                                  = "0";
 	m_default_configuration["interlace"]                                  = "7";
 	m_default_configuration["conservative_framebuffer"]                   = "1";
 	m_default_configuration["linear_present"]                             = "1";
