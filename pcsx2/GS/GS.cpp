@@ -1130,6 +1130,7 @@ void GSApp::Init()
 	m_default_configuration["extrathreads_height"]                        = "4";
 	m_default_configuration["filter"]                                     = std::to_string(static_cast<s8>(BiFiltering::PS2));
 	m_default_configuration["fxaa"]                                       = "0";
+	m_default_configuration["fulldepth"]                                  = "0";
 	m_default_configuration["interlace"]                                  = "7";
 	m_default_configuration["conservative_framebuffer"]                   = "1";
 	m_default_configuration["linear_present"]                             = "1";
