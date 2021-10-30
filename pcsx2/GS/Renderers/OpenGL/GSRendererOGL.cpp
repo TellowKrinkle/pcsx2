@@ -151,7 +151,7 @@ void GSRendererOGL::EmulateZbuffer()
 		}
 	}
 
-	if (!GLLoader::found_GL_ARB_clip_control) {
+	if (!GLLoader::found_GL_ARB_clip_control && !theApp.GetConfigB("fulldepth")) {
 		// With (-1, 1) depth, we don't have the spare precision to be using 32-bit depth for everything
 		vs_cb.MaxDepth = GSVector2i(max_z);
 	}
