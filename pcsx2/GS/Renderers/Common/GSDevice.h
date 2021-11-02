@@ -235,10 +235,6 @@ public:
 
 	void StretchRect(GSTexture* sTex, GSTexture* dTex, const GSVector4& dRect, ShaderConvert shader = ShaderConvert::COPY, bool linear = true);
 
-	virtual void PSSetShaderResources(GSTexture* sr0, GSTexture* sr1) {}
-	virtual void PSSetShaderResource(int i, GSTexture* sRect) {}
-	virtual void OMSetRenderTargets(GSTexture* rt, GSTexture* ds, const GSVector4i* scissor = NULL) {}
-
 	GSTexture* GetCurrent();
 
 	void Merge(GSTexture* sTex[3], GSVector4* sRect, GSVector4* dRect, const GSVector2i& fs, const GSRegPMODE& PMODE, const GSRegEXTBUF& EXTBUF, const GSVector4& c);
