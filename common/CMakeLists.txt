@@ -60,7 +60,20 @@ target_sources(common PRIVATE
 	Linux/LnxMisc.cpp
 	Windows/WinThreads.cpp
 	Windows/WinHostSys.cpp
-	Windows/WinMisc.cpp)
+	Windows/WinMisc.cpp
+	Vulkan/StagingBuffer.cpp
+	Vulkan/ShaderCache.cpp
+	Vulkan/StagingTexture.cpp
+	Vulkan/Texture.cpp
+	Vulkan/Loader.cpp
+	Vulkan/ShaderCompiler.cpp
+	Vulkan/Util.cpp
+	Vulkan/SwapChain.cpp
+	Vulkan/StreamBuffer.cpp
+	Vulkan/Context.cpp
+	Vulkan/Builders.cpp
+	Vulkan/vk_mem_alloc.cpp
+	)
 
 # x86emitter headers
 target_sources(common PRIVATE
@@ -126,6 +139,18 @@ target_sources(common PRIVATE
 	emitter/tools.h
 	emitter/x86emitter.h
 	emitter/x86types.h
+	Vulkan/Context.h
+	Vulkan/Texture.h
+	Vulkan/ShaderCompiler.h
+	Vulkan/SwapChain.h
+	Vulkan/Builders.h
+	Vulkan/StagingTexture.h
+	Vulkan/StreamBuffer.h
+	Vulkan/ShaderCache.h
+	Vulkan/EntryPoints.h
+	Vulkan/StagingBuffer.h
+	Vulkan/Loader.h
+	Vulkan/Util.h
 	)
 
 if(USE_VTUNE)
@@ -164,6 +189,7 @@ else()
 			GL/ContextEGLX11.cpp
 			GL/ContextEGLX11.h
 		)
+		target_compile_definitions(common PUBLIC "VULKAN_USE_X11=1")
 		if(TARGET PkgConfig::XRANDR)
 			target_link_libraries(common PRIVATE PkgConfig::XRANDR)
 			target_compile_definitions(common PRIVATE "HAS_XRANDR=1")
@@ -175,7 +201,8 @@ else()
 			GL/ContextEGLWayland.cpp
 			GL/ContextEGLWayland.h
 		)
-	  target_link_libraries(common PRIVATE ${WAYLAND_EGL_LIBRARIES})
+		target_link_libraries(common PRIVATE ${WAYLAND_EGL_LIBRARIES})
+		target_compile_definitions(common PUBLIC "VULKAN_USE_WAYLAND=1")
 	endif()
 endif()
 
@@ -184,7 +211,7 @@ if (USE_GCC AND CMAKE_INTERPROCEDURAL_OPTIMIZATION)
 	set_source_files_properties(FastJmp.cpp PROPERTIES COMPILE_FLAGS -fno-lto)
 endif()
 
-target_link_libraries(common PRIVATE ${LIBC_LIBRARIES} PUBLIC wxWidgets::all glad)
+target_link_libraries(common PRIVATE ${LIBC_LIBRARIES} PUBLIC wxWidgets::all glad glslang)
 target_compile_features(common PUBLIC cxx_std_17)
 target_include_directories(common PUBLIC ../3rdparty/include ../)
 target_compile_definitions(common PUBLIC "${PCSX2_DEFS}")
