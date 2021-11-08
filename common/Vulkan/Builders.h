@@ -199,6 +199,8 @@ namespace Vulkan
 		void AddSamplerDescriptorWrites(VkDescriptorSet set, u32 binding, const VkSampler* samplers, u32 num_samplers);
 		void AddCombinedImageSamplerDescriptorWrite(VkDescriptorSet set, u32 binding, VkImageView view, VkSampler sampler,
 			VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		void AddCombinedImageSamplerDescriptorWrites(VkDescriptorSet set, u32 binding, const VkImageView* views, const VkSampler* samplers,
+			u32 num_views, VkImageLayout layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		void AddBufferDescriptorWrite(VkDescriptorSet set, u32 binding, VkDescriptorType dtype, VkBuffer buffer, u32 offset,
 			u32 size);
 		void AddBufferViewDescriptorWrite(VkDescriptorSet set, u32 binding, VkDescriptorType dtype, VkBufferView view);

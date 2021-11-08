@@ -359,12 +359,10 @@ layout(location = 0) in VSOutput
 layout(location = 0, index = 0) out vec4 o_col0;
 layout(location = 0, index = 1) out vec4 o_col1;
 
-layout(set = 1, binding = 0) uniform texture2D Texture;
-layout(set = 1, binding = 1) uniform texture2D Palette;
-layout(set = 1, binding = 2) uniform texture2D RtSampler;
-layout(set = 1, binding = 3) uniform texture2D RawTexture;
-layout(set = 2, binding = 0) uniform sampler TextureSampler;
-layout(set = 2, binding = 1) uniform sampler PaletteSampler;
+layout(set = 1, binding = 0) uniform sampler2D Texture;
+layout(set = 1, binding = 1) uniform sampler2D Palette;
+layout(set = 2, binding = 0) uniform texture2D RtSampler;
+layout(set = 2, binding = 1) uniform texture2D RawTexture;
 
 
 vec4 sample_c(vec2 uv)
@@ -379,12 +377,12 @@ vec4 sample_c(vec2 uv)
 		uv = (trunc(uv * WH.zw) + vec2(0.5, 0.5)) / WH.zw;
 #endif
 
-	return texture(sampler2D(Texture, TextureSampler), uv);
+	return texture(Texture, uv);
 }
 
 vec4 sample_p(float u)
 {
-	return texture(sampler2D(Palette, PaletteSampler), vec2(u, 0.0f));
+	return texture(Palette, vec2(u, 0.0f));
 }
 
 vec4 clamp_wrap_uv(vec4 uv)

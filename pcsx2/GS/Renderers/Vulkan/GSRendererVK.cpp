@@ -770,7 +770,6 @@ void GSRendererVK::EmulateTextureSampler(const GSTextureCache::Source* tex)
 	bool ltf = bilinear && !shader_emulated_sampler;
 
 	GSDeviceVK::SamplerSelector ss0(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, 0);
-	GSDeviceVK::SamplerSelector ss1(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, 0);
 
 	if (m_p_sel.ps.tfx != 4)
 	{
@@ -786,7 +785,6 @@ void GSRendererVK::EmulateTextureSampler(const GSTextureCache::Source* tex)
 	}
 
 	GetDeviceVK()->PSSetSampler(0, ss0);
-	GetDeviceVK()->PSSetSampler(1, ss1);
 }
 
 void GSRendererVK::ResetStates()

@@ -1092,20 +1092,20 @@ bool GSDeviceVK::CreatePipelineLayouts()
 	if ((m_tfx_ubo_ds_layout = dslb.Create(dev)) == VK_NULL_HANDLE)
 		return false;
 	Vulkan::Util::SetObjectName(dev, m_tfx_ubo_ds_layout, "TFX UBO descriptor layout");
-	for (u32 i = 0; i < NUM_TFX_TEXTURES; i++)
-		dslb.AddBinding(i, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
-	if ((m_tfx_texture_ds_layout = dslb.Create(dev)) == VK_NULL_HANDLE)
-		return false;
-	Vulkan::Util::SetObjectName(dev, m_tfx_texture_ds_layout, "TFX texture descriptor layout");
 	for (u32 i = 0; i < NUM_TFX_SAMPLERS; i++)
-		dslb.AddBinding(i, VK_DESCRIPTOR_TYPE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
+		dslb.AddBinding(i, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
 	if ((m_tfx_sampler_ds_layout = dslb.Create(dev)) == VK_NULL_HANDLE)
 		return false;
 	Vulkan::Util::SetObjectName(dev, m_tfx_sampler_ds_layout, "TFX sampler descriptor layout");
+	for (u32 i = 0; i < NUM_TFX_RT_TEXTURES; i++)
+		dslb.AddBinding(i, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
+	if ((m_tfx_rt_texture_ds_layout = dslb.Create(dev)) == VK_NULL_HANDLE)
+		return false;
+	Vulkan::Util::SetObjectName(dev, m_tfx_rt_texture_ds_layout, "TFX RT texture descriptor layout");
 
 	plb.AddDescriptorSet(m_tfx_ubo_ds_layout);
-	plb.AddDescriptorSet(m_tfx_texture_ds_layout);
 	plb.AddDescriptorSet(m_tfx_sampler_ds_layout);
+	plb.AddDescriptorSet(m_tfx_rt_texture_ds_layout);
 	if ((m_tfx_pipeline_layout = plb.Create(dev)) == VK_NULL_HANDLE)
 		return false;
 	Vulkan::Util::SetObjectName(dev, m_tfx_pipeline_layout, "TFX pipeline layout");
@@ -1445,8 +1445,8 @@ void GSDeviceVK::DestroyResources()
 	m_texture_upload_buffer.Destroy(false);
 
 	Vulkan::Util::SafeDestroyPipelineLayout(m_tfx_pipeline_layout);
+	Vulkan::Util::SafeDestroyDescriptorSetLayout(m_tfx_rt_texture_ds_layout);
 	Vulkan::Util::SafeDestroyDescriptorSetLayout(m_tfx_sampler_ds_layout);
-	Vulkan::Util::SafeDestroyDescriptorSetLayout(m_tfx_texture_ds_layout);
 	Vulkan::Util::SafeDestroyDescriptorSetLayout(m_tfx_ubo_ds_layout);
 	Vulkan::Util::SafeDestroyPipelineLayout(m_utility_pipeline_layout);
 	Vulkan::Util::SafeDestroyDescriptorSetLayout(m_utility_ds_layout);
@@ -1759,9 +1759,9 @@ void GSDeviceVK::ExecuteCommandBufferAndRestartRenderPass(const char* reason)
 
 void GSDeviceVK::InvalidateCachedState()
 {
-	m_dirty_flags |= DIRTY_FLAG_TFX_TEXTURES | DIRTY_FLAG_TFX_SAMPLERS | DIRTY_FLAG_TFX_DYNAMIC_OFFSETS |
+	m_dirty_flags |= DIRTY_FLAG_TFX_SAMPLERS_DS | DIRTY_FLAG_TFX_RT_TEXTURE_DS | DIRTY_FLAG_TFX_DYNAMIC_OFFSETS |
 					 DIRTY_FLAG_UTILITY_TEXTURE | DIRTY_FLAG_BLEND_CONSTANTS | DIRTY_FLAG_VERTEX_BUFFER | DIRTY_FLAG_INDEX_BUFFER | DIRTY_FLAG_VIEWPORT |
-					 DIRTY_FLAG_SCISSOR | DIRTY_FLAG_PIPELINE | DIRTY_FLAG_DESCRIPTOR_SETS;
+					 DIRTY_FLAG_SCISSOR | DIRTY_FLAG_PIPELINE;
 	if (m_vertex_buffer != VK_NULL_HANDLE)
 		m_dirty_flags |= DIRTY_FLAG_VERTEX_BUFFER;
 	if (m_index_buffer != VK_NULL_HANDLE)
@@ -1836,7 +1836,8 @@ void GSDeviceVK::PSSetShaderResource(int i, GSTexture* sr)
 		return;
 
 	m_tfx_textures[i] = view;
-	m_dirty_flags |= DIRTY_FLAG_TFX_TEXTURES;
+
+	m_dirty_flags |= (i < 2) ? DIRTY_FLAG_TFX_SAMPLERS_DS : DIRTY_FLAG_TFX_RT_TEXTURE_DS;
 }
 
 void GSDeviceVK::PSSetSampler(u32 index, SamplerSelector sel)
@@ -1846,7 +1847,7 @@ void GSDeviceVK::PSSetSampler(u32 index, SamplerSelector sel)
 
 	m_tfx_sampler_sel[index] = sel.key;
 	m_tfx_samplers[index] = GetSampler(sel);
-	m_dirty_flags |= DIRTY_FLAG_TFX_SAMPLERS;
+	m_dirty_flags |= DIRTY_FLAG_TFX_SAMPLERS_DS;
 }
 
 void GSDeviceVK::SetUtilityTexture(GSTexture* tex, VkSampler sampler)
@@ -1885,7 +1886,7 @@ void GSDeviceVK::UnbindTexture(VkImageView view)
 		if (m_tfx_textures[i] == view)
 		{
 			m_tfx_textures[i] = m_null_texture.GetView();
-			m_dirty_flags |= DIRTY_FLAG_TFX_TEXTURES;
+			m_dirty_flags |= (i < 2) ? DIRTY_FLAG_TFX_SAMPLERS_DS : DIRTY_FLAG_TFX_RT_TEXTURE_DS;
 		}
 	}
 	if (m_utility_texture == view)
@@ -2049,50 +2050,77 @@ bool GSDeviceVK::ApplyTFXState()
 
 	Vulkan::DescriptorSetUpdateBuilder dsub;
 
-	if ((flags & DIRTY_FLAG_TFX_TEXTURES) || m_tfx_descriptor_sets[1] == VK_NULL_HANDLE)
+	u32 dirty_descriptor_set_start = NUM_TFX_DESCRIPTOR_SETS;
+	u32 dirty_descriptor_set_end = 0;
+
+	if (flags & DIRTY_FLAG_TFX_DYNAMIC_OFFSETS)
 	{
-		VkDescriptorSet ds = g_vulkan_context->AllocateDescriptorSet(m_tfx_texture_ds_layout);
+		dirty_descriptor_set_start = 0;
+	}
+
+	if ((flags & DIRTY_FLAG_TFX_SAMPLERS_DS) || m_tfx_descriptor_sets[1] == VK_NULL_HANDLE)
+	{
+		VkDescriptorSet ds = g_vulkan_context->AllocateDescriptorSet(m_tfx_sampler_ds_layout);
 		if (ds == VK_NULL_HANDLE)
 		{
 			ExecuteCommandBufferAndRestartRenderPass("Ran out of TFX texture descriptors");
 			return ApplyTFXState();
 		}
 
-		dsub.AddImageDescriptorWrites(ds, 0, m_tfx_textures.data(), NUM_TFX_TEXTURES);
+		dsub.AddCombinedImageSamplerDescriptorWrites(ds, 0, m_tfx_textures.data(), m_tfx_samplers.data(), NUM_TFX_SAMPLERS);
 		dsub.Update(dev);
 
 		m_tfx_descriptor_sets[1] = ds;
-		flags |= DIRTY_FLAG_DESCRIPTOR_SETS;
+		dirty_descriptor_set_start = std::min(dirty_descriptor_set_start, 1u);
+		dirty_descriptor_set_end = 1u;
 	}
 
-	if (flags & DIRTY_FLAG_TFX_SAMPLERS)
+	if ((flags & DIRTY_FLAG_TFX_RT_TEXTURE_DS) || m_tfx_descriptor_sets[2] == VK_NULL_HANDLE)
 	{
-		VkDescriptorSet ds = g_vulkan_context->AllocateDescriptorSet(m_tfx_sampler_ds_layout);
+		VkDescriptorSet ds = g_vulkan_context->AllocateDescriptorSet(m_tfx_rt_texture_ds_layout);
 		if (ds == VK_NULL_HANDLE)
 		{
 			ExecuteCommandBufferAndRestartRenderPass("Ran out of TFX sampler descriptors");
 			return ApplyTFXState();
 		}
 
-		dsub.AddSamplerDescriptorWrites(ds, 0, m_tfx_samplers.data(), NUM_TFX_SAMPLERS);
+		dsub.AddImageDescriptorWrites(ds, 0, &m_tfx_textures[NUM_TFX_SAMPLERS], NUM_TFX_RT_TEXTURES);
 		dsub.Update(dev);
 
 		m_tfx_descriptor_sets[2] = ds;
-		flags |= DIRTY_FLAG_DESCRIPTOR_SETS;
+		dirty_descriptor_set_start = std::min(dirty_descriptor_set_start, 2u);
+		dirty_descriptor_set_end = 2u;
 	}
 
-	if (m_current_pipeline_layout != PipelineLayout::TFX || (flags & DIRTY_FLAG_DESCRIPTOR_SETS))
+	if (m_current_pipeline_layout != PipelineLayout::TFX)
 	{
-		vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_tfx_pipeline_layout,
-			0, NUM_TFX_DESCRIPTOR_SETS, m_tfx_descriptor_sets.data(),
-			NUM_TFX_DYNAMIC_OFFSETS, m_tfx_dynamic_offsets.data());
 		m_current_pipeline_layout = PipelineLayout::TFX;
-	}
-	else if (flags & DIRTY_FLAG_TFX_DYNAMIC_OFFSETS)
-	{
+
 		vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_tfx_pipeline_layout,
-			0, 0, nullptr, NUM_TFX_DYNAMIC_OFFSETS, m_tfx_dynamic_offsets.data());
+			0, NUM_TFX_DESCRIPTOR_SETS, m_tfx_descriptor_sets.data(), NUM_TFX_DYNAMIC_OFFSETS, m_tfx_dynamic_offsets.data());
 	}
+	else if (dirty_descriptor_set_start <= dirty_descriptor_set_end)
+	{
+		u32 dynamic_count;
+		const u32* dynamic_offsets;
+		if (dirty_descriptor_set_start == 0)
+		{
+			dynamic_count = NUM_TFX_DYNAMIC_OFFSETS;
+			dynamic_offsets = m_tfx_dynamic_offsets.data();
+		}
+		else
+		{
+			dynamic_count = 0;
+			dynamic_offsets = nullptr;
+		}
+
+		const u32 count = dirty_descriptor_set_end - dirty_descriptor_set_start + 1;
+
+		vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_tfx_pipeline_layout,
+			dirty_descriptor_set_start, count, &m_tfx_descriptor_sets[dirty_descriptor_set_start],
+			dynamic_count, dynamic_offsets);
+	}
+
 
 	ApplyBaseState(flags, cmdbuf);
 	return true;
@@ -2108,6 +2136,8 @@ bool GSDeviceVK::ApplyUtilityState()
 	u32 flags = m_dirty_flags;
 	m_dirty_flags &= ~DIRTY_UTILITY_STATE;
 
+	bool rebind = (m_current_pipeline_layout != PipelineLayout::Utility);
+
 	if ((flags & DIRTY_FLAG_UTILITY_TEXTURE) || m_utility_descriptor_set == VK_NULL_HANDLE)
 	{
 		m_utility_descriptor_set = g_vulkan_context->AllocateDescriptorSet(m_utility_ds_layout);
@@ -2120,16 +2150,16 @@ bool GSDeviceVK::ApplyUtilityState()
 		Vulkan::DescriptorSetUpdateBuilder dsub;
 		dsub.AddCombinedImageSamplerDescriptorWrite(m_utility_descriptor_set, 0, m_utility_texture, m_utility_sampler);
 		dsub.Update(dev);
-
-		flags |= DIRTY_FLAG_DESCRIPTOR_SETS;
+		rebind = true;
 	}
 
-	if (m_current_pipeline_layout != PipelineLayout::Utility || (flags & DIRTY_FLAG_DESCRIPTOR_SETS))
+	if (rebind)
 	{
 		vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, m_utility_pipeline_layout,
 			0, 1, &m_utility_descriptor_set, 0, nullptr);
-		m_current_pipeline_layout = PipelineLayout::Utility;
 	}
+
+	m_current_pipeline_layout = PipelineLayout::Utility;
 
 	ApplyBaseState(flags, cmdbuf);
 	return true;

@@ -538,6 +538,11 @@ namespace Vulkan
 	{
 		pxAssert(m_num_writes < MAX_WRITES && (m_num_image_infos + num_views) < MAX_IMAGE_INFOS);
 
+#if 1
+		// NOTE: This is deliberately split up - updating multiple descriptors in one write is broken on Adreno.
+		for (u32 i = 0; i < num_views; i++)
+			AddImageDescriptorWrite(set, binding + i, views[i], layout);
+#else
 		VkWriteDescriptorSet& dw = m_writes[m_num_writes++];
 		dw.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		dw.dstSet = set;
@@ -553,6 +558,7 @@ namespace Vulkan
 			ii.imageLayout = layout;
 			ii.sampler = VK_NULL_HANDLE;
 		}
+#endif
 	}
 
 	void DescriptorSetUpdateBuilder::AddSamplerDescriptorWrite(VkDescriptorSet set, u32 binding, VkSampler sampler)
@@ -613,6 +619,35 @@ namespace Vulkan
 		dw.descriptorCount = 1;
 		dw.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		dw.pImageInfo = &ii;
+	}
+
+	void DescriptorSetUpdateBuilder::AddCombinedImageSamplerDescriptorWrites(
+		VkDescriptorSet set, u32 binding, const VkImageView* views, const VkSampler* samplers,
+		u32 num_views, VkImageLayout layout /* = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL */)
+	{
+		pxAssert(m_num_writes < MAX_WRITES && (m_num_image_infos + num_views) < MAX_IMAGE_INFOS);
+
+#if 1
+		// NOTE: This is deliberately split up - updating multiple descriptors in one write is broken on Adreno.
+		for (u32 i = 0; i < num_views; i++)
+			AddCombinedImageSamplerDescriptorWrite(set, binding + i, views[i], samplers[i], layout);
+#else
+		VkWriteDescriptorSet& dw = m_writes[m_num_writes++];
+		dw.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		dw.dstSet = set;
+		dw.dstBinding = binding;
+		dw.descriptorCount = num_views;
+		dw.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		dw.pImageInfo = &m_image_infos[m_num_image_infos];
+
+		for (u32 i = 0; i < num_views; i++)
+		{
+			VkDescriptorImageInfo& ii = m_image_infos[m_num_image_infos++];
+			ii.imageView = views[i];
+			ii.sampler = samplers[i];
+			ii.imageLayout = layout;
+		}
+#endif
 	}
 
 	void DescriptorSetUpdateBuilder::AddBufferDescriptorWrite(VkDescriptorSet set, u32 binding, VkDescriptorType dtype,

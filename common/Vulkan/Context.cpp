@@ -19,8 +19,8 @@ std::unique_ptr<Vulkan::Context> g_vulkan_context;
 enum : u32
 {
 	MAX_DRAW_CALLS_PER_FRAME = 8192,
-	MAX_SAMPLED_IMAGE_DESCRIPTORS_PER_FRAME = 4 * MAX_DRAW_CALLS_PER_FRAME,
-	MAX_SAMPLERS_PER_FRAME = 2 * MAX_DRAW_CALLS_PER_FRAME,
+	MAX_COMBINED_IMAGE_SAMPLER_DESCRIPTORS_PER_FRAME = 2 * MAX_DRAW_CALLS_PER_FRAME,
+	MAX_SAMPLED_IMAGE_DESCRIPTORS_PER_FRAME = MAX_DRAW_CALLS_PER_FRAME,			// assume at least half our draws aren't going to be shuffle/blending
 	MAX_DESCRIPTOR_SETS_PER_FRAME = MAX_DRAW_CALLS_PER_FRAME * 2
 };
 
@@ -716,9 +716,8 @@ namespace Vulkan
 			Vulkan::Util::SetObjectName(g_vulkan_context->GetDevice(), resources.fence, "Frame Fence %u", frame_index);
 			// TODO: A better way to choose the number of descriptors.
 			VkDescriptorPoolSize pool_sizes[] = {
-				{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2048},
+				{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_COMBINED_IMAGE_SAMPLER_DESCRIPTORS_PER_FRAME},
 				{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, MAX_SAMPLED_IMAGE_DESCRIPTORS_PER_FRAME},
-				{VK_DESCRIPTOR_TYPE_SAMPLER, MAX_SAMPLERS_PER_FRAME},
 			};
 
 			VkDescriptorPoolCreateInfo pool_create_info = {VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
