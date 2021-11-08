@@ -108,9 +108,33 @@ void GSDrawScanline::EndDraw(uint64 frame, uint64 ticks, int actual, int total, 
 	m_ds_map.UpdateStats(frame, ticks, actual, total, prims);
 }
 
-#ifndef ENABLE_JIT_RASTERIZER
+static const int s_offsets[] = {0, 2, 8, 10, 16, 18, 24, 26}; // columnTable16[0]
 
-void GSDrawScanline::SetupPrim(const GSVertexSW* vertex, const uint32* index, const GSVertexSW& dscan)
+template <class T>
+void WritePixel(const T& src, int addr, int i, uint32 psm, const GSScanlineGlobalData& m_global)
+{
+	uint8* dst = (uint8*)m_global.vm + addr * 2 + s_offsets[i] * 2;
+
+	switch (psm)
+	{
+		case 0:
+			*(uint32*)dst = src.u32[i];
+			break;
+		case 1:
+			*(uint32*)dst = (src.u32[i] & 0xffffff) | (*(uint32*)dst & 0xff000000);
+			break;
+		case 2:
+			*(uint16*)dst = src.u16[i * 2];
+			break;
+	}
+}
+
+template <class T>
+bool TestAlpha(T& test, T& fm, T& zm, const T& ga, const GSScanlineGlobalData& m_global);
+
+//#ifndef ENABLE_JIT_RASTERIZER
+
+void GSDSSetupPrim(const GSVertexSW* vertex, const uint32* index, const GSVertexSW& dscan, const GSScanlineGlobalData& m_global, GSScanlineLocalData& m_local)
 {
 	GSScanlineSelector sel = m_global.sel;
 
@@ -424,7 +448,7 @@ void GSDrawScanline::SetupPrim(const GSVertexSW* vertex, const uint32* index, co
 #endif
 }
 
-void GSDrawScanline::DrawScanline(int pixels, int left, int top, const GSVertexSW& scan)
+void GSDSDrawScanline(int pixels, int left, int top, const GSVertexSW& scan, const GSScanlineGlobalData& m_global, GSScanlineLocalData& m_local)
 {
 	GSScanlineSelector sel = m_global.sel;
 
@@ -1090,7 +1114,7 @@ void GSDrawScanline::DrawScanline(int pixels, int left, int top, const GSVertexS
 
 			// TestAlpha
 
-			if (!TestAlpha(test, fm, zm, ga))
+			if (!TestAlpha(test, fm, zm, ga, m_global))
 				continue;
 
 			// ColorTFX
@@ -1241,14 +1265,14 @@ void GSDrawScanline::DrawScanline(int pixels, int left, int top, const GSVertexS
 					}
 					else
 					{
-						WritePixel(zs, za, 0, sel.zpsm);
-						WritePixel(zs, za, 1, sel.zpsm);
-						WritePixel(zs, za, 2, sel.zpsm);
-						WritePixel(zs, za, 3, sel.zpsm);
-						WritePixel(zs, za, 4, sel.zpsm);
-						WritePixel(zs, za, 5, sel.zpsm);
-						WritePixel(zs, za, 6, sel.zpsm);
-						WritePixel(zs, za, 7, sel.zpsm);
+						WritePixel(zs, za, 0, sel.zpsm, m_global);
+						WritePixel(zs, za, 1, sel.zpsm, m_global);
+						WritePixel(zs, za, 2, sel.zpsm, m_global);
+						WritePixel(zs, za, 3, sel.zpsm, m_global);
+						WritePixel(zs, za, 4, sel.zpsm, m_global);
+						WritePixel(zs, za, 5, sel.zpsm, m_global);
+						WritePixel(zs, za, 6, sel.zpsm, m_global);
+						WritePixel(zs, za, 7, sel.zpsm, m_global);
 					}
 				}
 				else
@@ -1262,14 +1286,14 @@ void GSDrawScanline::DrawScanline(int pixels, int left, int top, const GSVertexS
 					}
 					else
 					{
-						if (fzm & 0x00000300) WritePixel(zs, za, 0, sel.zpsm);
-						if (fzm & 0x00000c00) WritePixel(zs, za, 1, sel.zpsm);
-						if (fzm & 0x00003000) WritePixel(zs, za, 2, sel.zpsm);
-						if (fzm & 0x0000c000) WritePixel(zs, za, 3, sel.zpsm);
-						if (fzm & 0x03000000) WritePixel(zs, za, 4, sel.zpsm);
-						if (fzm & 0x0c000000) WritePixel(zs, za, 5, sel.zpsm);
-						if (fzm & 0x30000000) WritePixel(zs, za, 6, sel.zpsm);
-						if (fzm & 0xc0000000) WritePixel(zs, za, 7, sel.zpsm);
+						if (fzm & 0x00000300) WritePixel(zs, za, 0, sel.zpsm, m_global);
+						if (fzm & 0x00000c00) WritePixel(zs, za, 1, sel.zpsm, m_global);
+						if (fzm & 0x00003000) WritePixel(zs, za, 2, sel.zpsm, m_global);
+						if (fzm & 0x0000c000) WritePixel(zs, za, 3, sel.zpsm, m_global);
+						if (fzm & 0x03000000) WritePixel(zs, za, 4, sel.zpsm, m_global);
+						if (fzm & 0x0c000000) WritePixel(zs, za, 5, sel.zpsm, m_global);
+						if (fzm & 0x30000000) WritePixel(zs, za, 6, sel.zpsm, m_global);
+						if (fzm & 0xc0000000) WritePixel(zs, za, 7, sel.zpsm, m_global);
 					}
 				}
 			}
@@ -1450,14 +1474,14 @@ void GSDrawScanline::DrawScanline(int pixels, int left, int top, const GSVertexS
 					}
 					else
 					{
-						WritePixel(fs, fa, 0, sel.fpsm);
-						WritePixel(fs, fa, 1, sel.fpsm);
-						WritePixel(fs, fa, 2, sel.fpsm);
-						WritePixel(fs, fa, 3, sel.fpsm);
-						WritePixel(fs, fa, 4, sel.fpsm);
-						WritePixel(fs, fa, 5, sel.fpsm);
-						WritePixel(fs, fa, 6, sel.fpsm);
-						WritePixel(fs, fa, 7, sel.fpsm);
+						WritePixel(fs, fa, 0, sel.fpsm, m_global);
+						WritePixel(fs, fa, 1, sel.fpsm, m_global);
+						WritePixel(fs, fa, 2, sel.fpsm, m_global);
+						WritePixel(fs, fa, 3, sel.fpsm, m_global);
+						WritePixel(fs, fa, 4, sel.fpsm, m_global);
+						WritePixel(fs, fa, 5, sel.fpsm, m_global);
+						WritePixel(fs, fa, 6, sel.fpsm, m_global);
+						WritePixel(fs, fa, 7, sel.fpsm, m_global);
 					}
 				}
 				else
@@ -1471,14 +1495,14 @@ void GSDrawScanline::DrawScanline(int pixels, int left, int top, const GSVertexS
 					}
 					else
 					{
-						if (fzm & 0x00000003) WritePixel(fs, fa, 0, sel.fpsm);
-						if (fzm & 0x0000000c) WritePixel(fs, fa, 1, sel.fpsm);
-						if (fzm & 0x00000030) WritePixel(fs, fa, 2, sel.fpsm);
-						if (fzm & 0x000000c0) WritePixel(fs, fa, 3, sel.fpsm);
-						if (fzm & 0x00030000) WritePixel(fs, fa, 4, sel.fpsm);
-						if (fzm & 0x000c0000) WritePixel(fs, fa, 5, sel.fpsm);
-						if (fzm & 0x00300000) WritePixel(fs, fa, 6, sel.fpsm);
-						if (fzm & 0x00c00000) WritePixel(fs, fa, 7, sel.fpsm);
+						if (fzm & 0x00000003) WritePixel(fs, fa, 0, sel.fpsm, m_global);
+						if (fzm & 0x0000000c) WritePixel(fs, fa, 1, sel.fpsm, m_global);
+						if (fzm & 0x00000030) WritePixel(fs, fa, 2, sel.fpsm, m_global);
+						if (fzm & 0x000000c0) WritePixel(fs, fa, 3, sel.fpsm, m_global);
+						if (fzm & 0x00030000) WritePixel(fs, fa, 4, sel.fpsm, m_global);
+						if (fzm & 0x000c0000) WritePixel(fs, fa, 5, sel.fpsm, m_global);
+						if (fzm & 0x00300000) WritePixel(fs, fa, 6, sel.fpsm, m_global);
+						if (fzm & 0x00c00000) WritePixel(fs, fa, 7, sel.fpsm, m_global);
 					}
 				}
 			}
@@ -2230,7 +2254,7 @@ void GSDrawScanline::DrawScanline(int pixels, int left, int top, const GSVertexS
 
 			// TestAlpha
 
-			if (!TestAlpha(test, fm, zm, ga))
+			if (!TestAlpha(test, fm, zm, ga, m_global))
 				continue;
 
 			// ColorTFX
@@ -2381,10 +2405,10 @@ void GSDrawScanline::DrawScanline(int pixels, int left, int top, const GSVertexS
 					}
 					else
 					{
-						WritePixel(zs, za, 0, sel.zpsm);
-						WritePixel(zs, za, 1, sel.zpsm);
-						WritePixel(zs, za, 2, sel.zpsm);
-						WritePixel(zs, za, 3, sel.zpsm);
+						WritePixel(zs, za, 0, sel.zpsm, m_global);
+						WritePixel(zs, za, 1, sel.zpsm, m_global);
+						WritePixel(zs, za, 2, sel.zpsm, m_global);
+						WritePixel(zs, za, 3, sel.zpsm, m_global);
 					}
 				}
 				else
@@ -2396,10 +2420,10 @@ void GSDrawScanline::DrawScanline(int pixels, int left, int top, const GSVertexS
 					}
 					else
 					{
-						if (fzm & 0x0300) WritePixel(zs, za, 0, sel.zpsm);
-						if (fzm & 0x0c00) WritePixel(zs, za, 1, sel.zpsm);
-						if (fzm & 0x3000) WritePixel(zs, za, 2, sel.zpsm);
-						if (fzm & 0xc000) WritePixel(zs, za, 3, sel.zpsm);
+						if (fzm & 0x0300) WritePixel(zs, za, 0, sel.zpsm, m_global);
+						if (fzm & 0x0c00) WritePixel(zs, za, 1, sel.zpsm, m_global);
+						if (fzm & 0x3000) WritePixel(zs, za, 2, sel.zpsm, m_global);
+						if (fzm & 0xc000) WritePixel(zs, za, 3, sel.zpsm, m_global);
 					}
 				}
 			}
@@ -2578,10 +2602,10 @@ void GSDrawScanline::DrawScanline(int pixels, int left, int top, const GSVertexS
 					}
 					else
 					{
-						WritePixel(fs, fa, 0, sel.fpsm);
-						WritePixel(fs, fa, 1, sel.fpsm);
-						WritePixel(fs, fa, 2, sel.fpsm);
-						WritePixel(fs, fa, 3, sel.fpsm);
+						WritePixel(fs, fa, 0, sel.fpsm, m_global);
+						WritePixel(fs, fa, 1, sel.fpsm, m_global);
+						WritePixel(fs, fa, 2, sel.fpsm, m_global);
+						WritePixel(fs, fa, 3, sel.fpsm, m_global);
 					}
 				}
 				else
@@ -2593,10 +2617,10 @@ void GSDrawScanline::DrawScanline(int pixels, int left, int top, const GSVertexS
 					}
 					else
 					{
-						if (fzm & 0x0003) WritePixel(fs, fa, 0, sel.fpsm);
-						if (fzm & 0x000c) WritePixel(fs, fa, 1, sel.fpsm);
-						if (fzm & 0x0030) WritePixel(fs, fa, 2, sel.fpsm);
-						if (fzm & 0x00c0) WritePixel(fs, fa, 3, sel.fpsm);
+						if (fzm & 0x0003) WritePixel(fs, fa, 0, sel.fpsm, m_global);
+						if (fzm & 0x000c) WritePixel(fs, fa, 1, sel.fpsm, m_global);
+						if (fzm & 0x0030) WritePixel(fs, fa, 2, sel.fpsm, m_global);
+						if (fzm & 0x00c0) WritePixel(fs, fa, 3, sel.fpsm, m_global);
 					}
 				}
 			}
@@ -2673,22 +2697,22 @@ void GSDrawScanline::DrawScanline(int pixels, int left, int top, const GSVertexS
 #endif
 }
 
-void GSDrawScanline::DrawEdge(int pixels, int left, int top, const GSVertexSW& scan)
-{
-	uint32 zwrite = m_global.sel.zwrite;
-	uint32 edge = m_global.sel.edge;
-
-	m_global.sel.zwrite = 0;
-	m_global.sel.edge = 1;
-
-	DrawScanline(pixels, left, top, scan);
-
-	m_global.sel.zwrite = zwrite;
-	m_global.sel.edge = edge;
-}
+//void GSDrawScanline::DrawEdge(int pixels, int left, int top, const GSVertexSW& scan)
+//{
+//	uint32 zwrite = m_global.sel.zwrite;
+//	uint32 edge = m_global.sel.edge;
+//
+//	m_global.sel.zwrite = 0;
+//	m_global.sel.edge = 1;
+//
+//	DrawScanline(pixels, left, top, scan);
+//
+//	m_global.sel.zwrite = zwrite;
+//	m_global.sel.edge = edge;
+//}
 
 template <class T>
-bool GSDrawScanline::TestAlpha(T& test, T& fm, T& zm, const T& ga)
+bool TestAlpha(T& test, T& fm, T& zm, const T& ga, const GSScanlineGlobalData& m_global)
 {
 	GSScanlineSelector sel = m_global.sel;
 
@@ -2771,28 +2795,7 @@ bool GSDrawScanline::TestAlpha(T& test, T& fm, T& zm, const T& ga)
 	return true;
 }
 
-static const int s_offsets[] = {0, 2, 8, 10, 16, 18, 24, 26}; // columnTable16[0]
-
-template <class T>
-void GSDrawScanline::WritePixel(const T& src, int addr, int i, uint32 psm)
-{
-	uint8* dst = (uint8*)m_global.vm + addr * 2 + s_offsets[i] * 2;
-
-	switch (psm)
-	{
-		case 0:
-			*(uint32*)dst = src.u32[i];
-			break;
-		case 1:
-			*(uint32*)dst = (src.u32[i] & 0xffffff) | (*(uint32*)dst & 0xff000000);
-			break;
-		case 2:
-			*(uint16*)dst = src.u16[i * 2];
-			break;
-	}
-}
-
-#endif
+//#endif
 
 void GSDrawScanline::DrawRect(const GSVector4i& r, const GSVertexSW& v)
 {
