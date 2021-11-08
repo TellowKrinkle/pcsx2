@@ -24,6 +24,12 @@ GSRendererVK::GSRendererVK(std::unique_ptr<GSDevice> dev)
 {
 	m_sw_blending = theApp.GetConfigI("accurate_blending_unit_d3d11");
 
+	const int upscale_multiplier = theApp.GetConfigI("upscale_multiplier");
+	const bool has_large_points = g_vulkan_context->GetDeviceFeatures().largePoints;
+	const float* point_range = g_vulkan_context->GetDeviceLimits().pointSizeRange;
+	m_use_point_size = has_large_points && upscale_multiplier >= point_range[0] && upscale_multiplier <= point_range[1];
+	Console.WriteLn(m_use_point_size ? "Using point size for upscaled points" : "Using geometry shader for upscaled points");
+
 	ResetStates();
 }
 
@@ -45,7 +51,7 @@ void GSRendererVK::SetupIA(const float& sx, const float& sy)
 		case GS_POINT_CLASS:
 			if (unscale_pt_ln)
 			{
-				m_p_sel.gs.point = 1;
+				m_p_sel.gs.point = !m_use_point_size;
 				vs_cb.PointSize = GSVector2(16.0f * sx, 16.0f * sy);
 			}
 

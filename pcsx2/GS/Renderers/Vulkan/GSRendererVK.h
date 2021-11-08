@@ -31,6 +31,7 @@ class GSRendererVK final : public GSRendererHW
 
 private:
 	bool m_bind_rtsample;
+	bool m_use_point_size;
 
 private:
 	__fi GSDeviceVK* GetDeviceVK() { return static_cast<GSDeviceVK*>(m_dev.get()); }

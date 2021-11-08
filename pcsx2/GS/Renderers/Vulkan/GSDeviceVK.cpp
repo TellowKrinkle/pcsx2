@@ -1466,6 +1466,7 @@ VkShaderModule GSDeviceVK::GetTFXVertexShader(VSSelector sel)
 	AddMacro(ss, "VS_TME", sel.tme);
 	AddMacro(ss, "VS_FST", sel.fst);
 	AddMacro(ss, "VS_POINT", sel.point);
+	AddMacro(ss, "VS_POINT_SIZE", std::max(1, m_upscale_multiplier));
 	ss << m_tfx_source;
 
 	VkShaderModule mod = g_vulkan_shader_cache->GetVertexShader(ss.str());

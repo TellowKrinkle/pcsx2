@@ -71,7 +71,7 @@ void main()
 	#endif
 
 	#if VS_POINT
-		gl_PointSize = 1.0f;
+		gl_PointSize = VS_POINT_SIZE;
 	#endif
 
 	vsOut.c = a_c;
