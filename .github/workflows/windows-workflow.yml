@@ -111,7 +111,7 @@ jobs:
         run: |
           ARCH=$([ "${{ matrix.platform }}" == Win32 ] && echo "32bit" || echo "64bit")
           case "${{ matrix.configuration }}" in
-            Release) SIMD="SSE4";;
+            Release) SIMD="SSE2";;
             *AVX2)   SIMD="AVX2";;
             CMake)   SIMD="CMake"
                      cp build/pcsx2/PCSX2* bin/ ;;
