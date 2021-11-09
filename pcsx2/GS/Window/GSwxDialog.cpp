@@ -715,6 +715,8 @@ void Dialog::RendererChange()
 		m_adapter_select->Disable();
 	}
 	m_renderer_panel->UpdateBlendMode(renderer);
+
+	m_renderer_panel->Layout(); // The version of wx we use on Windows is dumb and something prevents relayout from happening to notebook pages
 #endif
 }
 
