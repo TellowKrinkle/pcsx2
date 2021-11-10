@@ -15,7 +15,6 @@
 
 #include "PrecompiledHeader.h"
 #include "GSwxDialog.h"
-#include "GS/resource.h"
 #include "gui/AppConfig.h"
 
 #ifdef _WIN32
