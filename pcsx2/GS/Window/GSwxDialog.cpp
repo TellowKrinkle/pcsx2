@@ -42,10 +42,8 @@ namespace
 		}
 	}
 
-	size_t get_config_index(const std::vector<GSSetting>& s, const char* str)
+	size_t get_config_index(const std::vector<GSSetting>& s, int value)
 	{
-		int value = theApp.GetConfigI(str);
-
 		for (size_t i = 0; i < s.size(); i++)
 		{
 			if (s[i].value == value)
@@ -193,7 +191,7 @@ void GSUIElementHolder::Load()
 			case UIElem::Type::Choice:
 			{
 				GSwxChoice* choice = static_cast<GSwxChoice*>(elem.control);
-				choice->SetSelection(get_config_index(choice->settings, elem.config));
+				choice->SetSelection(get_config_index(choice->settings, theApp.GetConfigI(elem.config)));
 				break;
 			}
 			case UIElem::Type::Spin:
@@ -722,6 +720,12 @@ void Dialog::RendererChange()
 void Dialog::Load()
 {
 	m_ui.Load();
+#ifdef _WIN32
+	GSRendererType renderer = GSRendererType(theApp.GetConfigI("Renderer"));
+	if (renderer == GSRendererType::Undefined)
+		renderer = D3D::ShouldPreferD3D() ? GSRendererType::DX1011_HW : GSRendererType::OGL_HW;
+	m_renderer_select->SetSelection(get_config_index(theApp.m_gs_renderers, static_cast<int>(renderer)));
+#endif
 
 	RendererChange();
 
