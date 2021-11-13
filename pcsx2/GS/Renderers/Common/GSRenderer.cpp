@@ -533,19 +533,15 @@ void GSRenderer::VSync(int field)
 		{
 			GSVector2i size = m_capture.GetSize();
 
-			if (GSTexture* offscreen = m_dev->CopyOffscreen(current, GSVector4(0, 0, 1, 1), size.x, size.y, GSTexture::Format::Color))
-			{
-				GSTexture::GSMap m;
+			bool res;
+			GSTexture::GSMap m;
+			if (size == current->GetSize())
+				res = m_dev->DownloadTexture(current, GSVector4i(0, 0, size.x, size.y), m);
+			else
+				res = m_dev->DownloadTextureConvert(current, GSVector4(0, 0, 1, 1), size, GSTexture::Format::Color, ShaderConvert::COPY, m);
 
-				if (offscreen->Map(m))
-				{
-					m_capture.DeliverFrame(m.bits, m.pitch, !m_dev->IsRBSwapped());
-
-					offscreen->Unmap();
-				}
-
-				m_dev->Recycle(offscreen);
-			}
+			if (res)
+				m_capture.DeliverFrame(m.bits, m.pitch, !m_dev->IsRBSwapped());
 		}
 	}
 }

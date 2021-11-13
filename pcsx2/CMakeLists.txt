@@ -652,7 +652,6 @@ set(pcsx2GSSources
 	GS/Renderers/OpenGL/GSDeviceOGL.cpp
 	GS/Renderers/OpenGL/GSRendererOGL.cpp
 	GS/Renderers/OpenGL/GSShaderOGL.cpp
-	GS/Renderers/OpenGL/GSTextureCacheOGL.cpp
 	GS/Renderers/OpenGL/GSTextureOGL.cpp
 	GS/Window/GSSetting.cpp
 	GS/Window/GSwxDialog.cpp
@@ -722,7 +721,6 @@ set(pcsx2GSHeaders
 	GS/Renderers/OpenGL/GSDeviceOGL.h
 	GS/Renderers/OpenGL/GSRendererOGL.h
 	GS/Renderers/OpenGL/GSShaderOGL.h
-	GS/Renderers/OpenGL/GSTextureCacheOGL.h
 	GS/Renderers/OpenGL/GSTextureOGL.h
 	GS/Renderers/OpenGL/GSUniformBufferOGL.h
 	GS/Window/GSCaptureDlg.h

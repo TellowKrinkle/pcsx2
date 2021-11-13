@@ -228,7 +228,13 @@ public:
 	GSTexture* CreateOffscreen(int w, int h, GSTexture::Format format);
 	GSTexture::Format GetDefaultTextureFormat(GSTexture::Type type);
 
-	virtual GSTexture* CopyOffscreen(GSTexture* src, const GSVector4& sRect, int w, int h, GSTexture::Format format, ShaderConvert ps_shader = ShaderConvert::COPY) { return NULL; }
+	/// Download the region `rect` of `src` into `out_map`
+	/// `out_map` will be valid until the next call to `DownloadTexture` or `DownloadTextureConvert`
+	virtual bool DownloadTexture(GSTexture* src, const GSVector4i& rect, GSTexture::GSMap& out_map) { return false; }
+
+	/// Scale the region `sRect` of `src` to the size `dSize` using `ps_shader` and store the result in `out_map`
+	/// `out_map` will be valid until the next call to `DownloadTexture` or `DownloadTextureConvert`
+	virtual bool DownloadTextureConvert(GSTexture* src, const GSVector4& sRect, const GSVector2i& dSize, GSTexture::Format format, ShaderConvert ps_shader, GSTexture::GSMap& out_map);
 
 	virtual void CopyRect(GSTexture* sTex, GSTexture* dTex, const GSVector4i& r) {}
 	virtual void StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture* dTex, const GSVector4& dRect, ShaderConvert shader = ShaderConvert::COPY, bool linear = true) {}
