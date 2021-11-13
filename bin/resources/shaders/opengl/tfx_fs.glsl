@@ -234,9 +234,14 @@ mat4 sample_4p(vec4 u)
 int fetch_raw_depth()
 {
 #if PS_TEX_IS_FB == 1
-    return int(texelFetch(RtSampler, ivec2(gl_FragCoord.xy), 0).r * exp2(32.0f));
+    float texel = texelFetch(RtSampler, ivec2(gl_FragCoord.xy), 0).r;
 #else
-    return int(texelFetch(TextureSampler, ivec2(gl_FragCoord.xy), 0).r * exp2(32.0f));
+    float texel = texelFetch(TextureSampler, ivec2(gl_FragCoord.xy), 0).r;
+#endif
+#ifdef BAD_DEPTH_PRECISION
+    return int(texel * exp2(24.0f + BAD_DEPTH_PRECISION));
+#else
+    return int(texel * exp2(32.0f));
 #endif
 }
 
@@ -329,7 +334,11 @@ vec4 sample_depth(vec2 st)
     // Based on ps_main11 of convert
 
     // Convert a GL_FLOAT32 depth texture into a RGBA color texture
+#ifdef BAD_DEPTH_PRECISION
+    const vec4 bitSh = vec4(exp2(16.0f + BAD_DEPTH_PRECISION), exp2(8.0f + BAD_DEPTH_PRECISION), exp2(0.0f + BAD_DEPTH_PRECISION), exp2(-8.0f + BAD_DEPTH_PRECISION));
+#else
     const vec4 bitSh = vec4(exp2(24.0f), exp2(16.0f), exp2(8.0f), exp2(0.0f));
+#endif
     const vec4 bitMsk = vec4(0.0, 1.0/256.0, 1.0/256.0, 1.0/256.0);
 
     vec4 res = fract(vec4(fetch_c(uv).r) * bitSh);
@@ -340,7 +349,11 @@ vec4 sample_depth(vec2 st)
     // Based on ps_main12 of convert
 
     // Convert a GL_FLOAT32 (only 16 lsb) depth into a RGB5A1 color texture
+#ifdef BAD_DEPTH_PRECISION
+    const vec4 bitSh = vec4(exp2(24.0f + BAD_DEPTH_PRECISION), exp2(19.0f + BAD_DEPTH_PRECISION), exp2(14.0f + BAD_DEPTH_PRECISION), exp2(9.0f + BAD_DEPTH_PRECISION));
+#else
     const vec4 bitSh = vec4(exp2(32.0f), exp2(27.0f), exp2(22.0f), exp2(17.0f));
+#endif
     const uvec4 bitMsk = uvec4(0x1F, 0x1F, 0x1F, 0x1);
     uvec4 color = uvec4(vec4(fetch_c(uv).r) * bitSh) & bitMsk;
 
