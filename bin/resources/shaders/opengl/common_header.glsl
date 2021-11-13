@@ -113,3 +113,21 @@ layout(std140) BINDING(0) uniform cb21
 BINDING(0) uniform sampler2D TextureSampler;
 
 #endif
+
+uint DEPTH_TO_INT(float depth)
+{
+#ifdef BAD_DEPTH_PRECISION
+    return uint(depth * exp2(24.0f + BAD_DEPTH_PRECISION));
+#else
+    return uint(depth * exp2(32.0f));
+#endif
+}
+
+float INT_TO_DEPTH(uint i)
+{
+#ifdef BAD_DEPTH_PRECISION
+    return clamp(float(i) * exp2(-24.0f - BAD_DEPTH_PRECISION), 0, 1);
+#else
+    return float(i) * exp2(-32.0f);
+#endif
+}
