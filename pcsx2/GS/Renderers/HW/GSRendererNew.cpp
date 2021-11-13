@@ -163,14 +163,10 @@ void GSRendererNew::EmulateZbuffer()
 		}
 		else if (!m_context->ZBUF.ZMSK)
 		{
-			m_conf.cb_ps.TA_MaxDepth_Af.z = static_cast<float>(max_z) * 0x1p-32f;
+			int fulldepth = g_gs_device->Features().bad_depth_precision ? theApp.GetConfigI("fulldepth") : 8;
+			m_conf.cb_ps.TA_MaxDepth_Af.z = static_cast<float>(max_z) * ldexpf(1, -24 - fulldepth);
 			m_conf.ps.zclamp = 1;
 		}
-	}
-
-	if (g_gs_device->Features().bad_depth_precision && !theApp.GetConfigB("fulldepth")) {
-		// With (-1, 1) depth, we don't have the spare precision to be using 32-bit depth for everything
-		m_conf.cb_vs.max_depth = GSVector2i(max_z);
 	}
 
 	const GSVertex* v = &m_vertex.buff[0];
