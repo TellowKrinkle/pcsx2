@@ -146,14 +146,10 @@ void GSRendererOGL::EmulateZbuffer()
 		}
 		else if (!m_context->ZBUF.ZMSK)
 		{
-			ps_cb.MaxDepth = GSVector4(0.0f, 0.0f, 0.0f, max_z * ldexpf(1, -32));
+			int amt = GLLoader::found_GL_ARB_clip_control ? 8 : theApp.GetConfigI("fulldepth");
+			ps_cb.MaxDepth = GSVector4(0.0f, 0.0f, 0.0f, max_z * ldexpf(1, -24 - amt));
 			m_ps_sel.zclamp = 1;
 		}
-	}
-
-	if (!GLLoader::found_GL_ARB_clip_control && !theApp.GetConfigB("fulldepth")) {
-		// With (-1, 1) depth, we don't have the spare precision to be using 32-bit depth for everything
-		vs_cb.MaxDepth = GSVector2i(max_z);
 	}
 
 	const GSVertex* v = &m_vertex.buff[0];

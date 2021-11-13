@@ -16,6 +16,7 @@
 #include "PrecompiledHeader.h"
 #include "GSwxDialog.h"
 #include "gui/AppConfig.h"
+#include "GS/Renderers/OpenGL/GLLoader.h"
 
 #ifdef _WIN32
 #include "GS/GSExtra.h"
@@ -291,6 +292,8 @@ RendererTab::RendererTab(wxWindow* parent)
 #ifdef _WIN32
 	m_blend_mode_d3d11 = m_ui.addComboBoxAndLabel(hw_choice_grid, "Blending Accuracy:", "accurate_blending_unit_d3d11", &theApp.m_gs_acc_blend_level_d3d11, IDC_ACCURATE_BLEND_UNIT_D3D11, hw_prereq);
 #endif
+	if (!GLLoader::found_GL_ARB_clip_control)
+		m_ui.addSliderAndLabel(hw_choice_grid, "Depth Range:", "fulldepth", 0, 8, 0, IDC_FULLDEPTH, hw_prereq);
 
 	hardware_box->Add(hw_checks_box, wxSizerFlags().Centre());
 	hardware_box->AddSpacer(space);
