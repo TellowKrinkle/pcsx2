@@ -292,6 +292,7 @@ public:
 private:
 	std::unique_ptr<GL::Context> m_gl_context;
 	int m_mipmap;
+	float m_depthdiv;
 	TriFiltering m_filter;
 
 	static bool m_debug_gl_call;

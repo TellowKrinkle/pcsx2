@@ -66,6 +66,9 @@ GSDeviceOGL::GSDeviceOGL()
 	memset(&m_profiler, 0, sizeof(m_profiler));
 	GLState::Clear();
 
+	int fulldepth = GLLoader::found_GL_ARB_clip_control ? 8 : theApp.GetConfigI("fulldepth");
+	m_depthdiv = ldexp(1, -24 - fulldepth);
+
 	m_mipmap = theApp.GetConfigI("mipmap");
 	if (theApp.GetConfigB("UserHacks"))
 		m_filter = static_cast<TriFiltering>(theApp.GetConfigI("UserHacks_TriFilter"));
@@ -2037,7 +2040,7 @@ static GSDeviceOGL::VSConstantBuffer convertCB(const GSHWDrawConfig::VSConstantB
 	return out;
 }
 
-static GSDeviceOGL::PSConstantBuffer convertCB(const GSHWDrawConfig::PSConstantBuffer& cb, int atst)
+static GSDeviceOGL::PSConstantBuffer convertCB(const GSHWDrawConfig::PSConstantBuffer& cb, int atst, float depthdiv)
 {
 	GSDeviceOGL::PSConstantBuffer out;
 	out.FogColor_AREF = GSVector4(GSVector4i::load(cb.fog_color_aref).u8to32());
@@ -2045,7 +2048,7 @@ static GSDeviceOGL::PSConstantBuffer convertCB(const GSHWDrawConfig::PSConstantB
 		out.FogColor_AREF.w -= 0.1f;
 	out.WH = cb.texture_size;
 	out.TA_MaxDepth_Af = GSVector4(GSVector4i::load(cb.ta_af).u8to32()) / GSVector4(255.f, 255.f, 1.f, 128.f);
-	out.TA_MaxDepth_Af.z = cb.max_depth * ldexpf(1, -32);
+	out.TA_MaxDepth_Af.z = cb.max_depth * depthdiv;
 	out.MskFix = GSVector4i::loadl(&cb.uv_msk_fix).u16to32();
 	out.FbMask = GSVector4i::load(cb.fbmask_int).u8to32();
 	out.HalfTexel = cb.half_texel;
@@ -2146,7 +2149,7 @@ void GSDeviceOGL::RenderHW(GSHWDrawConfig& config)
 	SetupOM(config.depth);
 
 	VSConstantBuffer cb_vs = convertCB(config.cb_vs);
-	PSConstantBuffer cb_ps = convertCB(config.cb_ps, config.ps.atst);
+	PSConstantBuffer cb_ps = convertCB(config.cb_ps, config.ps.atst, m_depthdiv);
 	SetupCB(&cb_vs, &cb_ps);
 
 	if (config.cb_ps.channel_shuffle_int)
@@ -2208,7 +2211,7 @@ void GSDeviceOGL::RenderHW(GSHWDrawConfig& config)
 	{
 		if (config.cb_ps != config.alpha_second_pass.cb_ps)
 		{
-			cb_ps = convertCB(config.alpha_second_pass.cb_ps, config.alpha_second_pass.ps.atst);
+			cb_ps = convertCB(config.alpha_second_pass.cb_ps, config.alpha_second_pass.ps.atst, m_depthdiv);
 			SetupCB(&cb_vs, &cb_ps);
 		}
 		SetupPipeline(vssel, gssel, config.alpha_second_pass.ps);

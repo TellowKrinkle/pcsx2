@@ -276,8 +276,8 @@ std::string GSShaderOGL::GenGlslHeader(const std::string& entry, GLenum type, co
 	{
 		header += "#define DISABLE_GL42_image\n";
 	}
-	if (GLLoader::found_GL_ARB_clip_control || theApp.GetConfigB("fulldepth")) {
-		header += "#define ZERO_TO_ONE_DEPTH\n";
+	if (!GLLoader::found_GL_ARB_clip_control && theApp.GetConfigI("fulldepth") < 8) {
+		header += format("#define BAD_DEPTH_PRECISION %d.0f\n", theApp.GetConfigI("fulldepth"));
 	}
 	if (GLLoader::vendor_id_amd || GLLoader::vendor_id_intel)
 		header += "#define BROKEN_DRIVER as_usual\n";
