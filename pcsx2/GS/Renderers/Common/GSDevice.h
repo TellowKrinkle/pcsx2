@@ -131,8 +131,325 @@ struct HWBlend
 	u16 flags, op, src, dst;
 };
 
+struct GSHWDrawConfig
+{
+	enum class Topology: u8
+	{
+		Point,
+		Line,
+		Triangle,
+	};
+	enum class GSSelector: u8
+	{
+		None,
+		Point,
+		Line,
+		Sprite,
+	};
+	struct VSSelector
+	{
+		union
+		{
+			struct
+			{
+				u8 int_fst : 1;
+				u8 _free : 7;
+			};
+			u8 key;
+		};
+		VSSelector(): key(0) {}
+		VSSelector(u8 k): key(k) {}
+	};
+	struct PSSelector
+	{
+		// Performance note: there are too many shader combinations
+		// It might hurt the performance due to frequent toggling worse it could consume
+		// a lots of memory.
+		union
+		{
+			struct
+			{
+				// *** Word 1
+				// Format
+				u32 aem_fmt   : 2;
+				u32 pal_fmt   : 2;
+				u32 dfmt      : 2; // 0 → 32-bit, 1 → 24-bit, 2 → 16-bit
+				u32 depth_fmt : 2; // 0 → None, 1 → 32-bit, 2 → 16-bit, 3 → RGBA
+				// Alpha extension/Correction
+				u32 aem : 1;
+				u32 fba : 1;
+				// Fog
+				u32 fog : 1;
+				// Flat/goround shading
+				u32 iip : 1;
+				// Pixel test
+				u32 date : 3;
+				u32 atst : 3;
+				// Color sampling
+				u32 fst : 1; // Investigate to do it on the VS
+				u32 tfx : 3;
+				u32 tcc : 1;
+				u32 wms : 2;
+				u32 wmt : 2;
+				u32 ltf : 1;
+				// Shuffle and fbmask effect
+				u32 shuffle  : 1;
+				u32 read_ba  : 1;
+				u32 write_rg : 1;
+				u32 fbmask   : 1;
+
+				//u32 _free1:0;
+
+				// *** Word 2
+				// Blend and Colclip
+				u32 blend_a : 2;
+				u32 blend_b : 2;
+				u32 blend_c : 2;
+				u32 blend_d : 2;
+				u32 clr1    : 1; // useful?
+				u32 hdr     : 1;
+				u32 colclip : 1;
+				u32 pabe    : 1;
+
+				// Others ways to fetch the texture
+				ChannelFetch channel : 3;
+
+				// Dithering
+				u32 dither : 2;
+
+				// Depth clamp
+				u32 zclamp : 1;
+
+				// Hack
+				u32 tcoffsethack : 1;
+				u32 urban_chaos_hle : 1;
+				u32 tales_of_abyss_hle : 1;
+				u32 tex_is_fb : 1; // Jak Shadows
+				u32 automatic_lod : 1;
+				u32 manual_lod : 1;
+				u32 point_sampler : 1;
+				u32 invalid_tex0 : 1; // Lupin the 3rd
+
+				u32 _free2 : 6;
+			};
+
+			u64 key;
+		};
+		PSSelector(): key(0) {}
+	};
+	struct PSSamplerSelector
+	{
+		union
+		{
+			struct
+			{
+				u8 tau   : 1;
+				u8 tav   : 1;
+				u8 biln  : 1;
+				u8 triln : 3;
+				u8 aniso : 1;
+
+				u8 _free : 1;
+			};
+			u8 key;
+		};
+		PSSamplerSelector(): key(0) {}
+		PSSamplerSelector(u32 k): key(k) {}
+		static PSSamplerSelector Point() { return PSSamplerSelector(); }
+		static PSSamplerSelector Linear()
+		{
+			PSSamplerSelector out;
+			out.biln = 1;
+			return out;
+		}
+	};
+	struct OMDepthStencilSelector
+	{
+		union
+		{
+			struct
+			{
+				u8 ztst : 2;
+				u8 zwe  : 1;
+				u8 date : 1;
+				u8 date_one : 1;
+
+				u8 _free : 3;
+			};
+			u8 key;
+		};
+		OMDepthStencilSelector(): key(0) {}
+		OMDepthStencilSelector(u32 k): key(k) {}
+		static OMDepthStencilSelector NoDepth()
+		{
+			OMDepthStencilSelector out;
+			out.ztst = ZTST_ALWAYS;
+			return out;
+		}
+	};
+	struct OMColorMaskSelector
+	{
+		union
+		{
+			struct
+			{
+				u8 wr : 1;
+				u8 wg : 1;
+				u8 wb : 1;
+				u8 wa : 1;
+
+				u8 _free : 4;
+			};
+			struct
+			{
+				u8 wrgba : 4;
+			};
+			u8 key;
+		};
+		OMColorMaskSelector(): key(0xF) {}
+		OMColorMaskSelector(u32 c) { wrgba = c; }
+	};
+	struct VSConstantBuffer
+	{
+		GSVector2 vertex_scale;
+		GSVector2 vertex_offset;
+		GSVector2 texture_scale;
+		GSVector2 texture_offset;
+		GSVector2 PointSize;
+		GSVector2i MaxDepth;
+	};
+	struct PSConstantBuffer
+	{
+		union
+		{
+			struct
+			{
+				u8 fog_color[3];
+				u8 aref;
+			};
+			u32 fog_color_aref;
+		};
+		union
+		{
+			struct
+			{
+				u8 r, g, b, a;
+			} fbmask;
+			u32 fbmask_int;
+		};
+		u32 max_depth;
+		union
+		{
+			struct
+			{
+				u8 ta0;
+				u8 ta1;
+				u8 _pad;
+				u8 alpha_fix;
+			};
+			u32 ta_af;
+		};
+		union
+		{
+			struct
+			{
+				u8 blue_mask;
+				u8 blue_shift;
+				u8 green_mask;
+				u8 green_shift;
+			} channel_shuffle;
+			u32 channel_shuffle_int;
+		};
+		union
+		{
+			struct
+			{
+				u16 umsk;
+				u16 vmsk;
+				u16 ufix;
+				u16 vfix;
+			};
+			u64 uv_msk_fix;
+		};
+		GIFRegDIMX dither_matrix;
+		GSVector2 tc_offset;
+		GSVector4 texture_size; // xy → PS2 size, wz → emulator size
+
+		GSVector4 half_texel;
+		GSVector4 uv_min_max;
+	};
+	struct BlendState
+	{
+		u8 index = 0;
+		u8 factor = 0;
+		bool is_constant = false;
+		bool is_accumulation = false;
+	};
+	enum class DestinationAlphaMode : u8
+	{
+		Off,            ///< No destination alpha test
+		Stencil,        ///< Emulate using stencil
+		StencilOne,     ///< Emulate using stencil (clear whole texture)
+		PrimIDTracking, ///< Emulate by tracking the primitive ID of the last pixel allowed through
+		Full,           ///< Full emulation (using barriers / ROV)
+	};
+
+	GSTexture* rt;        ///< Render target
+	GSTexture* ds;        ///< Depth stencil
+	GSTexture* tex;       ///< Source texture
+	GSTexture* pal;       ///< Palette texture
+	GSTexture* raw_tex;   ///< Used by channel shuffles
+	GSVertex* verts;      ///< Vertices to draw
+	u32* indices;         ///< Indices to draw
+	u32 nverts;           ///< Number of vertices
+	u32 nindices;         ///< Number of indices
+	u32 indices_per_prim; ///< Number of indices that make up one primitive
+	const std::vector<size_t>* drawlist; ///< For reducing barriers on sprites
+	GSVector4i scissor; ///< Scissor rect
+	Topology topology;  ///< Draw topology
+
+	GSSelector gs;
+	VSSelector vs;
+	PSSelector ps;
+
+	BlendState blend;
+	PSSamplerSelector sampler;
+	OMColorMaskSelector colormask;
+	OMDepthStencilSelector depth;
+
+	bool require_one_barrier;  ///< Require texture barrier before draw
+	bool require_full_barrier; ///< Require texture barrier between all prims
+
+	DestinationAlphaMode destination_alpha;
+	bool datm;
+
+	VSConstantBuffer cb_vs;
+	PSConstantBuffer cb_ps;
+
+	struct AlphaSecondPass
+	{
+		bool enable;
+		PSSelector ps;
+		PSConstantBuffer cb_ps;
+		OMColorMaskSelector colormask;
+		OMDepthStencilSelector depth;
+	} alpha_second_pass;
+};
+
 class GSDevice : public GSAlignedClass<32>
 {
+public:
+	struct FeatureSupport
+	{
+		bool texture_barrier : 1;
+		bool geometry_shader : 1;
+		bool image_load_store : 1;
+		FeatureSupport()
+		{
+			memset(this, 0, sizeof(*this));
+		}
+	};
+
 private:
 	FastList<GSTexture*> m_pool;
 	static std::array<HWBlend, 3*3*3*3 + 1> m_blendMap;
@@ -171,6 +488,7 @@ protected:
 	} m_index;
 	unsigned int m_frame; // for ageing the pool
 	bool m_linear_present;
+	FeatureSupport m_features;
 
 	virtual GSTexture* CreateSurface(GSTexture::Type type, int w, int h, GSTexture::Format format) = 0;
 	virtual GSTexture* FetchSurface(GSTexture::Type type, int w, int h, GSTexture::Format format);
@@ -242,6 +560,9 @@ public:
 
 	void StretchRect(GSTexture* sTex, GSTexture* dTex, const GSVector4& dRect, ShaderConvert shader = ShaderConvert::COPY, bool linear = true);
 
+	virtual void RenderHW(GSHWDrawConfig& config) {}
+
+	FeatureSupport Features() { return m_features; }
 	GSTexture* GetCurrent();
 
 	void Merge(GSTexture* sTex[3], GSVector4* sRect, GSVector4* dRect, const GSVector2i& fs, const GSRegPMODE& PMODE, const GSRegEXTBUF& EXTBUF, const GSVector4& c);
