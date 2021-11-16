@@ -755,6 +755,13 @@ if(USE_VULKAN)
 	)
 endif()
 
+set(pcsx2GSMetalShaders
+	GS/Renderers/Metal/convert.metal
+	GS/Renderers/Metal/merge.metal
+	GS/Renderers/Metal/interlace.metal
+	GS/Renderers/Metal/tfx.metal
+)
+
 if(NOT PCSX2_CORE)
 	list(APPEND pcsx2GSSources
 		GS/Window/GSwxDialog.cpp
@@ -977,6 +984,24 @@ if(WIN32)
 	)
 	list(APPEND pcsx2FrontendHeaders
 		Frontend/D3D11HostDisplay.h
+	)
+elseif(APPLE)
+	list(APPEND pcsx2GSSources
+		GS/Renderers/Metal/GSDeviceMTL.mm
+		GS/Renderers/Metal/GSTextureMTL.mm
+	)
+	list(APPEND pcsx2GSHeaders
+		GS/Renderers/Metal/GSMetalCPPAccessible.h
+		GS/Renderers/Metal/GSDeviceMTL.h
+		GS/Renderers/Metal/GSTextureMTL.h
+		GS/Renderers/Metal/GSMTLSharedHeader.h
+		GS/Renderers/Metal/GSMTLShaderCommon.h
+	)
+	list(APPEND pcsx2FrontendSources
+		Frontend/MetalHostDisplay.mm
+	)
+	list(APPEND pcsx2FrontendHeaders
+		Frontend/MetalHostDisplay.h
 	)
 endif()
 
@@ -1682,6 +1707,43 @@ if(GETTEXT_FOUND AND NOT NO_TRANSLATION AND NOT PCSX2_CORE)
 endif()
 
 if (APPLE)
+	find_library(METAL_LIBRARY Metal)
+	target_link_libraries(PCSX2 PRIVATE ${METAL_LIBRARY})
+
+	if(CMAKE_GENERATOR MATCHES "Xcode")
+		# If we're generating an xcode project, you can just add the shaders to the main pcsx2 target and xcode will deal with them properly
+		# This will make sure xcode supplies code completion, etc (if you use a custom command, it won't)
+		foreach(shader IN LISTS pcsx2GSMetalShaders)
+			target_sources(PCSX2 PRIVATE ${shader})
+			set_source_files_properties(${shader} PROPERTIES LANGUAGE METAL)
+		endforeach()
+	else()
+		set(pcsx2GSMetalShaderOut)
+		set(flags
+			-ffast-math
+			$<$<NOT:$<CONFIG:Release,MinSizeRel>>:-gline-tables-only>
+			$<$<NOT:$<CONFIG:Release,MinSizeRel>>:-M0>
+		)
+		set(std macos-metal2.0)
+		set(target air64-apple-macos10.13)
+		foreach(shader IN LISTS pcsx2GSMetalShaders)
+			set(shaderOut ${CMAKE_CURRENT_BINARY_DIR}/${shader}.air)
+			list(APPEND pcsx2GSMetalShaderOut ${shaderOut})
+			get_filename_component(shaderDir ${shaderOut} DIRECTORY)
+			add_custom_command(OUTPUT ${shaderOut}
+				COMMAND ${CMAKE_COMMAND} -E make_directory ${shaderDir}
+				COMMAND xcrun metal ${flags} -std=${std} -target ${target} -o ${shaderOut} -c ${CMAKE_CURRENT_SOURCE_DIR}/${shader}
+				DEPENDS ${shader} GS/Renderers/Metal/GSMTLSharedHeader.h GS/Renderers/Metal/GSMTLShaderCommon.h
+			)
+		endforeach()
+		set(metallib ${CMAKE_CURRENT_BINARY_DIR}/default.metallib)
+		add_custom_command(OUTPUT ${metallib}
+			COMMAND xcrun metallib -o ${metallib} ${pcsx2GSMetalShaderOut}
+			DEPENDS ${pcsx2GSMetalShaderOut}
+		)
+		pcsx2_resource(${metallib} ${CMAKE_CURRENT_BINARY_DIR})
+	endif()
+
 	# MacOS defaults to having a maximum protection of the __DATA segment of rw (non-executable)
 	# We have a bunch of page-sized arrays in bss that we use for jit
 	# Obviously not being able to make those arrays executable would be a problem
@@ -1738,6 +1800,7 @@ source_group(System/Ps2/DEV9 REGULAR_EXPRESSION DEV9/*)
 source_group(System/Ps2/PAD FILES ${pcsx2PADSources} ${pcsx2PADHeaders})
 source_group(System/Ps2/SPU2 REGULAR_EXPRESSION SPU2/*)
 source_group(System/Ps2/USB REGULAR_EXPRESSION USB/*)
+source_group(System/Ps2/GS/Renderers/Metal REGULAR_EXPRESSION GS/Renderers/Metal/*)
 
 # Generated resource files
 source_group(Resources/GUI FILES ${pcsx2GuiResources})
