@@ -49,6 +49,7 @@ public:
 		UInt16,       ///< UInt16 texture for reading back 16-bit depth
 		UInt32,       ///< UInt32 texture for reading back 24 and 32-bit depth
 		Int32,        ///< Int32 texture for date emulation
+		Last = Int32
 	};
 
 protected:

@@ -708,6 +708,27 @@ set(pcsx2GSHeaders
 	GS/Window/GSwxDialog.h
 	)
 
+set(pcsx2GSMetalShaders
+	GS/Renderers/Metal/convert.metal
+	GS/Renderers/Metal/merge.metal
+	GS/Renderers/Metal/interlace.metal
+	GS/Renderers/Metal/tfx.metal
+)
+
+if(APPLE)
+	list(APPEND pcsx2GSSources
+		GS/Renderers/Metal/GSDeviceMTL.mm
+		GS/Renderers/Metal/GSTextureMTL.mm
+	)
+	list(APPEND pcsx2GSHeaders
+		GS/Renderers/Metal/GSMetalCPPAccessible.h
+		GS/Renderers/Metal/GSDeviceMTL.h
+		GS/Renderers/Metal/GSTextureMTL.h
+		GS/Renderers/Metal/GSMTLSharedHeader.h
+		GS/Renderers/Metal/GSMTLShaderCommon.h
+	)
+endif()
+
 if(WIN32)
 	list(APPEND pcsx2SPU2Sources
 		SPU2/Windows/CfgHelpers.cpp
@@ -1484,6 +1505,20 @@ foreach(path IN LISTS RESOURCE_FILES)
 endforeach()
 
 if (APPLE)
+	find_library(METAL_LIBRARY Metal)
+	target_link_libraries(PCSX2 PRIVATE ${METAL_LIBRARY})
+
+	foreach(shader IN LISTS pcsx2GSMetalShaders)
+		# If we're generating an xcode project, you can just add the shaders to the main pcsx2 target and xcode will deal with them properly
+		# This will make sure xcode supplies code completion, etc (if you use a custom command, it won't)
+		if (CMAKE_GENERATOR MATCHES "Xcode")
+			target_sources(PCSX2 PRIVATE ${shader})
+			set_source_files_properties(${shader} PROPERTIES LANGUAGE METAL)
+		else()
+			# TODO: Compile metal with custom command
+		endif()
+	endforeach()
+
 	# MacOS defaults to having a maximum protection of the __DATA segment of rw (non-executable)
 	# We have a bunch of page-sized arrays in bss that we use for jit
 	# Obviously not being able to make those arrays executable would be a problem
