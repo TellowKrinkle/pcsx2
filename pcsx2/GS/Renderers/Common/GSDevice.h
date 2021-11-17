@@ -52,6 +52,43 @@ enum class ShaderConvert
 	Count
 };
 
+/// Get the format the shader targets
+/// Some shaders can target multiple formats, those will return Format::Invalid
+static constexpr GSTexture::Format targetFormat(ShaderConvert shader)
+{
+	switch (shader)
+	{
+		case ShaderConvert::COPY: // Can target anything
+		case ShaderConvert::FLOAT32_TO_32_BITS: // Can target UInt32 or UInt16
+		case ShaderConvert::Count: // Invalid
+			return GSTexture::Format::Invalid;
+		case ShaderConvert::RGBA8_TO_16_BITS:
+			return GSTexture::Format::UInt16;
+		// Stencil
+		case ShaderConvert::DATM_1:
+		case ShaderConvert::DATM_0:
+		// Depth
+		case ShaderConvert::RGBA8_TO_FLOAT32:
+		case ShaderConvert::RGBA8_TO_FLOAT24:
+		case ShaderConvert::RGBA8_TO_FLOAT16:
+		case ShaderConvert::RGB5A1_TO_FLOAT16:
+			return GSTexture::Format::DepthStencil;
+		case ShaderConvert::RGBA_TO_8I: // Yes really
+		case ShaderConvert::MOD_256:
+		case ShaderConvert::TRANSPARENCY_FILTER:
+		case ShaderConvert::FLOAT32_TO_RGBA8:
+		case ShaderConvert::FLOAT16_TO_RGB5A1:
+		case ShaderConvert::YUV:
+			return GSTexture::Format::Color;
+		case ShaderConvert::SCANLINE:
+		case ShaderConvert::DIAGONAL_FILTER:
+		case ShaderConvert::TRIANGULAR_FILTER:
+		case ShaderConvert::COMPLEX_FILTER:
+		case ShaderConvert::OSD:
+			return GSTexture::Format::Backbuffer;
+	}
+}
+
 /// Get the name of a shader
 /// (Can't put methods on an enum class)
 const char* shaderName(ShaderConvert value);
