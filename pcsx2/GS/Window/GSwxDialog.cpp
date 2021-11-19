@@ -268,6 +268,7 @@ RendererTab::RendererTab(wxWindow* parent)
 	const int space = wxSizerFlags().Border().GetBorderInPixels();
 	auto hw_prereq = [this]{ return m_is_hardware; };
 	auto sw_prereq = [this]{ return !m_is_hardware; };
+	auto ogl_prereq = [this]{ return m_is_ogl_hw; };
 	auto upscale_prereq = [this]{ return !m_is_native_res; };
 
 	PaddedBoxSizer<wxBoxSizer> tab_box(wxVERTICAL);
@@ -283,7 +284,7 @@ RendererTab::RendererTab(wxWindow* parent)
 	auto aniso_prereq = [this, paltex_prereq]{ return m_is_hardware && !m_is_nearest_filter && paltex_prereq->GetValue() == false; };
 
 #ifdef __APPLE__
-	m_ui.addCheckBox(hw_checks_box, "Multithreaded GL Engine", "multithreaded_gl", IDC_MULTITHREADED_GL, hw_prereq);
+	m_ui.addCheckBox(hw_checks_box, "Multithreaded GL Engine", "multithreaded_gl", IDC_MULTITHREADED_GL, ogl_prereq);
 #endif
 
 	auto* hw_choice_grid = new wxFlexGridSizer(2, space, space);
@@ -300,7 +301,7 @@ RendererTab::RendererTab(wxWindow* parent)
 	m_blend_mode_d3d11 = m_ui.addComboBoxAndLabel(hw_choice_grid, "Blending Accuracy:", "accurate_blending_unit_d3d11", &theApp.m_gs_acc_blend_level_d3d11, IDC_ACCURATE_BLEND_UNIT_D3D11, hw_prereq);
 #endif
 	if (!GLLoader::found_GL_ARB_clip_control)
-		m_ui.addSliderAndLabel(hw_choice_grid, "Depth Range:", "fulldepth", 0, 8, 0, IDC_FULLDEPTH, hw_prereq);
+		m_ui.addSliderAndLabel(hw_choice_grid, "Depth Range:", "fulldepth", 0, 8, 0, IDC_FULLDEPTH, ogl_prereq);
 
 	hardware_box->Add(hw_checks_box, wxSizerFlags().Centre());
 	hardware_box->AddSpacer(space);
@@ -787,15 +788,14 @@ void Dialog::Update()
 	else
 	{
 		// cross-tab dependencies yay
-		const bool is_hw = renderer == GSRendererType::OGL_HW || renderer == GSRendererType::DX1011_HW;
+		const bool is_hw = renderer == GSRendererType::OGL_HW || renderer == GSRendererType::DX1011_HW || renderer == GSRendererType::MTL_HW;;
 		const bool is_upscale = m_renderer_panel->m_internal_resolution->GetSelection() != 0;
 		const bool is_nearest_filter = m_bifilter_select->GetSelection() == static_cast<int>(BiFiltering::Nearest);
 		m_hacks_panel->m_is_native_res = !is_hw || !is_upscale;
 		m_hacks_panel->m_is_hardware = is_hw;
 		m_hacks_panel->m_is_ogl_hw = renderer == GSRendererType::OGL_HW;
 		m_renderer_panel->m_is_hardware = is_hw;
-		m_renderer_panel->m_is_native_res = !is_hw || !is_upscale;
-		m_renderer_panel->m_is_nearest_filter = is_nearest_filter;
+		m_renderer_panel->m_is_ogl_hw = renderer == GSRendererType::OGL_HW;
 		m_debug_panel->m_is_ogl_hw = renderer == GSRendererType::OGL_HW;
 
 		m_ui.Update();

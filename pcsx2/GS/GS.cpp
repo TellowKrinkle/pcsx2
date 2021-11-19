@@ -22,6 +22,7 @@
 #include "Renderers/Null/GSRendererNull.h"
 #include "Renderers/Null/GSDeviceNull.h"
 #include "Renderers/OpenGL/GSDeviceOGL.h"
+#include "Renderers/Metal/GSMetalCPPAccessible.h"
 #include "Renderers/HW/GSRendererNew.h"
 #include "GSLzma.h"
 
@@ -191,6 +192,13 @@ int _GSopen(const WindowInfo& wi, const char* title, GSRendererType renderer, in
 				dev = new GSDevice11();
 				s_renderer_name = "D3D11";
 				renderer_name = "Direct3D 11";
+				break;
+#endif
+#ifdef __APPLE__
+			case GSRendererType::MTL_HW:
+				dev = makeGSDeviceMTL();
+				s_renderer_name = "Metal";
+				renderer_name = "Metal";
 				break;
 #endif
 			case GSRendererType::OGL_HW:
@@ -1004,12 +1012,12 @@ void GSApp::Init()
 
 #ifdef _WIN32
 	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::DX1011_HW), "Direct3D 11", ""));
-	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::OGL_HW), "OpenGL", ""));
-	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::OGL_SW), "Software", ""));
-#else // Linux
-	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::OGL_HW), "OpenGL", ""));
-	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::OGL_SW), "Software", ""));
 #endif
+#ifdef __APPLE__
+	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::MTL_HW), "Metal", ""));
+#endif
+	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::OGL_HW), "OpenGL", ""));
+	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::OGL_SW), "Software", ""));
 
 	// The null renderer goes third, it has use for benchmarking purposes in a release build
 	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::Null), "Null", ""));
