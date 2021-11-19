@@ -106,6 +106,7 @@ namespace GSSettingsDialog
 		GSUIElementHolder m_ui;
 		wxChoice* m_internal_resolution;
 		bool m_is_hardware = false;
+		bool m_is_ogl_hw = false;
 		bool m_is_native_res = false;
 
 		RendererTab(wxWindow* parent);

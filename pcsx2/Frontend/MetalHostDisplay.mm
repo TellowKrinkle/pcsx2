@@ -183,7 +183,10 @@ std::string MetalHostDisplay::GetDriverInfo() const
 
 void MetalHostDisplay::ResizeRenderWindow(s32 new_window_width, s32 new_window_height, float new_window_scale)
 {
-	[m_layer setDrawableSize:CGSizeMake(new_window_width * new_window_scale, new_window_height * new_window_scale)];
+	m_window_info.surface_width = new_window_width;
+	m_window_info.surface_height = new_window_height;
+	m_window_info.surface_scale = new_window_scale;
+	[m_layer setDrawableSize:CGSizeMake(new_window_width, new_window_height)];
 }
 
 std::unique_ptr<HostDisplayTexture> MetalHostDisplay::CreateTexture(u32 width, u32 height, const void* data, u32 data_stride, bool dynamic)
