@@ -111,6 +111,7 @@ namespace GSSettingsDialog
 		std::pair<wxChoice*, wxStaticText*> m_blend_mode_d3d11;
 #endif
 		bool m_is_hardware = false;
+		bool m_is_ogl_hw = false;
 
 		RendererTab(wxWindow* parent);
 		void Load() { m_ui.Load(); }

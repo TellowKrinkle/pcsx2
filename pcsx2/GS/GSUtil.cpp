@@ -184,7 +184,7 @@ bool GSUtil::CheckSSE()
 
 CRCHackLevel GSUtil::GetRecommendedCRCHackLevel(GSRendererType type)
 {
-	return type == GSRendererType::OGL_HW ? CRCHackLevel::Partial : CRCHackLevel::Full;
+	return type != GSRendererType::DX1011_HW ? CRCHackLevel::Partial : CRCHackLevel::Full;
 }
 
 #ifdef _WIN32

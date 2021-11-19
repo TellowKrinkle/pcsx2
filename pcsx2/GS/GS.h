@@ -35,6 +35,8 @@ enum class GSRendererType : int8_t
 	Null = 11,
 	OGL_HW = 12,
 	OGL_SW = 13,
+	MTL_HW = 17,
+	MTL_SW = 18,
 
 #ifdef _WIN32
 	Default = Undefined

@@ -293,7 +293,7 @@ RendererTab::RendererTab(wxWindow* parent)
 	m_blend_mode_d3d11 = m_ui.addComboBoxAndLabel(hw_choice_grid, "Blending Accuracy:", "accurate_blending_unit_d3d11", &theApp.m_gs_acc_blend_level_d3d11, IDC_ACCURATE_BLEND_UNIT_D3D11, hw_prereq);
 #endif
 	if (!GLLoader::found_GL_ARB_clip_control)
-		m_ui.addSliderAndLabel(hw_choice_grid, "Depth Range:", "fulldepth", 0, 8, 0, IDC_FULLDEPTH, hw_prereq);
+		m_ui.addSliderAndLabel(hw_choice_grid, "Depth Range:", "fulldepth", 0, 8, 0, IDC_FULLDEPTH, [this]{ return m_is_ogl_hw; });
 
 	hardware_box->Add(hw_checks_box, wxSizerFlags().Centre());
 	hardware_box->AddSpacer(space);
@@ -782,11 +782,12 @@ void Dialog::Update()
 	else
 	{
 		// cross-tab dependencies yay
-		bool is_hw = renderer == GSRendererType::OGL_HW || renderer == GSRendererType::DX1011_HW;
+		bool is_hw = renderer == GSRendererType::OGL_HW || renderer == GSRendererType::DX1011_HW || renderer == GSRendererType::MTL_HW;
 		bool is_upscale = m_renderer_panel->m_internal_resolution->GetSelection() != 0;
 		m_hacks_panel->m_is_native_res = !is_hw || !is_upscale;
 		m_hacks_panel->m_is_hardware = is_hw;
 		m_renderer_panel->m_is_hardware = is_hw;
+		m_renderer_panel->m_is_ogl_hw = renderer == GSRendererType::OGL_HW;
 		m_debug_panel->m_is_ogl_hw = renderer == GSRendererType::OGL_HW;
 
 		m_ui.Update();
