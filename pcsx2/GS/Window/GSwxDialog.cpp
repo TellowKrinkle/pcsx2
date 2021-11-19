@@ -23,6 +23,7 @@
 #ifdef _WIN32
 #include "Frontend/D3D11HostDisplay.h"
 #endif
+#include "GS/Renderers/Metal/GSMetalCPPAccessible.h"
 
 #ifdef ENABLE_VULKAN
 #include "Frontend/VulkanHostDisplay.h"
@@ -273,6 +274,7 @@ RendererTab::RendererTab(wxWindow* parent)
 	const int space = wxSizerFlags().Border().GetBorderInPixels();
 	auto hw_prereq = [this]{ return m_is_hardware; };
 	auto sw_prereq = [this]{ return !m_is_hardware; };
+	auto ogl_prereq = [this]{ return m_is_ogl_hw; };
 	auto upscale_prereq = [this]{ return !m_is_native_res; };
 
 	PaddedBoxSizer<wxBoxSizer> tab_box(wxVERTICAL);
@@ -288,7 +290,7 @@ RendererTab::RendererTab(wxWindow* parent)
 	auto aniso_prereq = [this, paltex_prereq]{ return m_is_hardware && paltex_prereq->GetValue() == false; };
 
 #ifdef __APPLE__
-	m_ui.addCheckBox(hw_checks_box, "Multithreaded GL Engine", "multithreaded_gl", IDC_MULTITHREADED_GL, hw_prereq);
+	m_ui.addCheckBox(hw_checks_box, "Multithreaded GL Engine", "multithreaded_gl", IDC_MULTITHREADED_GL, ogl_prereq);
 #endif
 
 	auto* hw_choice_grid = new wxFlexGridSizer(2, space, space);
@@ -302,7 +304,7 @@ RendererTab::RendererTab(wxWindow* parent)
 	m_ui.addComboBoxAndLabel(hw_choice_grid, "Blending Accuracy:",     "accurate_blending_unit", &theApp.m_gs_acc_blend_level, IDC_ACCURATE_BLEND_UNIT, hw_prereq);
 	m_ui.addComboBoxAndLabel(hw_choice_grid, "Texture Preloading:",    "texture_preloading",     &theApp.m_gs_texture_preloading, IDC_PRELOAD_TEXTURES, hw_prereq);
 	if (!GLLoader::found_GL_ARB_clip_control)
-		m_ui.addSliderAndLabel(hw_choice_grid, "Depth Range:", "fulldepth", 0, 8, 0, IDC_FULLDEPTH, hw_prereq);
+		m_ui.addSliderAndLabel(hw_choice_grid, "Depth Range:", "fulldepth", 0, 8, 0, IDC_FULLDEPTH, ogl_prereq);
 
 	hardware_box->Add(hw_checks_box, wxSizerFlags().Centre());
 	hardware_box->AddSpacer(space);
@@ -698,6 +700,11 @@ void Dialog::RendererChange()
 		list = VulkanHostDisplay::StaticGetAdapterAndModeList(nullptr);
 		break;
 #endif
+#ifdef __APPLE__
+	case GSRendererType::Metal:
+		list = GetMetalAdapterAndModeList();
+		break;
+#endif
 	default:
 		break;
 	}
@@ -771,12 +778,13 @@ void Dialog::Update()
 	else
 	{
 		// cross-tab dependencies yay
-		const bool is_hw = renderer == GSRendererType::OGL || renderer == GSRendererType::DX11 || renderer == GSRendererType::VK;
+		const bool is_hw = renderer == GSRendererType::OGL || renderer == GSRendererType::DX11 || renderer == GSRendererType::VK || renderer == GSRendererType::Metal;
 		const bool is_upscale = m_renderer_panel->m_internal_resolution->GetSelection() != 0;
 		m_hacks_panel->m_is_native_res = !is_hw || !is_upscale;
 		m_hacks_panel->m_is_hardware = is_hw;
 		m_renderer_panel->m_is_hardware = is_hw;
 		m_renderer_panel->m_is_native_res = !is_hw || !is_upscale;
+		m_renderer_panel->m_is_ogl_hw = renderer == GSRendererType::OGL;
 		m_post_panel->m_is_vk_hw = renderer == GSRendererType::VK;
 		m_debug_panel->m_is_ogl_hw = renderer == GSRendererType::OGL;
 
