@@ -881,8 +881,22 @@ bool GSDeviceMTL::Create(const WindowInfo& wi)
 	return true;
 }}
 
+void GSDeviceMTL::GetRealSize(int& w, int& h)
+{
+	if (![NSThread isMainThread])
+	{
+		dispatch_sync(dispatch_get_main_queue(), [&]{ GetRealSize(w, h); });
+		return;
+	}
+
+	const NSSize window_size = [m_view convertRectToBacking:[m_view frame]].size;
+	w = static_cast<int>(window_size.width);
+	h = static_cast<int>(window_size.height);
+}
+
 bool GSDeviceMTL::Reset(int w, int h)
 {
+	GetRealSize(w, h);
 	if (!GSDevice::Reset(w, h))
 		return false;
 

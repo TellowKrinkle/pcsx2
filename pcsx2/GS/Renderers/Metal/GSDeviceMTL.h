@@ -350,6 +350,7 @@ public:
 	id<MTLRenderPipelineState> MakePipeline(MTLRenderPipelineDescriptor* desc, id<MTLFunction> vertex, id<MTLFunction> fragment, NSString* name);
 	void InitWindow(const WindowInfo& wi);
 	bool Create(const WindowInfo& wi) override;
+	void GetRealSize(int& w, int& h);
 	bool Reset(int w, int h) override;
 	void Present(const GSVector4i& r, int shader) override;
 	void Present(GSTexture* sTex, GSTexture* dTex, const GSVector4& dRect, ShaderConvert shader = ShaderConvert::COPY) override;
