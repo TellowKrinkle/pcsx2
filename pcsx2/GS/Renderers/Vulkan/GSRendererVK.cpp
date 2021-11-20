@@ -22,7 +22,7 @@
 GSRendererVK::GSRendererVK(std::unique_ptr<GSDevice> dev)
 	: GSRendererHW(std::move(dev), new GSTextureCacheVK(this))
 {
-	m_sw_blending = theApp.GetConfigI("accurate_blending_unit_d3d11");
+	m_sw_blending = theApp.GetConfigI("accurate_blending_unit");
 
 	const int upscale_multiplier = theApp.GetConfigI("upscale_multiplier");
 	const bool has_large_points = g_vulkan_context->GetDeviceFeatures().largePoints;
@@ -44,14 +44,15 @@ void GSRendererVK::SetupIA(const float& sx, const float& sy)
 
 	//D3D11_PRIMITIVE_TOPOLOGY t{};
 
-	const bool unscale_pt_ln = m_userHacks_enabled_unscale_ptln && (GetUpscaleMultiplier() != 1);
+	const bool unscale_pt_ln = m_userHacks_enabled_unscale_ptln && GetUpscaleMultiplier() != 1;
+	const bool can_use_gs = g_vulkan_context->SupportsGeometryShaders();
 
 	switch (m_vt.m_primclass)
 	{
 		case GS_POINT_CLASS:
-			if (unscale_pt_ln)
+			if (unscale_pt_ln && (m_use_point_size || can_use_gs))
 			{
-				m_p_sel.gs.point = !m_use_point_size;
+				m_p_sel.gs.point = !m_use_point_size && can_use_gs;
 				vs_cb.PointSize = GSVector2(16.0f * sx, 16.0f * sy);
 			}
 
@@ -60,7 +61,7 @@ void GSRendererVK::SetupIA(const float& sx, const float& sy)
 			break;
 
 		case GS_LINE_CLASS:
-			if (unscale_pt_ln)
+			if (unscale_pt_ln && can_use_gs)
 			{
 				m_p_sel.gs.line = 1;
 				vs_cb.PointSize = GSVector2(16.0f * sx, 16.0f * sy);
@@ -72,7 +73,7 @@ void GSRendererVK::SetupIA(const float& sx, const float& sy)
 		case GS_SPRITE_CLASS:
 			// Lines: GPU conversion.
 			// Triangles: CPU conversion.
-			if (!m_vt.m_accurate_stq && m_vertex.next > 32) // <=> 16 sprites (based on Shadow Hearts)
+			if (can_use_gs && !m_vt.m_accurate_stq && m_vertex.next > 32) // <=> 16 sprites (based on Shadow Hearts)
 			{
 				m_p_sel.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 			}
@@ -164,36 +165,6 @@ void GSRendererVK::EmulateZbuffer()
 
 void GSRendererVK::EmulateTextureShuffleAndFbmask()
 {
-	// FBmask blend level selection.
-	// We do this becaue:
-	// 1. D3D sucks.
-	// 2. FB copy is slow, especially on triangle primitives which is unplayable with some games.
-	// 3. SW blending isn't implemented yet.
-	bool enable_fbmask_emulation = false;
-	switch (m_sw_blending)
-	{
-		case ACC_BLEND_HIGH_D3D11:
-			// Fully enable Fbmask emulation like on opengl, note misses sw blending to work as opengl on some games (Genji).
-			// Debug
-			enable_fbmask_emulation = true;
-			break;
-		case ACC_BLEND_MEDIUM_D3D11:
-			// Enable Fbmask emulation excluding triangle class because it is quite slow.
-			// Exclude 0x80000000 because Genji needs sw blending, otherwise it breaks some effects.
-			enable_fbmask_emulation = ((m_vt.m_primclass != GS_TRIANGLE_CLASS) && (m_context->FRAME.FBMSK != 0x80000000));
-			break;
-		case ACC_BLEND_BASIC_D3D11:
-			// Enable Fbmask emulation excluding triangle class because it is quite slow.
-			// Exclude 0x80000000 because Genji needs sw blending, otherwise it breaks some effects.
-			// Also exclude fbmask emulation on texture shuffle just in case, it is probably safe tho.
-			enable_fbmask_emulation = (!m_texture_shuffle && (m_vt.m_primclass != GS_TRIANGLE_CLASS) && (m_context->FRAME.FBMSK != 0x80000000));
-			break;
-		case ACC_BLEND_NONE_D3D11:
-		default:
-			break;
-	}
-
-
 	// Uncomment to disable texture shuffle emulation.
 	// m_texture_shuffle = false;
 
@@ -251,14 +222,34 @@ void GSRendererVK::EmulateTextureShuffleAndFbmask()
 				m_p_sel.ps.fbmask = 1;
 		}
 
-		if (m_p_sel.ps.fbmask && enable_fbmask_emulation)
+		if (m_p_sel.ps.fbmask && m_sw_blending)
 		{
 			// fprintf(stderr, "%d: FBMASK Unsafe SW emulated fb_mask:%x on tex shuffle\n", s_n, fbmask);
 			ps_cb.FbMask.r = rg_mask;
 			ps_cb.FbMask.g = rg_mask;
 			ps_cb.FbMask.b = ba_mask;
 			ps_cb.FbMask.a = ba_mask;
-			m_bind_rtsample = true;
+			m_p_sel.ps.feedback_loop = true;
+
+			// No blending so hit unsafe path.
+			if (!PRIM->ABE)
+			{
+#ifdef PCSX2_DEVBUILD
+				Vulkan::Util::InsertDebugLabel(g_vulkan_context->GetCurrentCommandBuffer(),
+					StringUtil::StdStringFromFormat(
+						"FBMASK Unsafe SW emulated fb_mask:%x on tex shuffle", fbmask).c_str());
+#endif
+				m_require_one_barrier = true;
+			}
+			else
+			{
+#ifdef PCSX2_DEVBUILD
+				Vulkan::Util::InsertDebugLabel(g_vulkan_context->GetCurrentCommandBuffer(),
+					StringUtil::StdStringFromFormat(
+						"FBMASK SW emulated fb_mask : % x on tex shuffle", fbmask).c_str());
+#endif
+				m_require_full_barrier = true;
+			}
 		}
 		else
 		{
@@ -275,7 +266,7 @@ void GSRendererVK::EmulateTextureShuffleAndFbmask()
 
 		m_p_sel.bs.wrgba = ~ff_fbmask; // Enable channel if at least 1 bit is 0
 
-		m_p_sel.ps.fbmask = enable_fbmask_emulation && (~ff_fbmask & ~zero_fbmask & 0xF);
+		m_p_sel.ps.fbmask = m_sw_blending && (~ff_fbmask & ~zero_fbmask & 0xF);
 
 		if (m_p_sel.ps.fbmask)
 		{
@@ -287,9 +278,29 @@ void GSRendererVK::EmulateTextureShuffleAndFbmask()
 			// it will work. Masked bit will be constant and normally the same everywhere
 			// RT/FS output/Cached value.
 
-			/*fprintf(stderr, "%d: FBMASK Unsafe SW emulated fb_mask:%x on %d bits format\n", s_n, m_context->FRAME.FBMSK,
-				(GSLocalMemory::m_psm[m_context->FRAME.PSM].fmt == 2) ? 16 : 32);*/
-			m_bind_rtsample = true;
+			// No blending so hit unsafe path.
+			if (!PRIM->ABE || !(~ff_fbmask & ~zero_fbmask & 0x7))
+			{
+#ifdef PCSX2_DEVBUILD
+				Vulkan::Util::InsertDebugLabel(g_vulkan_context->GetCurrentCommandBuffer(),
+					StringUtil::StdStringFromFormat("FBMASK Unsafe SW emulated fb_mask:%x on %d bits format", m_context->FRAME.FBMSK,
+					(GSLocalMemory::m_psm[m_context->FRAME.PSM].fmt == 2) ? 16 : 32).c_str());
+#endif
+				m_require_one_barrier = true;
+			}
+			else
+			{
+				// The safe and accurate path (but slow)
+#ifdef PCSX2_DEVBUILD
+				Vulkan::Util::InsertDebugLabel(g_vulkan_context->GetCurrentCommandBuffer(),
+					StringUtil::StdStringFromFormat(
+						"FBMASK SW emulated fb_mask:%x on %d bits format", m_context->FRAME.FBMSK,
+					(GSLocalMemory::m_psm[m_context->FRAME.PSM].fmt == 2) ? 16 : 32).c_str());
+#endif
+				m_require_full_barrier = true;
+			}
+
+			m_p_sel.ps.feedback_loop = true;
 		}
 	}
 }
@@ -446,7 +457,7 @@ void GSRendererVK::EmulateChannelShuffle(GSTexture** rt, const GSTextureCache::S
 	// Effect is really a channel shuffle effect so let's cheat a little
 	if (m_channel_shuffle)
 	{
-		dev->PSSetShaderResource(3, tex->m_from_target);
+		dev->PSSetShaderResource(2, tex->m_from_target);
 		// Replace current draw with a fullscreen sprite
 		//
 		// Performance GPU note: it could be wise to reduce the size to
@@ -479,25 +490,57 @@ void GSRendererVK::EmulateBlending()
 	if (!(PRIM->ABE || m_env.PABE.PABE || (PRIM->AA1 && m_vt.m_primclass == GS_LINE_CLASS)))
 		return;
 
-	m_p_sel.bs.abe = 1;
-	m_p_sel.bs.blend_index = u8(((ALPHA.A * 3 + ALPHA.B) * 3 + ALPHA.C) * 3 + ALPHA.D);
-	const int blend_flag = m_dev->GetBlendFlags(m_p_sel.bs.blend_index);
+	// Compute the blending equation to detect special case
+	const u8 blend_index = u8(((ALPHA.A * 3 + ALPHA.B) * 3 + ALPHA.C) * 3 + ALPHA.D);
+	const int blend_flag = m_dev->GetBlendFlags(blend_index);
+	if (!g_vulkan_context->SupportsDualSourceBlend())
+	{
+		const HWBlend blend_data = m_dev->GetBlend((m_p_sel.ps.dfmt == 1 && ALPHA.C == 1) ? (blend_index + 3) : blend_index);
+		const bool dst_is_dual_src = (blend_data.dst == VK_BLEND_FACTOR_SRC1_ALPHA || blend_data.dst == VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA);
+		if (blend_data.src == VK_BLEND_FACTOR_SRC1_ALPHA || blend_data.dst == VK_BLEND_FACTOR_SRC1_ALPHA ||
+				 blend_data.src == VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA || blend_data.dst == VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA)
+		{
+			sw_blending = true;
+		}
+	}
+
+	// SW Blend is (nearly) free. Let's use it.
+	const bool impossible_or_free_blend = (blend_flag & (BLEND_NO_REC | BLEND_A_MAX | BLEND_ACCU)) // Blend doesn't requires the costly barrier
+		|| (m_prim_overlap == PRIM_OVERLAP_NO) // Blend can be done in a single draw
+		|| (m_require_full_barrier);           // Another effect (for example fbmask) already requires a full barrier
 
 	// Do the multiplication in shader for blending accumulation: Cs*As + Cd or Cs*Af + Cd
-	const bool accumulation_blend = !!(blend_flag & BLEND_ACCU);
+	bool accumulation_blend = !!(blend_flag & BLEND_ACCU);
 
-	// Blending doesn't require sampling of the rt
+	// Blending doesn't require barrier, or sampling of the rt
 	const bool blend_non_recursive = !!(blend_flag & BLEND_NO_REC);
 
+	// Warning no break on purpose
+	// Note: the [[fallthrough]] attribute tell compilers not to complain about not having breaks.
 	switch (m_sw_blending)
 	{
-		case ACC_BLEND_HIGH_D3D11:
-		case ACC_BLEND_MEDIUM_D3D11:
-		case ACC_BLEND_BASIC_D3D11:
-			sw_blending |= accumulation_blend || blend_non_recursive;
-			[[fallthrough]];
-		default:
-			break;
+	case ACC_BLEND_ULTRA:
+		sw_blending |= true;
+		[[fallthrough]];
+	case ACC_BLEND_FULL:
+		if (!m_vt.m_alpha.valid && (ALPHA.C == 0))
+			GetAlphaMinMax();
+		sw_blending |= (ALPHA.A != ALPHA.B) && ((ALPHA.C == 0 && m_vt.m_alpha.max > 128) || (ALPHA.C == 2 && ALPHA.FIX > 128u));
+		[[fallthrough]];
+	case ACC_BLEND_HIGH:
+		sw_blending |= (ALPHA.C == 1);
+		[[fallthrough]];
+	case ACC_BLEND_MEDIUM:
+		// Initial idea was to enable accurate blending for sprite rendering to handle
+		// correctly post-processing effect. Some games (ZoE) use tons of sprites as particles.
+		// In order to keep it fast, let's limit it to smaller draw call.
+		sw_blending |= m_vt.m_primclass == GS_SPRITE_CLASS && m_drawlist.size() < 100;
+		[[fallthrough]];
+	case ACC_BLEND_BASIC:
+		sw_blending |= impossible_or_free_blend;
+		[[fallthrough]];
+	default:
+		/*sw_blending |= accumulation_blend*/;
 	}
 
 	// Color clip
@@ -553,9 +596,12 @@ void GSRendererVK::EmulateBlending()
 		m_p_sel.ps.blend_b = ALPHA.B;
 		m_p_sel.ps.blend_c = ALPHA.C;
 		m_p_sel.ps.blend_d = ALPHA.D;
+		m_p_sel.ps.feedback_loop |= (ALPHA.A == 1 || ALPHA.B == 1 || ALPHA.C == 1 || ALPHA.D == 1);
 
 		if (accumulation_blend)
 		{
+			m_p_sel.bs.abe = true;
+			m_p_sel.bs.blend_index = blend_index;
 			m_p_sel.bs.accu_blend = 1;
 
 			if (ALPHA.A == 2)
@@ -575,8 +621,7 @@ void GSRendererVK::EmulateBlending()
 			m_p_sel.bs.abe = 0;
 			m_p_sel.bs.blend_index = 0;
 
-			// Only BLEND_NO_REC should hit this code path for now
-			ASSERT(blend_non_recursive);
+			m_require_full_barrier |= !blend_non_recursive;
 		}
 
 		// Require the fix alpha vlaue
@@ -586,9 +631,20 @@ void GSRendererVK::EmulateBlending()
 	else
 	{
 		m_p_sel.ps.clr1 = !!(blend_flag & BLEND_C_CLR);
-		// FIXME: When doing HW blending with a 24 bit frambuffer and ALPHA.C == 1 (Ad) it should be handled
-		// as if Ad = 1.0f. As with OGL side it is probably best to set m_om_bsel.c = 1 (Af) and use
-		// AFIX = 0x80 (Af = 1.0f).
+		m_p_sel.bs.abe = true;
+		if (m_p_sel.ps.dfmt == 1 && ALPHA.C == 1)
+		{
+			// 24 bits doesn't have an alpha channel so use 1.0f fix factor as equivalent
+			m_p_sel.bs.blend_index = blend_index + 3; // +3 <=> +1 on C
+			m_p_sel.bs.accu_blend = true;
+			SetBlendConstants(128);
+		}
+		else
+		{
+			m_p_sel.bs.blend_index = blend_index;
+			if (ALPHA.C == 2)
+				SetBlendConstants(ALPHA.FIX);
+		}
 	}
 }
 
@@ -793,9 +849,38 @@ void GSRendererVK::EmulateTextureSampler(const GSTextureCache::Source* tex)
 	GetDeviceVK()->PSSetSampler(0, ss0);
 }
 
+void GSRendererVK::SetBlendConstants(u8 afix)
+{
+	const float col = float(afix) / 128.0f;
+	static_cast<GSDeviceVK*>(m_dev.get())->SetBlendConstants(GSVector4(col));
+}
+
+void GSRendererVK::ColorBufferBarrier(GSTexture* rt)
+{
+	const VkImageMemoryBarrier barrier = {
+		VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+		nullptr,
+		VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+		VK_ACCESS_INPUT_ATTACHMENT_READ_BIT,
+		VK_IMAGE_LAYOUT_GENERAL,
+		VK_IMAGE_LAYOUT_GENERAL,
+		VK_QUEUE_FAMILY_IGNORED,
+		VK_QUEUE_FAMILY_IGNORED,
+		static_cast<GSTextureVK*>(rt)->GetTexture().GetImage(),
+		{VK_IMAGE_ASPECT_COLOR_BIT, 0u, 1u, 0u, 1u}
+	};
+
+	vkCmdPipelineBarrier(g_vulkan_context->GetCurrentCommandBuffer(),
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+		VK_DEPENDENCY_BY_REGION_BIT,
+		0, nullptr, 0, nullptr, 1, &barrier);
+}
+
 void GSRendererVK::ResetStates()
 {
-	m_bind_rtsample = false;
+	m_require_one_barrier = false;
+	m_require_full_barrier = false;
 
 	m_p_sel.vs.key = 0;
 	m_p_sel.gs.key = 0;
@@ -803,6 +888,8 @@ void GSRendererVK::ResetStates()
 
 	m_p_sel.bs.key = 0;
 	m_p_sel.dss.key = 0;
+
+	m_p_sel.key = 0;
 }
 
 void GSRendererVK::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Source* tex)
@@ -831,6 +918,30 @@ void GSRendererVK::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sourc
 
 	// Upscaling hack to avoid various line/grid issues
 	MergeSprite(tex);
+
+	// Always check if primitive overlap as it is used in plenty of effects.
+	m_prim_overlap = PrimitiveOverlap();
+
+	// Detect framebuffer read that will need special handling
+	if ((m_context->FRAME.Block() == m_context->TEX0.TBP0) && PRIM->TME && m_sw_blending)
+	{
+		if ((m_context->FRAME.FBMSK == 0x00FFFFFF) && (m_vt.m_primclass == GS_TRIANGLE_CLASS))
+		{
+			// This pattern is used by several games to emulate a stencil (shadow)
+			// Ratchet & Clank, Jak do alpha integer multiplication (tfx) which is mostly equivalent to +1/-1
+			// Tri-Ace (Star Ocean 3/RadiataStories/VP2) uses a palette to handle the +1/-1
+			Vulkan::Util::InsertDebugLabel(g_vulkan_context->GetCurrentCommandBuffer(), "Source and Target are the same! Let's sample the framebuffer");
+			m_p_sel.ps.tex_is_fb = 1;
+			m_p_sel.ps.feedback_loop = true;
+			m_require_full_barrier = true;
+		}
+		else if (m_prim_overlap != PRIM_OVERLAP_NO)
+		{
+			// Note: It is fine if the texture fits in a single GS page. First access will cache
+			// the page in the GS texture buffer.
+			Vulkan::Util::InsertDebugLabel(g_vulkan_context->GetCurrentCommandBuffer(), "ERROR: Source and Target are the same!");
+		}
+	}
 
 	EmulateTextureShuffleAndFbmask();
 
@@ -946,7 +1057,8 @@ void GSRendererVK::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sourc
 	// gs
 
 	m_p_sel.gs.iip = PRIM->IIP;
-	m_p_sel.gs.prim = m_vt.m_primclass;
+	if (g_vulkan_context->SupportsGeometryShaders())
+		m_p_sel.gs.prim = m_vt.m_primclass;
 
 	// ps
 
@@ -1027,29 +1139,6 @@ void GSRendererVK::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sourc
 		m_p_sel.ps.tfx = 4;
 	}
 
-	GSTexture* rt_copy = nullptr;
-	if (m_bind_rtsample && rt)
-	{
-		// Bind the RT.This way special effect can use it.
-		// Do not always bind the rt when it's not needed,
-		// only bind it when effects use it such as fbmask emulation currently
-		// because we copy the frame buffer and it is quite slow.
-		if (!m_p_sel.ps.hdr && !DATE)
-			dRect = ComputeBoundingBox(rtscale, rtsize);
-
-		const Vulkan::Util::DebugScope debugScope(g_vulkan_context->GetDevice(),
-			"Create RT copy for sampling {%d,%d} %dx%d [%dx%d]",
-			dRect.left, dRect.top, dRect.width(), dRect.height(), rtsize.x, rtsize.y);
-
-		rt_copy = dev->CreateRenderTarget(rtsize.x, rtsize.y, rt->GetFormat());
-		if (rt_copy)
-		{
-			g_vulkan_dev->EndRenderPass();
-			g_vulkan_dev->CopyRect(rt, rt_copy, dRect);
-			g_vulkan_dev->PSSetShaderResource(2, rt_copy);
-		}
-	}
-
 	if (m_game.title == CRC::ICO)
 	{
 		const GSVertex* v = &m_vertex.buff[0];
@@ -1094,21 +1183,35 @@ void GSRendererVK::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sourc
 	}
 
 	// Align the render area to 128x128, hopefully avoiding render pass restarts for small render area changes (e.g. Ratchet and Clank).
-	const GSVector4i render_area(Common::AlignDownPow2(scissor.left, 128), Common::AlignDownPow2(scissor.top, 128),
-		std::min(Common::AlignUpPow2(scissor.right, 128), rtsize.x), std::min(Common::AlignUpPow2(scissor.bottom, 128), rtsize.y));
-	const bool new_target = (!rt || rt->CheckDiscarded()) && (!ds || ds->CheckDiscarded());
-	const VkRenderPass rp = dev->GetTFXRenderPass(rt != nullptr, ds != nullptr, hdr_rt != nullptr, DATE, new_target ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD);
+	const int render_area_alignment = 128 * GetUpscaleMultiplier();
+	const GSVector4i render_area(
+		Common::AlignDownPow2(scissor.left, render_area_alignment),
+		Common::AlignDownPow2(scissor.top, render_area_alignment),
+		std::min(Common::AlignUpPow2(scissor.right, render_area_alignment), rtsize.x),
+		std::min(Common::AlignUpPow2(scissor.bottom, render_area_alignment), rtsize.y));
 
+	GSTexture* draw_rt = rt;
 	if (m_p_sel.ps.hdr)
 	{
 		hdr_rt = dev->CreateRenderTarget(rtsize.x, rtsize.y, VK_FORMAT_R32G32B32A32_SFLOAT);
-		dev->SetupHDR(hdr_rt, rt, ds, dRect, scissor, DATE);
+		dev->SetupHDR(hdr_rt, rt, ds, dRect, scissor, DATE, m_p_sel.ps.feedback_loop);
+		m_require_one_barrier = false;
+		draw_rt = hdr_rt;
 	}
 	else
 	{
-		dev->OMSetRenderTargets(rt, ds, &scissor);
-		if (!dev->CheckRenderPassArea(render_area))
+		const bool render_area_okay = dev->CheckRenderPassArea(render_area);
+
+		// Prefer keeping feedback loop enabled, that way we're not constantly restarting render passes
+		m_p_sel.ps.feedback_loop |= render_area_okay && dev->CurrentFramebufferHasFeedbackLoop();
+		dev->OMSetRenderTargets(rt, ds, scissor, m_p_sel.ps.feedback_loop);
+
+		if (!render_area_okay || !dev->InRenderPass())
 		{
+			const bool new_target = (!rt || rt->CheckDiscarded()) && (!ds || ds->CheckDiscarded());
+			const VkRenderPass rp = dev->GetTFXRenderPass(rt != nullptr, ds != nullptr, hdr_rt != nullptr, DATE, m_p_sel.ps.feedback_loop,
+				new_target ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD);
+
 			if (new_target)
 				dev->BeginClearRenderPass(rp, render_area, GSVector4::zero());
 			else
@@ -1118,16 +1221,18 @@ void GSRendererVK::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sourc
 
 	SetupIA(sx, sy);
 
-	const u8 afix = m_context->ALPHA.FIX;
 	dev->SetupVS(&vs_cb);
 	dev->SetupPS(&ps_cb);
+	
+	if (m_p_sel.ps.feedback_loop)
+		dev->PSSetShaderResource(3, draw_rt);
 
 	// draw
 
 	if (ate_first_pass)
 	{
-		if (dev->BindDrawPipeline(m_p_sel, afix))
-			dev->DrawIndexedPrimitive();
+		if (dev->BindDrawPipeline(m_p_sel))
+			SendDraw(draw_rt);
 	}
 
 	if (ate_second_pass)
@@ -1195,20 +1300,71 @@ void GSRendererVK::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sourc
 			m_p_sel.bs.wb = b;
 			m_p_sel.bs.wa = a;
 
-			if (dev->BindDrawPipeline(m_p_sel, afix))
-				dev->DrawIndexedPrimitive();
+			if (dev->BindDrawPipeline(m_p_sel))
+				SendDraw(draw_rt);
 		}
-	}
-
-	if (rt_copy)
-	{
-		dev->PSSetShaderResource(2, nullptr);
-		dev->Recycle(rt_copy);
 	}
 
 	if (hdr_rt)
 	{
-		dev->FinishHDR(hdr_rt, rt, ds, dRect, scissor, render_area, DATE);
+		dev->FinishHDR(hdr_rt, rt, ds, dRect, scissor, render_area, DATE, m_p_sel.ps.feedback_loop);
 		dev->Recycle(hdr_rt);
 	}
+}
+
+void GSRendererVK::SendDraw(GSTexture* rt)
+{
+	GSDeviceVK* dev = GetDeviceVK();
+
+	if (!m_require_full_barrier && m_require_one_barrier)
+	{
+		// Need only a single barrier
+		ColorBufferBarrier(rt);
+		dev->DrawIndexedPrimitive();
+	}
+	else if (!m_require_full_barrier)
+	{
+		// Don't need any barrier
+		dev->DrawIndexedPrimitive();
+	}
+	else if (m_prim_overlap == PRIM_OVERLAP_NO)
+	{
+		// Need full barrier but a single barrier will be enough
+		ColorBufferBarrier(rt);
+		dev->DrawIndexedPrimitive();
+	}
+	else if (m_vt.m_primclass == GS_SPRITE_CLASS)
+	{
+		const size_t nb_vertex = (m_vt.m_primclass == GS_SPRITE_CLASS && m_p_sel.topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST) ? 2 : 6;
+
+		Vulkan::Util::DebugScope scope(g_vulkan_context->GetCurrentCommandBuffer(), "Split the draw (SPRITE)");
+
+		for (size_t count = 0, p = 0, n = 0; n < m_drawlist.size(); p += count, ++n)
+		{
+			count = m_drawlist[n] * nb_vertex;
+			ColorBufferBarrier(rt);
+			dev->DrawIndexedPrimitive(p, count);
+		}
+	}
+	else
+	{
+		// FIXME: Investigate: a dynamic check to pack as many primitives as possibles
+		// I'm nearly sure GS already have this kind of code (maybe we can adapt GSDirtyRect)
+		const size_t nb_vertex = GSUtil::GetClassVertexCount(m_vt.m_primclass);
+
+		Vulkan::Util::DebugScope scope(g_vulkan_context->GetCurrentCommandBuffer(), "Split single draw in %d draw", m_index.tail / nb_vertex);
+
+		for (size_t p = 0; p < m_index.tail; p += nb_vertex)
+		{
+			ColorBufferBarrier(rt);
+			dev->DrawIndexedPrimitive(p, nb_vertex);
+		}
+	}
+}
+
+bool GSRendererVK::IsDummyTexture() const
+{
+	// Texture is actually the frame buffer. Stencil emulation to compute shadow (Jak series/tri-ace game)
+	// Will hit the "m_ps_sel.tex_is_fb = 1" path in the draw
+	return (m_context->FRAME.Block() == m_context->TEX0.TBP0) && PRIM->TME && m_sw_blending && m_vt.m_primclass == GS_TRIANGLE_CLASS && (m_context->FRAME.FBMSK == 0x00FFFFFF);
 }

@@ -325,6 +325,8 @@ void main()
 #define PS_PABE 0
 #define PS_DITHER 0
 #define PS_ZCLAMP 0
+#define PS_FEEDBACK_LOOP 0
+#define PS_TEX_IS_FB 0
 #endif
 
 #define SW_BLEND (PS_BLEND_A || PS_BLEND_B || PS_BLEND_D)
@@ -361,12 +363,18 @@ layout(location = 0, index = 1) out vec4 o_col1;
 
 layout(set = 1, binding = 0) uniform sampler2D Texture;
 layout(set = 1, binding = 1) uniform sampler2D Palette;
-layout(set = 2, binding = 0) uniform texture2D RtSampler;
-layout(set = 2, binding = 1) uniform texture2D RawTexture;
+layout(set = 2, binding = 0) uniform texture2D RawTexture;
+
+#if PS_FEEDBACK_LOOP
+layout(input_attachment_index = 0, set = 2, binding = 1) uniform subpassInput RtSampler;
+#endif
 
 
 vec4 sample_c(vec2 uv)
 {
+#if PS_TEX_IS_FB
+	return subpassLoad(RtSampler);
+#else
 #if PS_POINT_SAMPLER
 		// Weird issue with ATI/AMD cards,
 		// it looks like they add 127/128 of a texel to sampling coordinates
@@ -378,6 +386,7 @@ vec4 sample_c(vec2 uv)
 #endif
 
 	return texture(Texture, uv);
+#endif
 }
 
 vec4 sample_p(float u)
@@ -876,7 +885,7 @@ vec4 ps_color()
 void ps_fbmask(inout vec4 C, vec2 pos_xy)
 {
 	#if PS_FBMASK
-		vec4 RT = trunc(texelFetch(RtSampler, ivec2(pos_xy), 0) * 255.0f + 0.1f);
+		vec4 RT = trunc(subpassLoad(RtSampler) * 255.0f + 0.1f);
 		C = vec4((uvec4(C) & ~FbMask) | (uvec4(RT) & FbMask));
 	#endif
 }
@@ -899,7 +908,12 @@ void ps_dither(inout vec3 C, vec2 pos_xy)
 void ps_blend(inout vec4 Color, float As, vec2 pos_xy)
 {
 	#if SW_BLEND
-		vec4 RT = trunc(texelFetch(RtSampler, ivec2(pos_xy), 0) * 255.0f + 0.1f);
+		#if PS_FEEDBACK_LOOP
+			vec4 RT = trunc(subpassLoad(RtSampler) * 255.0f + 0.1f);
+		#else
+			// Not used, but we define it to make the selection below simpler.
+			vec4 RT = vec4(0.0f);
+		#endif
 
 		float Ad = (PS_DFMT == FMT_24) ? 1.0f : RT.a / 128.0f;
 

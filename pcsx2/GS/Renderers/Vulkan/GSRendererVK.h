@@ -21,16 +21,7 @@
 
 class GSRendererVK final : public GSRendererHW
 {
-	enum ACC_BLEND_D3D11
-	{
-		ACC_BLEND_NONE_D3D11 = 0,
-		ACC_BLEND_BASIC_D3D11 = 1,
-		ACC_BLEND_MEDIUM_D3D11 = 2,
-		ACC_BLEND_HIGH_D3D11 = 3
-	};
-
 private:
-	bool m_bind_rtsample;
 	bool m_use_point_size;
 
 private:
@@ -44,7 +35,14 @@ private:
 	void EmulateChannelShuffle(GSTexture** rt, const GSTextureCache::Source* tex);
 	void EmulateTextureSampler(const GSTextureCache::Source* tex);
 
+	void SetBlendConstants(u8 afix);
+	void ColorBufferBarrier(GSTexture* rt);
+	void SendDraw(GSTexture* rt);
+
 	GSDeviceVK::PipelineSelector m_p_sel;
+
+	bool m_require_one_barrier = false;
+	bool m_require_full_barrier = false;
 
 	GSDeviceVK::PSConstantBuffer ps_cb;
 	GSDeviceVK::VSConstantBuffer vs_cb;
@@ -56,4 +54,6 @@ public:
 	const char* GetName() const override;
 
 	void DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Source* tex) final;
+
+	bool IsDummyTexture() const final;
 };

@@ -141,6 +141,23 @@ private:
 	void RoundSpriteOffset();
 
 protected:
+	enum PRIM_OVERLAP
+	{
+		PRIM_OVERLAP_UNKNOW,
+		PRIM_OVERLAP_YES,
+		PRIM_OVERLAP_NO
+	};
+
+	enum ACC_BLEND
+	{
+		ACC_BLEND_NONE = 0,
+		ACC_BLEND_BASIC = 1,
+		ACC_BLEND_MEDIUM = 2,
+		ACC_BLEND_HIGH = 3,
+		ACC_BLEND_FULL = 4,
+		ACC_BLEND_ULTRA = 5
+	};
+
 	GSTextureCache* m_tc;
 	GSVector4i m_r;
 	GSTextureCache::Source* m_src;
@@ -163,6 +180,11 @@ protected:
 
 	GSVector2i m_lod; // Min & Max level of detail
 	void CustomResolutionScaling();
+
+	PRIM_OVERLAP PrimitiveOverlap();
+
+	PRIM_OVERLAP m_prim_overlap;
+	std::vector<size_t> m_drawlist;
 
 public:
 	GSRendererHW(std::unique_ptr<GSDevice> dev, GSTextureCache* tc);

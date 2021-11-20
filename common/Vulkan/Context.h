@@ -62,15 +62,6 @@ namespace Vulkan
 		static bool Create(std::string_view gpu_name, const WindowInfo* wi, std::unique_ptr<SwapChain>* out_swap_chain,
 			bool threaded_presentation, bool enable_debug_utils, bool enable_validation_layer);
 
-		// Creates a new context from a pre-existing instance.
-		static bool CreateFromExistingInstance(VkInstance instance, VkPhysicalDevice gpu, VkSurfaceKHR surface,
-			bool take_ownership, bool enable_validation_layer, bool enable_debug_utils,
-			const char** required_device_extensions = nullptr,
-			u32 num_required_device_extensions = 0,
-			const char** required_device_layers = nullptr,
-			u32 num_required_device_layers = 0,
-			const VkPhysicalDeviceFeatures* required_features = nullptr);
-
 		// Destroys context.
 		static void Destroy();
 
@@ -138,7 +129,8 @@ namespace Vulkan
 		__ri VkRenderPass GetRenderPass(VkFormat color_format, VkFormat depth_format,
 			VkAttachmentLoadOp color_load_op = VK_ATTACHMENT_LOAD_OP_LOAD, VkAttachmentStoreOp color_store_op = VK_ATTACHMENT_STORE_OP_STORE,
 			VkAttachmentLoadOp depth_load_op = VK_ATTACHMENT_LOAD_OP_LOAD, VkAttachmentStoreOp depth_store_op = VK_ATTACHMENT_STORE_OP_STORE,
-			VkAttachmentLoadOp stencil_load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE, VkAttachmentStoreOp stencil_store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE)
+			VkAttachmentLoadOp stencil_load_op = VK_ATTACHMENT_LOAD_OP_DONT_CARE, VkAttachmentStoreOp stencil_store_op = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+			bool color_feedback_loop = false)
 		{
 			RenderPassCacheKey key = {};
 			key.color_format = color_format;
@@ -149,6 +141,7 @@ namespace Vulkan
 			key.depth_store_op = depth_store_op;
 			key.stencil_load_op = stencil_load_op;
 			key.stencil_store_op = stencil_store_op;
+			key.color_feedback_loop = color_feedback_loop;
 
 			auto it = m_render_pass_cache.find(key.key);
 			if (it != m_render_pass_cache.end())
@@ -220,7 +213,7 @@ namespace Vulkan
 		void WaitForGPUIdle();
 
 	private:
-		Context(VkInstance instance, VkPhysicalDevice physical_device, bool owns_device);
+		Context(VkInstance instance, VkPhysicalDevice physical_device);
 
 		union RenderPassCacheKey
 		{
@@ -234,6 +227,7 @@ namespace Vulkan
 				u32 depth_store_op : 1;
 				u32 stencil_load_op : 2;
 				u32 stencil_store_op : 1;
+				u32 color_feedback_loop : 1;
 			};
 
 			u32 key;
@@ -299,8 +293,6 @@ namespace Vulkan
 		u64 m_next_fence_counter = 1;
 		u64 m_completed_fence_counter = 0;
 		u32 m_current_frame;
-
-		bool m_owns_device = false;
 
 		std::atomic_bool m_last_present_failed{false};
 		std::atomic_bool m_present_done{true};

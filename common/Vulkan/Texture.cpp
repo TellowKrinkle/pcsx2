@@ -313,6 +313,12 @@ namespace Vulkan
 				srcStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
 				break;
 
+			case VK_IMAGE_LAYOUT_GENERAL:
+				// General is used for feedback loops.
+				barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+				srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				break;
+
 			default:
 				srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 				break;
@@ -354,6 +360,12 @@ namespace Vulkan
 			case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
 				srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 				dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+				break;
+
+			case VK_IMAGE_LAYOUT_GENERAL:
+				// General is used for feedback loops.
+				barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+				dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 				break;
 
 			default:

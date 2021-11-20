@@ -204,6 +204,7 @@ namespace Vulkan
 		void AddBufferDescriptorWrite(VkDescriptorSet set, u32 binding, VkDescriptorType dtype, VkBuffer buffer, u32 offset,
 			u32 size);
 		void AddBufferViewDescriptorWrite(VkDescriptorSet set, u32 binding, VkDescriptorType dtype, VkBufferView view);
+		void AddInputAttachmentDescriptorWrite(VkDescriptorSet set, u32 binding, VkImageView view, VkImageLayout layout = VK_IMAGE_LAYOUT_GENERAL);
 
 	private:
 		std::array<VkWriteDescriptorSet, MAX_WRITES> m_writes;

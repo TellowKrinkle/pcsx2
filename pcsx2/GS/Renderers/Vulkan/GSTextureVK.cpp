@@ -45,19 +45,21 @@ GSTextureVK::~GSTextureVK()
 {
 	if (m_type == RenderTarget || m_type == DepthStencil)
 	{
-		for (auto it : m_linked_textures)
+		for (const auto& [other_tex, fb, feedback] : m_framebuffers)
 		{
-			GSTextureVK* other_tex = it.first;
-			for (auto other_it = other_tex->m_linked_textures.begin(); other_it != other_tex->m_linked_textures.end(); ++other_it)
+			if (other_tex)
 			{
-				if (other_it->first == this)
+				for (auto other_it = other_tex->m_framebuffers.begin(); other_it != other_tex->m_framebuffers.end(); ++other_it)
 				{
-					other_tex->m_linked_textures.erase(other_it);
-					break;
+					if (std::get<0>(*other_it) == this)
+					{
+						other_tex->m_framebuffers.erase(other_it);
+						break;
+					}
 				}
 			}
 
-			g_vulkan_context->DeferFramebufferDestruction(it.second);
+			g_vulkan_context->DeferFramebufferDestruction(fb);
 		}
 	}
 
@@ -109,7 +111,7 @@ std::unique_ptr<GSTextureVK> GSTextureVK::Create(int type, u32 width, u32 height
 			Vulkan::Texture texture;
 			if (!texture.Create(width, height, levels, 1, format, VK_SAMPLE_COUNT_1_BIT,
 					VK_IMAGE_VIEW_TYPE_2D, VK_IMAGE_TILING_OPTIMAL,
-					VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT))
+					VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))
 			{
 				return {};
 			}
@@ -371,41 +373,33 @@ void GSTextureVK::TransitionToLayout(VkImageLayout layout)
 	m_texture.TransitionToLayout(g_vulkan_context->GetCurrentCommandBuffer(), layout);
 }
 
-VkFramebuffer GSTextureVK::GetFramebuffer()
+VkFramebuffer GSTextureVK::GetFramebuffer(bool feedback_loop)
 {
-	if (m_framebuffer != VK_NULL_HANDLE)
-		return m_framebuffer;
-
-	pxAssert(m_type == RenderTarget || m_type == DepthStencil);
-
-	VkRenderPass rp = g_vulkan_context->GetRenderPass((m_type == RenderTarget) ? m_texture.GetFormat() : VK_FORMAT_UNDEFINED,
-		(m_type == DepthStencil) ? m_texture.GetFormat() : VK_FORMAT_UNDEFINED, VK_ATTACHMENT_LOAD_OP_LOAD);
-	if (!rp)
-		return VK_NULL_HANDLE;
-
-	Vulkan::FramebufferBuilder fbb;
-	fbb.AddAttachment(m_texture.GetView());
-	fbb.SetSize(m_texture.GetWidth(), m_texture.GetHeight(), m_texture.GetLayers());
-	fbb.SetRenderPass(rp);
-	m_framebuffer = fbb.Create(g_vulkan_context->GetDevice());
-	return m_framebuffer;
+	return GetLinkedFramebuffer(nullptr, feedback_loop);
 }
 
-VkFramebuffer GSTextureVK::GetLinkedFramebuffer(GSTextureVK* depth_texture)
+VkFramebuffer GSTextureVK::GetLinkedFramebuffer(GSTextureVK* depth_texture, bool feedback_loop)
 {
-	for (auto it : m_linked_textures)
+	for (const auto& [other_tex, fb, other_feedback_loop] : m_framebuffers)
 	{
-		if (it.first == depth_texture)
-			return it.second;
+		if (other_tex == depth_texture && other_feedback_loop == feedback_loop)
+			return fb;
 	}
 
-	VkRenderPass rp = g_vulkan_context->GetRenderPass(m_texture.GetFormat(), depth_texture->GetTexture().GetFormat(), VK_ATTACHMENT_LOAD_OP_LOAD);
+	VkRenderPass rp = g_vulkan_context->GetRenderPass(
+		(m_type != GSTexture::DepthStencil) ? m_texture.GetFormat() : VK_FORMAT_UNDEFINED,
+		(m_type != GSTexture::DepthStencil) ? (depth_texture ? depth_texture->GetTexture().GetFormat() : VK_FORMAT_UNDEFINED) : m_texture.GetFormat(),
+		VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+		VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_STORE_OP_STORE,
+		VK_ATTACHMENT_LOAD_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE,
+		feedback_loop);
 	if (!rp)
 		return VK_NULL_HANDLE;
 
 	Vulkan::FramebufferBuilder fbb;
 	fbb.AddAttachment(m_texture.GetView());
-	fbb.AddAttachment(depth_texture->m_texture.GetView());
+	if (depth_texture)
+		fbb.AddAttachment(depth_texture->m_texture.GetView());
 	fbb.SetSize(m_texture.GetWidth(), m_texture.GetHeight(), m_texture.GetLayers());
 	fbb.SetRenderPass(rp);
 
@@ -413,7 +407,8 @@ VkFramebuffer GSTextureVK::GetLinkedFramebuffer(GSTextureVK* depth_texture)
 	if (!fb)
 		return VK_NULL_HANDLE;
 
-	m_linked_textures.emplace_back(depth_texture, fb);
-	depth_texture->m_linked_textures.emplace_back(this, fb);
+	m_framebuffers.emplace_back(depth_texture, fb, feedback_loop);
+	if (depth_texture)
+		depth_texture->m_framebuffers.emplace_back(this, fb, feedback_loop);
 	return fb;
 }

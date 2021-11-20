@@ -27,10 +27,9 @@ enum : u32
 namespace Vulkan
 {
 
-	Context::Context(VkInstance instance, VkPhysicalDevice physical_device, bool owns_device)
+	Context::Context(VkInstance instance, VkPhysicalDevice physical_device)
 		: m_instance(instance)
 		, m_physical_device(physical_device)
-		, m_owns_device(owns_device)
 	{
 		// Read device physical memory properties, we need it for allocating buffers
 		vkGetPhysicalDeviceProperties(physical_device, &m_device_properties);
@@ -59,17 +58,14 @@ namespace Vulkan
 		DestroyCommandBuffers();
 		DestroyAllocator();
 
-		if (m_owns_device && m_device != VK_NULL_HANDLE)
+		if (m_device != VK_NULL_HANDLE)
 			vkDestroyDevice(m_device, nullptr);
 
 		if (m_debug_messenger_callback != VK_NULL_HANDLE)
 			DisableDebugUtils();
 
-		if (m_owns_device)
-		{
-			vkDestroyInstance(m_instance, nullptr);
-			Vulkan::UnloadVulkanLibrary();
-		}
+		vkDestroyInstance(m_instance, nullptr);
+		Vulkan::UnloadVulkanLibrary();
 	}
 
 	bool Context::CheckValidationLayerAvailablility()
@@ -373,9 +369,8 @@ namespace Vulkan
 			return false;
 		}
 
-		g_vulkan_context.reset(new Context(instance, gpus[gpu_index], true));
+		g_vulkan_context.reset(new Context(instance, gpus[gpu_index]));
 
-		// Enable debug reports if the "Host GPU" log category is enabled.
 		if (enable_debug_utils)
 			g_vulkan_context->EnableDebugUtils();
 
@@ -394,34 +389,6 @@ namespace Vulkan
 
 		if (threaded_presentation)
 			g_vulkan_context->StartPresentThread();
-
-		return true;
-	}
-
-	bool Context::CreateFromExistingInstance(VkInstance instance, VkPhysicalDevice gpu, VkSurfaceKHR surface,
-		bool take_ownership, bool enable_validation_layer, bool enable_debug_utils,
-		const char** required_device_extensions /* = nullptr */,
-		u32 num_required_device_extensions /* = 0 */,
-		const char** required_device_layers /* = nullptr */,
-		u32 num_required_device_layers /* = 0 */,
-		const VkPhysicalDeviceFeatures* required_features /* = nullptr */)
-	{
-		g_vulkan_context.reset(new Context(instance, gpu, take_ownership));
-
-		// Enable debug utils if the "Host GPU" log category is enabled.
-		if (enable_debug_utils)
-			g_vulkan_context->EnableDebugUtils();
-
-		// Attempt to create the device.
-		if (!g_vulkan_context->CreateDevice(surface, enable_validation_layer, required_device_extensions,
-				num_required_device_extensions, required_device_layers,
-				num_required_device_layers, required_features) ||
-			!g_vulkan_context->CreateGlobalDescriptorPool() || !g_vulkan_context->CreateCommandBuffers() ||
-			!g_vulkan_context->CreateAllocator())
-		{
-			g_vulkan_context.reset();
-			return false;
-		}
 
 		return true;
 	}
@@ -496,6 +463,14 @@ namespace Vulkan
 		m_device_features.dualSrcBlend = available_features.dualSrcBlend;
 		m_device_features.geometryShader = available_features.geometryShader;
 		m_device_features.largePoints = available_features.largePoints;
+
+		// Geometry shader + feedback loops are broken on Qualcomm proprietary driver.
+		if (m_device_properties.vendorID == 0x5143)
+		{
+			Console.Warning("Disabling geometry shaders due to Qualcomm proprietary driver");
+			m_device_features.geometryShader = VK_FALSE;
+		}
+
 		return true;
 	}
 
@@ -1353,6 +1328,10 @@ namespace Vulkan
 		VkAttachmentReference* color_reference_ptr = nullptr;
 		VkAttachmentReference depth_reference;
 		VkAttachmentReference* depth_reference_ptr = nullptr;
+		VkAttachmentReference input_reference;
+		VkAttachmentReference* input_reference_ptr = nullptr;
+		VkSubpassDependency subpass_dependency;
+		VkSubpassDependency* subpass_dependency_ptr = nullptr;
 		std::array<VkAttachmentDescription, 2> attachments;
 		u32 num_attachments = 0;
 		if (key.color_format != VK_FORMAT_UNDEFINED)
@@ -1364,11 +1343,28 @@ namespace Vulkan
 				static_cast<VkAttachmentStoreOp>(key.color_store_op),
 				VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 				VK_ATTACHMENT_STORE_OP_DONT_CARE,
-				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+				key.color_feedback_loop ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				key.color_feedback_loop ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
 			color_reference.attachment = num_attachments;
-			color_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			color_reference.layout = key.color_feedback_loop ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 			color_reference_ptr = &color_reference;
+
+			if (key.color_feedback_loop)
+			{
+				input_reference.attachment = num_attachments;
+				input_reference.layout = VK_IMAGE_LAYOUT_GENERAL;
+				input_reference_ptr = &input_reference;
+
+				subpass_dependency.srcSubpass = 0;
+				subpass_dependency.dstSubpass = 0;
+				subpass_dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+				subpass_dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+				subpass_dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+				subpass_dependency.dstAccessMask = VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+				subpass_dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+				subpass_dependency_ptr = &subpass_dependency;
+			}
+
 			num_attachments++;
 		}
 		if (key.depth_format != VK_FORMAT_UNDEFINED)
@@ -1388,25 +1384,21 @@ namespace Vulkan
 			num_attachments++;
 		}
 
-		VkSubpassDescription subpass = {0,
+		const VkSubpassDescription subpass = {0,
 			VK_PIPELINE_BIND_POINT_GRAPHICS,
-			0,
-			nullptr,
+			input_reference_ptr ? 1u : 0u,
+			input_reference_ptr ? input_reference_ptr : nullptr,
 			color_reference_ptr ? 1u : 0u,
 			color_reference_ptr ? color_reference_ptr : nullptr,
 			nullptr,
 			depth_reference_ptr,
 			0,
 			nullptr};
-		VkRenderPassCreateInfo pass_info = {VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-			nullptr,
-			0,
-			num_attachments,
-			attachments.data(),
-			1,
-			&subpass,
-			0,
-			nullptr};
+		const VkRenderPassCreateInfo pass_info = {VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+			nullptr, 0u,
+			num_attachments, attachments.data(),
+			1u, &subpass,
+			subpass_dependency_ptr ? 1u : 0u, subpass_dependency_ptr};
 
 		VkRenderPass pass;
 		VkResult res = vkCreateRenderPass(m_device, &pass_info, nullptr, &pass);

@@ -686,6 +686,24 @@ namespace Vulkan
 		dw.pTexelBufferView = &bi;
 	}
 
+	void DescriptorSetUpdateBuilder::AddInputAttachmentDescriptorWrite(VkDescriptorSet set, u32 binding, VkImageView view, VkImageLayout layout /*= VK_IMAGE_LAYOUT_GENERAL*/)
+	{
+		pxAssert(m_num_writes < MAX_WRITES && m_num_image_infos < MAX_IMAGE_INFOS);
+
+		VkWriteDescriptorSet& dw = m_writes[m_num_writes++];
+		dw.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		dw.dstSet = set;
+		dw.dstBinding = binding;
+		dw.descriptorCount = 1;
+		dw.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+		dw.pImageInfo = &m_image_infos[m_num_image_infos];
+
+		VkDescriptorImageInfo& ii = m_image_infos[m_num_image_infos++];
+		ii.imageView = view;
+		ii.imageLayout = layout;
+		ii.sampler = VK_NULL_HANDLE;
+	}
+
 	FramebufferBuilder::FramebufferBuilder()
 	{
 		Clear();

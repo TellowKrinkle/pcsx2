@@ -225,6 +225,7 @@ public:
 				u32 shuffle : 1;
 				u32 read_ba : 1;
 				u32 fbmask : 1;
+				u32 tex_is_fb : 1;
 
 				// Blend and Colclip
 				u32 hdr : 1;
@@ -251,8 +252,9 @@ public:
 				u32 tales_of_abyss_hle : 1;
 				u32 point_sampler : 1;
 				u32 invalid_tex0 : 1; // Lupin the 3rd
+				u32 feedback_loop : 1;
 
-				u32 _free : 14;
+				u32 _free : 12;
 			};
 
 			u64 key;
@@ -451,10 +453,8 @@ private:
 	std::array<VkPipeline, 16> m_color_copy{};
 	std::array<VkPipeline, 2> m_merge{};
 	std::array<VkPipeline, 4> m_interlace{};
-	VkPipeline m_hdr_no_depth_setup_pipeline = VK_NULL_HANDLE;
-	VkPipeline m_hdr_depth_setup_pipeline = VK_NULL_HANDLE;
-	VkPipeline m_hdr_no_depth_finish_pipeline = VK_NULL_HANDLE;
-	VkPipeline m_hdr_depth_finish_pipeline = VK_NULL_HANDLE;
+	VkPipeline m_hdr_setup_pipelines[2][2] = {};		// [depth][feedback_lopo]
+	VkPipeline m_hdr_finish_pipelines[2][2] = {};		// [depth][feedback_loop]
 
 	std::unordered_map<u32, VkShaderModule> m_tfx_vertex_shaders;
 	std::unordered_map<u32, VkShaderModule> m_tfx_geometry_shaders;
@@ -469,7 +469,7 @@ private:
 	VkRenderPass m_date_setup_render_pass = VK_NULL_HANDLE;
 	VkRenderPass m_swap_chain_render_pass = VK_NULL_HANDLE;
 
-	VkRenderPass m_tfx_render_pass[2][2][2][2][3] = {};
+	VkRenderPass m_tfx_render_pass[2][2][2][2][2][3] = {};
 
 	VSConstantBuffer m_vs_cb_cache;
 	PSConstantBuffer m_ps_cb_cache;
@@ -495,6 +495,7 @@ private:
 	VkShaderModule GetUtilityVertexShader(const std::string& source, const char* replace_main);
 	VkShaderModule GetUtilityFragmentShader(const std::string& source, const char* replace_main);
 
+	bool CheckFeatures();
 	bool CreateNullTexture();
 	bool CreateBuffers();
 	bool CreatePipelineLayouts();
@@ -510,7 +511,7 @@ public:
 	GSDeviceVK();
 	~GSDeviceVK() override;
 
-	__fi VkRenderPass GetTFXRenderPass(bool rt, bool ds, bool hdr, bool date, VkAttachmentLoadOp op) const { return m_tfx_render_pass[rt][ds][hdr][date][op]; }
+	__fi VkRenderPass GetTFXRenderPass(bool rt, bool ds, bool hdr, bool date, bool fbl, VkAttachmentLoadOp op) const { return m_tfx_render_pass[rt][ds][hdr][date][fbl][op]; }
 	__fi Vulkan::StreamBuffer& GetTextureUploadBuffer() { return m_texture_upload_buffer; }
 	__fi VkSampler GetPointSampler() const { return m_point_sampler; }
 	__fi VkSampler GetLinearSampler() const { return m_linear_sampler; }
@@ -545,8 +546,8 @@ public:
 	void BlitRect(GSTexture* sTex, const GSVector4i& sRect, u32 sLevel, GSTexture* dTex, const GSVector4i& dRect, u32 dLevel, bool linear);
 
 	void SetupDATE(GSTexture* rt, GSTexture* ds, const GSVertexPT1* vertices, bool datm, const GSVector4i& bbox);
-	void SetupHDR(GSTexture* hdr_rt, GSTexture* rt, GSTexture* ds, const GSVector4i& rect, const GSVector4i& scissor, bool date);
-	void FinishHDR(GSTexture* hdr_rt, GSTexture* rt, GSTexture* ds, const GSVector4i& rect, const GSVector4i& scissor, const GSVector4i& render_area, bool date);
+	void SetupHDR(GSTexture* hdr_rt, GSTexture* rt, GSTexture* ds, const GSVector4i& rect, const GSVector4i& scissor, bool date, bool feedback_loop);
+	void FinishHDR(GSTexture* hdr_rt, GSTexture* rt, GSTexture* ds, const GSVector4i& rect, const GSVector4i& scissor, const GSVector4i& render_area, bool date, bool feedback_loop);
 
 	void IASetVertexBuffer(const void* vertex, size_t stride, size_t count);
 	bool IAMapVertexBuffer(void** vertex, size_t stride, size_t count);
@@ -558,16 +559,19 @@ public:
 	void PSSetSampler(u32 index, SamplerSelector sel);
 
 	void OMSetRenderTargets(GSTexture* rt, GSTexture* ds, const GSVector4i* scissor = NULL) override;
+	void OMSetRenderTargets(GSTexture* rt, GSTexture* ds, const GSVector4i& scissor, bool feedback_loop);
 
 	void SetupVS(const VSConstantBuffer* cb);
 	void SetupPS(const PSConstantBuffer* cb);
-	bool BindDrawPipeline(const PipelineSelector& p, u8 afix);
+	bool BindDrawPipeline(const PipelineSelector& p);
 
 	//////////////////////////////////////////////////////////////////////////
 	// Vulkan State
 	//////////////////////////////////////////////////////////////////////////
 
 public:
+	__fi bool CurrentFramebufferHasFeedbackLoop() const { return m_current_framebuffer_has_feedback_loop; }
+
 	/// Ends any render pass, executes the command buffer, and invalidates cached state.
 	void ExecuteCommandBuffer(bool wait_for_completion);
 	void ExecuteCommandBuffer(bool wait_for_completion, const char* reason, ...);
@@ -638,6 +642,7 @@ private:
 
 	// Which bindings/state has to be updated before the next draw.
 	u32 m_dirty_flags = 0;
+	bool m_current_framebuffer_has_feedback_loop = false;
 
 	// input assembly
 	VkBuffer m_vertex_buffer = VK_NULL_HANDLE;

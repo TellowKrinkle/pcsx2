@@ -32,7 +32,7 @@ class GSTextureVK final : public GSTexture
 
 	// linked framebuffer is combined with depth texture
 	// list of color textures this depth texture is linked to or vice versa
-	std::vector<std::pair<GSTextureVK*, VkFramebuffer>> m_linked_textures;
+	std::vector<std::tuple<GSTextureVK*, VkFramebuffer, bool>> m_framebuffers;
 
 public:
 	GSTextureVK(int type, Vulkan::Texture texture);
@@ -57,9 +57,9 @@ public:
 	void TransitionToLayout(VkImageLayout layout);
 
 	/// Framebuffers are lazily allocated.
-	VkFramebuffer GetFramebuffer();
+	VkFramebuffer GetFramebuffer(bool feedback_loop);
 
-	VkFramebuffer GetLinkedFramebuffer(GSTextureVK* depth_texture);
+	VkFramebuffer GetLinkedFramebuffer(GSTextureVK* depth_texture, bool feedback_loop);
 
 private:
 	VkCommandBuffer GetCommandBufferForUpdate();
