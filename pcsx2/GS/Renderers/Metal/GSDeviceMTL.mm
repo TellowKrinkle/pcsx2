@@ -235,18 +235,18 @@ id<MTLBlitCommandEncoder> GSDeviceMTL::GetVertexUploadEncoder()
 /// Get the draw command buffer, creating a new one if it doesn't exist
 id<MTLCommandBuffer> GSDeviceMTL::GetRenderCmdBuf()
 {
-	if (!m_current_draw_cmdbuf)
+	if (!m_current_render_cmdbuf)
 	{
-		m_current_draw_cmdbuf = [m_queue commandBuffer];
-		pxAssertRel(m_current_draw_cmdbuf, "Failed to create draw command buffer!");
-		[m_current_draw_cmdbuf setLabel:@"Draw"];
+		m_current_render_cmdbuf = [m_queue commandBuffer];
+		pxAssertRel(m_current_render_cmdbuf, "Failed to create draw command buffer!");
+		[m_current_render_cmdbuf setLabel:@"Draw"];
 	}
-	return m_current_draw_cmdbuf;
+	return m_current_render_cmdbuf;
 }
 
 void GSDeviceMTL::FlushEncoders()
 {
-	if (!m_current_draw_cmdbuf)
+	if (!m_current_render_cmdbuf)
 		return;
 	EndRenderPass();
 	Sync(m_vertex_upload_buf);
@@ -254,21 +254,21 @@ void GSDeviceMTL::FlushEncoders()
 	{
 		ASSERT(!m_vertex_upload_cmdbuf && "Should never be used!");
 	}
-	else if (m_vertex_upload_encoder)
+	else if (m_vertex_upload_cmdbuf)
 	{
 		[m_vertex_upload_encoder endEncoding];
 		[m_vertex_upload_cmdbuf commit];
 		m_vertex_upload_encoder = nil;
 		m_vertex_upload_cmdbuf = nil;
 	}
-	if (m_texture_upload_encoder)
+	if (m_texture_upload_cmdbuf)
 	{
 		[m_texture_upload_encoder endEncoding];
 		[m_texture_upload_cmdbuf commit];
 		m_texture_upload_encoder = nil;
 		m_texture_upload_cmdbuf = nil;
 	}
-	[m_current_draw_cmdbuf addCompletedHandler:[backref = m_backref, draw = m_current_draw](id<MTLCommandBuffer> buf)
+	[m_current_render_cmdbuf addCompletedHandler:[backref = m_backref, draw = m_current_draw](id<MTLCommandBuffer> buf)
 	{
 		std::lock_guard<std::mutex> guard(backref->first);
 		if (GSDeviceMTL* dev = backref->second)
@@ -278,31 +278,28 @@ void GSDeviceMTL::FlushEncoders()
 			dev->m_last_finished_draw.store(newval, std::memory_order_release);
 		}
 	}];
-	[m_current_draw_cmdbuf commit];
-	m_current_draw_cmdbuf = nil;
+	[m_current_render_cmdbuf commit];
+	m_current_render_cmdbuf = nil;
 	m_current_draw++;
 }
 
 void GSDeviceMTL::EndRenderPass()
 {
-	if (m_current_draw_encoder)
+	if (m_current_render.encoder)
 	{
-		[m_current_draw_encoder endEncoding];
-		m_current_draw_encoder = nil;
-		m_current_color_target = nullptr;
-		m_current_depth_target = nullptr;
-		m_current_stencil_target = nullptr;
+		[m_current_render.encoder endEncoding];
+		m_current_render = MainRenderEncoder();
 	}
 }
 
-id<MTLRenderCommandEncoder> GSDeviceMTL::BeginRenderPass(GSTexture* color, MTLLoadAction color_load, GSTexture* depth, MTLLoadAction depth_load, GSTexture* stencil, MTLLoadAction stencil_load)
+GSDeviceMTL::MainRenderEncoder& GSDeviceMTL::BeginRenderPass(GSTexture* color, MTLLoadAction color_load, GSTexture* depth, MTLLoadAction depth_load, GSTexture* stencil, MTLLoadAction stencil_load)
 {
 	GSTextureMTL* mc = static_cast<GSTextureMTL*>(color);
 	GSTextureMTL* md = static_cast<GSTextureMTL*>(depth);
 	GSTextureMTL* ms = static_cast<GSTextureMTL*>(stencil);
-	bool needs_new = false;
-	if (color != m_current_color_target || depth != m_current_depth_target || stencil != m_current_stencil_target)
-		needs_new = true;
+	bool needs_new = color   != m_current_render.color_target
+	              || depth   != m_current_render.depth_target
+	              || stencil != m_current_render.stencil_target;
 	GSVector4 color_clear;
 	float depth_clear;
 	int stencil_clear;
@@ -320,7 +317,7 @@ id<MTLRenderCommandEncoder> GSDeviceMTL::BeginRenderPass(GSTexture* color, MTLLo
 	needs_new |= ms && stencil_load == MTLLoadActionClear;
 
 	if (!needs_new)
-		return m_current_draw_encoder;
+		return m_current_render;
 
 	int idx = 0;
 	if (mc) idx |= 1;
@@ -330,6 +327,7 @@ id<MTLRenderCommandEncoder> GSDeviceMTL::BeginRenderPass(GSTexture* color, MTLLo
 	MTLRenderPassDescriptor* desc = m_render_pass_desc[idx];
 	if (mc)
 	{
+		mc->m_last_write = m_current_draw;
 		desc.colorAttachments[0].texture = mc->GetTexture();
 		if (color_load == MTLLoadActionClear)
 			desc.colorAttachments[0].clearColor = MTLClearColorMake(color_clear.r, color_clear.g, color_clear.b, color_clear.a);
@@ -337,6 +335,7 @@ id<MTLRenderCommandEncoder> GSDeviceMTL::BeginRenderPass(GSTexture* color, MTLLo
 	}
 	if (md)
 	{
+		md->m_last_write = m_current_draw;
 		desc.depthAttachment.texture = md->GetTexture();
 		if (depth_load == MTLLoadActionClear)
 			desc.depthAttachment.clearDepth = depth_clear;
@@ -344,6 +343,7 @@ id<MTLRenderCommandEncoder> GSDeviceMTL::BeginRenderPass(GSTexture* color, MTLLo
 	}
 	if (ms)
 	{
+		ms->m_last_write = m_current_draw;
 		desc.stencilAttachment.texture = ms->GetTexture();
 		if (stencil_load == MTLLoadActionClear)
 			desc.stencilAttachment.clearStencil = stencil_clear;
@@ -351,12 +351,12 @@ id<MTLRenderCommandEncoder> GSDeviceMTL::BeginRenderPass(GSTexture* color, MTLLo
 	}
 
 	EndRenderPass();
-	m_current_draw_encoder = [GetRenderCmdBuf() renderCommandEncoderWithDescriptor:desc];
-	m_current_color_target = color;
-	m_current_depth_target = depth;
-	m_current_stencil_target = stencil;
-	pxAssertRel(m_current_draw_encoder, "Failed to create render encoder!");
-	return m_current_draw_encoder;
+	m_current_render.encoder = [GetRenderCmdBuf() renderCommandEncoderWithDescriptor:desc];
+	m_current_render.color_target = color;
+	m_current_render.depth_target = depth;
+	m_current_render.stencil_target = stencil;
+	pxAssertRel(m_current_render.encoder, "Failed to create render encoder!");
+	return m_current_render;
 }
 
 GSTexture* GSDeviceMTL::CreateSurface(GSTexture::Type type, int w, int h, GSTexture::Format format)
@@ -725,10 +725,6 @@ bool GSDeviceMTL::Create(const WindowInfo& wi)
 
 			m_sampler_hw[i] = [m_dev newSamplerStateWithDescriptor:sdesc];
 		}
-		GSHWDrawConfig::SamplerSelector sel;
-		m_sampler_pt = m_sampler_hw[sel.key];
-		sel.biln = 1;
-		m_sampler_ln = m_sampler_hw[sel.key];
 
 		// Init depth stencil states
 		MTLDepthStencilDescriptor* dssdesc = [MTLDepthStencilDescriptor new];
@@ -1029,11 +1025,10 @@ void GSDeviceMTL::DoStretchRect(GSTexture* sTex, const GSVector4& sRect, GSTextu
 {
 	BeginScene();
 
+	FlushClears(sTex);
+
 	GSTextureMTL* sT = static_cast<GSTextureMTL*>(sTex);
 	GSTextureMTL* dT = static_cast<GSTextureMTL*>(dTex);
-
-	sT->m_last_read  = m_current_draw;
-	dT->m_last_write = m_current_draw;
 
 	GSVector2i ds = dT->GetSize();
 
@@ -1044,11 +1039,17 @@ void GSDeviceMTL::DoStretchRect(GSTexture* sTex, const GSVector4& sRect, GSTextu
 	bool dontcare = load_action == LoadAction::DontCare || (load_action == LoadAction::DontCareIfFull && covers_target);
 	MTLLoadAction action = dontcare ? MTLLoadActionDontCare : MTLLoadActionLoad;
 
-	id<MTLRenderCommandEncoder> encoder;
+	MainRenderEncoder* enc;
 	if (dT->GetFormat() == GSTexture::Format::DepthStencil)
-		encoder = BeginRenderPass(nullptr, MTLLoadActionDontCare, dT, action);
+		enc = &BeginRenderPass(nullptr, MTLLoadActionDontCare, dT, action);
 	else
-		encoder = BeginRenderPass(dT, action, nullptr, MTLLoadActionDontCare);
+		enc = &BeginRenderPass(dT, action, nullptr, MTLLoadActionDontCare);
+
+	enc->ClearScissor();
+	DepthStencilSelector dsel;
+	dsel.ztst = ZTST_ALWAYS;
+	dsel.zwe = dT->GetFormat() == GSTexture::Format::DepthStencil;
+	SetDSS(*enc, dsel);
 
 	float left = dRect.x * 2 / ds.x - 1.0f;
 	float right = dRect.z * 2 / ds.x - 1.0f;
@@ -1063,25 +1064,19 @@ void GSDeviceMTL::DoStretchRect(GSTexture* sTex, const GSVector4& sRect, GSTextu
 		{{right, bottom}, {sRect.z, sRect.w}}
 	};
 
-	[encoder setLabel:@"StretchRect"];
-	[encoder setRenderPipelineState:pipeline];
-	[encoder setFragmentTexture:sT->GetTexture() atIndex:0];
-	[encoder setVertexBytes:vertices
-	                 length:sizeof(vertices)
-	                atIndex:GSMTLBufferIndexVertices];
+	[enc->encoder setLabel:@"StretchRect"];
+	enc->SetPipeline(pipeline);
+	enc->SetVertexBytes(vertices, sizeof(vertices));
+	SetTexture(*enc, sT, 0);
 
 	if (frag_uniform && frag_uniform_len)
-	{
-		[encoder setFragmentBytes:frag_uniform
-		                   length:frag_uniform_len
-		                  atIndex:GSMTLBufferIndexUniforms];
-	}
+		enc->SetPSCB(frag_uniform, frag_uniform_len);
 
-	[encoder setFragmentSamplerState:linear ? m_sampler_ln : m_sampler_pt atIndex:0];
+	SetSampler(*enc, linear ? SamplerSelector::Linear() : SamplerSelector::Point());
 
-	[encoder drawPrimitives:MTLPrimitiveTypeTriangleStrip
-	            vertexStart:0
-	            vertexCount:4];
+	[enc->encoder drawPrimitives:MTLPrimitiveTypeTriangleStrip
+	                 vertexStart:0
+	                 vertexCount:4];
 
 	EndScene();
 }
@@ -1114,12 +1109,27 @@ void GSDeviceMTL::StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture
 	DoStretchRect(sTex, sRect, dTex, dRect, pipeline, false, sel == 15 ? LoadAction::DontCareIfFull : LoadAction::Load, nullptr, 0);
 }}
 
-id<MTLRenderPipelineState> GSDeviceMTL::GetHWPipelineState(GSHWDrawConfig::VSSelector vssel, GSHWDrawConfig::PSSelector pssel, PipelineSelectorExtrasMTL extras)
+void GSDeviceMTL::FlushClears(GSTexture* tex)
+{
+	if (tex)
+		static_cast<GSTextureMTL*>(tex)->FlushClears();
+}
+
+// MARK: - MainRenderEncoder setters
+
+void GSDeviceMTL::SetHWPipelineState(MainRenderEncoder& enc, GSHWDrawConfig::VSSelector vssel, GSHWDrawConfig::PSSelector pssel, PipelineSelectorExtrasMTL extras)
 {
 	PipelineSelectorMTL fullsel(vssel, pssel, extras);
+	if (enc.has_pipeline_sel && fullsel == enc.pipeline_sel)
+		return;
 	auto idx = m_hw_pipeline.find(fullsel);
 	if (idx != m_hw_pipeline.end())
-		return idx->second;
+	{
+		[enc.encoder setRenderPipelineState:idx->second];
+		enc.pipeline_sel = fullsel;
+		enc.has_pipeline_sel = true;
+		return;
+	}
 
 	VSSelector vssel_mtl;
 	vssel_mtl.fst = vssel.fst;
@@ -1196,10 +1206,156 @@ id<MTLRenderPipelineState> GSDeviceMTL::GetHWPipelineState(GSHWDrawConfig::VSSel
 		color.sourceRGBBlendFactor = static_cast<MTLBlendFactor>(b.src);
 		color.destinationRGBBlendFactor = static_cast<MTLBlendFactor>(b.dst);
 	}
-	id<MTLRenderPipelineState> ret = MakePipeline(pdesc, vs, ps, [NSString stringWithFormat:@"HW Render %llx", pssel.key]);
-	m_hw_pipeline.insert(std::make_pair(fullsel, ret));
-	return ret;
+	id<MTLRenderPipelineState> pipeline = MakePipeline(pdesc, vs, ps, [NSString stringWithFormat:@"HW Render %llx", pssel.key]);
+	m_hw_pipeline.insert(std::make_pair(fullsel, pipeline));
+
+	[enc.encoder setRenderPipelineState:pipeline];
 }
+
+void GSDeviceMTL::SetDSS(MainRenderEncoder& enc, DepthStencilSelector sel)
+{
+	if (enc.has_depth_sel && enc.depth_sel.key == sel.key)
+		return;
+	[enc.encoder setDepthStencilState:m_dss_hw[sel.key]];
+	enc.depth_sel = sel;
+	enc.has_depth_sel = true;
+}
+
+void GSDeviceMTL::SetSampler(MainRenderEncoder& enc, SamplerSelector sel)
+{
+	if (enc.has_sampler && enc.sampler_sel.key == sel.key)
+		return;
+	[enc.encoder setFragmentSamplerState:m_sampler_hw[sel.key] atIndex:0];
+	enc.sampler_sel = sel;
+	enc.has_sampler = true;
+}
+
+static void textureBarrier(id<MTLRenderCommandEncoder> enc)
+{
+	if (@available(macOS 10.14, *)) {
+		[enc memoryBarrierWithScope:MTLBarrierScopeRenderTargets
+		                afterStages:MTLRenderStageVertex
+		               beforeStages:MTLRenderStageFragment];
+	} else {
+		[enc textureBarrier];
+	}
+}
+
+void GSDeviceMTL::SetTexture(MainRenderEncoder& enc, GSTexture* tex, int pos)
+{
+	if (tex == enc.tex[pos])
+		return;
+	enc.tex[pos] = tex;
+	if (GSTextureMTL* mtex = static_cast<GSTextureMTL*>(tex))
+	{
+		[enc.encoder setFragmentTexture:mtex->GetTexture() atIndex:pos];
+		mtex->m_last_read = m_current_draw;
+	}
+}
+
+void GSDeviceMTL::MainRenderEncoder::SetVertices(id<MTLBuffer> buffer, size_t offset)
+{
+	if (vertex_buffer != (__bridge void*)buffer)
+	{
+		vertex_buffer = (__bridge void*)buffer;
+		[encoder setVertexBuffer:buffer offset:offset atIndex:GSMTLBufferIndexVertices];
+	}
+	else
+	{
+		[encoder setVertexBufferOffset:offset atIndex:GSMTLBufferIndexVertices];
+	}
+}
+
+void GSDeviceMTL::MainRenderEncoder::SetVertexBytes(void* buffer, size_t size)
+{
+	vertex_buffer = nullptr;
+	[encoder setVertexBytes:buffer length:size atIndex:GSMTLBufferIndexVertices];
+}
+
+void GSDeviceMTL::MainRenderEncoder::SetScissor(const GSVector4i& scissor)
+{
+	if (has_scissor && (this->scissor == scissor).alltrue())
+		return;
+	MTLScissorRect r;
+	r.x = scissor.x;
+	r.y = scissor.y;
+	r.width = scissor.width();
+	r.height = scissor.height();
+	[encoder setScissorRect:r];
+	this->scissor = scissor;
+	has_scissor = true;
+}
+
+void GSDeviceMTL::MainRenderEncoder::ClearScissor()
+{
+	if (!has_scissor)
+		return;
+	has_scissor = false;
+	GSVector4i size = GSVector4i(0);
+	if (color_target)   size = size.max_u32(GSVector4i(color_target  ->GetSize()));
+	if (depth_target)   size = size.max_u32(GSVector4i(depth_target  ->GetSize()));
+	if (stencil_target) size = size.max_u32(GSVector4i(stencil_target->GetSize()));
+	MTLScissorRect r;
+	r.x = 0;
+	r.y = 0;
+	r.width = size.x;
+	r.height = size.y;
+	[encoder setScissorRect:r];
+}
+
+void GSDeviceMTL::MainRenderEncoder::SetCB(const GSMTLMainVSUniform& cb)
+{
+	if (has_cb_vs && BitEqual(cb_vs, cb))
+		return;
+	[encoder setVertexBytes:&cb length:sizeof(cb) atIndex:GSMTLBufferIndexUniforms];
+	has_cb_vs = true;
+	memcpy(&cb_vs, &cb, sizeof(cb));
+}
+
+void GSDeviceMTL::MainRenderEncoder::SetCB(const GSMTLMainPSUniform& cb)
+{
+	if (has_cb_ps && BitEqual(cb_ps, cb))
+		return;
+	[encoder setFragmentBytes:&cb length:sizeof(cb) atIndex:GSMTLBufferIndexUniforms];
+	has_cb_ps = true;
+	memcpy(&cb_ps, &cb, sizeof(cb));
+}
+
+void GSDeviceMTL::MainRenderEncoder::SetPSCB(const void* bytes, size_t len)
+{
+	has_cb_ps = false;
+	[encoder setFragmentBytes:bytes length:len atIndex:GSMTLBufferIndexUniforms];
+}
+
+void GSDeviceMTL::MainRenderEncoder::SetBlendColor(u8 color)
+{
+	if (has_blend_color && blend_color == color)
+		return;
+	float fc = static_cast<float>(color) / 128.f;
+	[encoder setBlendColorRed:fc green:fc blue:fc alpha:fc];
+	has_blend_color = true;
+	blend_color = color;
+}
+
+void GSDeviceMTL::MainRenderEncoder::SetPipeline(id<MTLRenderPipelineState> pipe)
+{
+	if (!has_pipeline_sel && pipeline == (__bridge void*)pipe)
+		return;
+	pipeline = (__bridge void*)pipe;
+	[encoder setRenderPipelineState:pipe];
+	has_pipeline_sel = false;
+}
+
+void GSDeviceMTL::MainRenderEncoder::SetDepth(id<MTLDepthStencilState> dss)
+{
+	if (!has_depth_sel && depth == (__bridge void*)dss)
+		return;
+	depth = (__bridge void*)dss;
+	[encoder setDepthStencilState:dss];
+	has_depth_sel = false;
+}
+
+// MARK: - HW Render
 
 template <typename Dst, typename Src>
 void bitcpy(Dst& dst, const Src& src)
@@ -1211,6 +1367,7 @@ void bitcpy(Dst& dst, const Src& src)
 GSMTLMainVSUniform GSDeviceMTL::ConvertCB(const GSHWDrawConfig::VSConstantBuffer& cb)
 {
 	GSMTLMainVSUniform ret;
+	memset(&ret, 0, sizeof(ret));
 	ret.vertex_scale.x = cb.vertex_scale.x;
 	ret.vertex_scale.y = -cb.vertex_scale.y;
 	ret.vertex_offset.x = cb.vertex_offset.x;
@@ -1224,6 +1381,7 @@ GSMTLMainVSUniform GSDeviceMTL::ConvertCB(const GSHWDrawConfig::VSConstantBuffer
 GSMTLMainPSUniform GSDeviceMTL::ConvertCB(const GSHWDrawConfig::PSConstantBuffer& cb, int atst)
 {
 	GSMTLMainPSUniform ret;
+	memset(&ret, 0, sizeof(ret));
 	bitcpy(ret.fog_color_aref, GSVector4(GSVector4i::load(cb.fog_color_aref).u8to32()));
 	if (atst == 1 || atst == 2) // Greater / Less alpha
 		ret.fog_color_aref.a -= 0.1;
@@ -1245,14 +1403,15 @@ GSMTLMainPSUniform GSDeviceMTL::ConvertCB(const GSHWDrawConfig::PSConstantBuffer
 void GSDeviceMTL::SetupDestinationAlpha(GSTexture* rt, GSTexture* ds, const GSVector4i& r, bool datm)
 {
 	BeginScene();
+	FlushClears(rt);
 	GSTextureMTL* mds = static_cast<GSTextureMTL*>(ds);
 	mds->RequestStencilClear(0);
-	auto encoder = BeginRenderPass(nullptr, MTLLoadActionDontCare, nullptr, MTLLoadActionDontCare, ds, MTLLoadActionLoad);
-	[encoder setLabel:@"Destination Alpha Setup"];
-	[encoder setDepthStencilState:m_dss_destination_alpha];
-	[encoder setStencilReferenceValue:1];
-	[encoder setRenderPipelineState:m_convert_pipeline[static_cast<int>(datm ? ShaderConvert::DATM_1 : ShaderConvert::DATM_0)]];
-	[encoder setScissorRect:makeScissorRect(r.x, r.y, r.width(), r.height())];
+	auto& enc = BeginRenderPass(nullptr, MTLLoadActionDontCare, nullptr, MTLLoadActionDontCare, ds, MTLLoadActionLoad);
+	[enc.encoder setLabel:@"Destination Alpha Setup"];
+	enc.SetDepth(m_dss_destination_alpha);
+	[enc.encoder setStencilReferenceValue:1];
+	enc.SetPipeline(m_convert_pipeline[static_cast<int>(datm ? ShaderConvert::DATM_1 : ShaderConvert::DATM_0)]);
+	enc.SetScissor(r);
 	const GSVector4 src = GSVector4(r) / GSVector4(ds->GetSize()).xyxy();
 	const GSVector4 dst = src * 2.f - 1.f;
 	ConvertShaderVertex vertices[] =
@@ -1262,10 +1421,10 @@ void GSDeviceMTL::SetupDestinationAlpha(GSTexture* rt, GSTexture* ds, const GSVe
 		{{dst.x, -dst.w}, {src.x, src.w}},
 		{{dst.z, -dst.w}, {src.z, src.w}},
 	};
-	[encoder setVertexBytes:vertices length:sizeof(vertices) atIndex:GSMTLBufferIndexVertices];
-	[encoder setFragmentTexture:static_cast<GSTextureMTL*>(rt)->GetTexture() atIndex:0];
-	[encoder setFragmentSamplerState:m_sampler_pt atIndex:0];
-	[encoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+	SetTexture(enc, rt, 0);
+	SetSampler(enc, SamplerSelector::Point());
+	enc.SetVertexBytes(vertices, sizeof(vertices));
+	[enc.encoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
 	EndScene();
 }
 
@@ -1309,32 +1468,36 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 		rt = hdr_rt;
 	}
 
-	auto encoder = BeginRenderPass(rt, MTLLoadActionLoad, config.ds, MTLLoadActionLoad, stencil, MTLLoadActionLoad);
-	[encoder setLabel:@"RenderHW"];
-	[encoder setScissorRect:makeScissorRect(config.scissor.x, config.scissor.y, config.scissor.width(), config.scissor.height())];
-	[encoder setFragmentSamplerState:m_sampler_hw[config.sampler.key] atIndex:0];
-	[encoder setFragmentTexture:getTexture(config.tex)     atIndex:GSMTLTextureIndexTex];
-	[encoder setFragmentTexture:getTexture(config.pal)     atIndex:GSMTLTextureIndexPalette];
-	[encoder setFragmentTexture:getTexture(config.raw_tex) atIndex:GSMTLTextureIndexRawTex];
-	[encoder setFragmentTexture:getTexture(rt)             atIndex:GSMTLTextureIndexRenderTarget];
+	FlushClears(config.tex);
+	FlushClears(config.pal);
+	FlushClears(config.raw_tex);
+	FlushClears(config.rt);
+
+	auto& enc = BeginRenderPass(rt, MTLLoadActionLoad, config.ds, MTLLoadActionLoad, stencil, MTLLoadActionLoad);
+	id<MTLRenderCommandEncoder> mtlenc = enc.encoder;
+	[mtlenc setLabel:@"RenderHW"];
+	enc.SetScissor(config.scissor);
+	SetTexture(enc, config.tex,     GSMTLTextureIndexTex);
+	SetTexture(enc, config.pal,     GSMTLTextureIndexPalette);
+	SetTexture(enc, config.raw_tex, GSMTLTextureIndexRawTex);
+	SetTexture(enc, config.rt,      GSMTLTextureIndexRenderTarget);
+	SetSampler(enc, config.sampler);
 	if (config.blend.index && config.blend.is_constant)
-	{
-		float bf = static_cast<float>(config.blend.factor) / 128.f;
-		[encoder setBlendColorRed:bf green:bf blue:bf alpha:bf];
-	}
+		enc.SetBlendColor(config.blend.factor);
 	PipelineSelectorExtrasMTL sel(config.blend, rt, config.colormask, config.ds, stencil);
-	[encoder setRenderPipelineState:GetHWPipelineState(config.vs, config.ps, sel)];
-	[encoder setDepthStencilState:m_dss_hw[config.depth.key]];
+	SetHWPipelineState(enc, config.vs, config.ps, sel);
+	SetDSS(enc, config.depth);
 
 	GSMTLMainVSUniform cb_vs = ConvertCB(config.cb_vs);
 	GSMTLMainPSUniform cb_ps = ConvertCB(config.cb_ps, config.ps.atst);
-	[encoder setVertexBytes:&cb_vs   length:sizeof(cb_vs) atIndex:GSMTLBufferIndexUniforms];
-	[encoder setFragmentBytes:&cb_ps length:sizeof(cb_ps) atIndex:GSMTLBufferIndexUniforms];
+	enc.SetCB(cb_vs);
+	enc.SetCB(cb_ps);
 
 	size_t vertsize = config.nverts * sizeof(*config.verts);
 	size_t idxsize = config.nindices * sizeof(*config.indices);
-	Map allocation = Allocate(m_vertex_upload_buf, vertsize + idxsize, encoder);
-	[encoder setVertexBuffer:allocation.gpu_buffer offset:allocation.gpu_offset atIndex:GSMTLBufferIndexVertices];
+	Map allocation = Allocate(m_vertex_upload_buf, vertsize + idxsize, mtlenc);
+
+	enc.SetVertices(allocation.gpu_buffer, allocation.gpu_offset);
 	memcpy(allocation.cpu_buffer, config.verts, vertsize);
 	memcpy(static_cast<u8*>(allocation.cpu_buffer) + vertsize, config.indices, idxsize);
 
@@ -1343,19 +1506,19 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 		// TODO: Implement
 	}
 
-	SendHWDraw(config, encoder, allocation.gpu_buffer, allocation.gpu_offset + vertsize);
+	SendHWDraw(config, mtlenc, allocation.gpu_buffer, allocation.gpu_offset + vertsize);
 
 	if (config.alpha_second_pass.enable)
 	{
 		if (0 != memcmp(&config.cb_ps, &config.alpha_second_pass.cb_ps, sizeof(config.cb_ps)))
 		{
 			cb_ps = ConvertCB(config.alpha_second_pass.cb_ps, config.alpha_second_pass.ps.atst);
-			[encoder setFragmentBytes:&cb_ps length:sizeof(cb_ps) atIndex:GSMTLBufferIndexUniforms];
+			enc.SetCB(cb_ps);
 		}
 		sel = PipelineSelectorExtrasMTL(config.blend, rt, config.alpha_second_pass.colormask, config.ds, stencil);
-		[encoder setRenderPipelineState:GetHWPipelineState(config.vs, config.alpha_second_pass.ps, sel)];
-		[encoder setDepthStencilState:m_dss_hw[config.alpha_second_pass.depth.key]];
-		SendHWDraw(config, encoder, allocation.gpu_buffer, allocation.gpu_offset + vertsize);
+		SetHWPipelineState(enc, config.vs, config.ps, sel);
+		SetDSS(enc, config.alpha_second_pass.depth);
+		SendHWDraw(config, mtlenc, allocation.gpu_buffer, allocation.gpu_offset + vertsize);
 	}
 
 	if (hdr_rt)
@@ -1368,17 +1531,6 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 		Recycle(hdr_rt);
 	}
 }}
-
-static void textureBarrier(id<MTLRenderCommandEncoder> enc)
-{
-	if (@available(macOS 10.14, *)) {
-		[enc memoryBarrierWithScope:MTLBarrierScopeRenderTargets
-		                afterStages:MTLRenderStageVertex
-		               beforeStages:MTLRenderStageFragment];
-	} else {
-		[enc textureBarrier];
-	}
-}
 
 void GSDeviceMTL::SendHWDraw(GSHWDrawConfig& config, id<MTLRenderCommandEncoder> enc, id<MTLBuffer> buffer, size_t off)
 {
@@ -1454,30 +1606,33 @@ void GSDeviceMTL::SendHWDraw(GSHWDrawConfig& config, id<MTLRenderCommandEncoder>
 	}
 }
 
+// MARK: - OSD
+
 void GSDeviceMTL::RenderOsd(GSTexture* dt)
 {
 	size_t count = m_osd.Size();
 	if (!count)
 		return;
 	BeginScene();
-	auto encoder = BeginRenderPass(dt, MTLLoadActionLoad, nullptr, MTLLoadActionDontCare);
-	[encoder pushDebugGroup:@"RenderOSD"];
+	auto& enc = BeginRenderPass(dt, MTLLoadActionLoad, nullptr, MTLLoadActionDontCare);
+	id<MTLRenderCommandEncoder> mtlenc = enc.encoder;
+	[mtlenc pushDebugGroup:@"RenderOSD"];
 
 	if (m_osd.m_texture_dirty)
 		m_osd.upload_texture_atlas(m_font.get());
 
-	[encoder setFragmentTexture:m_font->GetTexture() atIndex:0];
-	[encoder setRenderPipelineState:m_convert_pipeline[static_cast<int>(ShaderConvert::OSD)]];
-	Map map = Allocate(m_vertex_upload_buf, count * sizeof(GSVertexPT1), encoder);
+	SetDSS(enc, DepthStencilSelector::NoDepth());
+	SetTexture(enc, m_font.get(), 0);
+	enc.ClearScissor();
+	enc.SetPipeline(m_convert_pipeline[static_cast<int>(ShaderConvert::OSD)]);
+	Map map = Allocate(m_vertex_upload_buf, count * sizeof(GSVertexPT1), mtlenc);
 	count = m_osd.GeneratePrimitives(static_cast<GSVertexPT1*>(map.cpu_buffer), count);
-	[encoder setVertexBuffer:map.gpu_buffer
-	                  offset:map.gpu_offset
-	                 atIndex:GSMTLBufferIndexVertices];
-	[encoder drawPrimitives:MTLPrimitiveTypeTriangle
-	            vertexStart:0
-	            vertexCount:count];
+	enc.SetVertices(map.gpu_buffer, map.gpu_offset);
+	[mtlenc drawPrimitives:MTLPrimitiveTypeTriangle
+	           vertexStart:0
+	           vertexCount:count];
 
-	[encoder popDebugGroup];
+	[mtlenc popDebugGroup];
 	EndScene();
 }
 

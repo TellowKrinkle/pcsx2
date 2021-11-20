@@ -108,46 +108,16 @@ bool GSTextureMTL::GetResetNeedsStencilClear(int& stencilOut)
 	return false;
 }
 
-void GSTextureMTL::ApplyColorLoadAction(MTLRenderPassDescriptor* desc, MTLLoadAction base)
+void GSTextureMTL::FlushClears()
 {
-	if (m_needs_color_clear)
-	{
-		m_needs_color_clear = false;
-		if (base == MTLLoadActionDontCare)
-		{
-			desc.colorAttachments[0].loadAction = MTLLoadActionDontCare;
-		}
-		else
-		{
-			desc.colorAttachments[0].clearColor = MTLClearColorMake(m_clear_color.r, m_clear_color.g, m_clear_color.b, m_clear_color.a);
-			desc.colorAttachments[0].loadAction = MTLLoadActionClear;
-		}
-	}
-	else
-	{
-		desc.colorAttachments[0].loadAction = base;
-	}
-}
+	if (!m_needs_color_clear && !m_needs_depth_clear && !m_needs_stencil_clear)
+		return;
 
-void GSTextureMTL::ApplyDepthLoadAction(MTLRenderPassDescriptor* desc, MTLLoadAction base)
-{
-	if (m_needs_depth_clear)
-	{
-		m_needs_depth_clear = false;
-		if (base == MTLLoadActionDontCare)
-		{
-			desc.depthAttachment.loadAction = MTLLoadActionDontCare;
-		}
-		else
-		{
-			desc.depthAttachment.clearDepth = m_clear_depth;
-			desc.depthAttachment.loadAction = MTLLoadActionClear;
-		}
-	}
-	else
-	{
-		desc.depthAttachment.loadAction = base;
-	}
+	auto& enc = m_dev->BeginRenderPass(
+		m_needs_color_clear   ? this : nullptr, MTLLoadActionLoad,
+		m_needs_depth_clear   ? this : nullptr, MTLLoadActionLoad,
+		m_needs_stencil_clear ? this : nullptr, MTLLoadActionLoad);
+	[enc.encoder setLabel:@"Clear"];
 }
 
 bool GSTextureMTL::Update(const GSVector4i& r, const void* data, int pitch, int layer)
@@ -158,7 +128,7 @@ bool GSTextureMTL::Update(const GSVector4i& r, const void* data, int pitch, int 
 
 	if (m_last_read == m_dev->m_current_draw)
 	{
-		[m_dev->m_current_draw_encoder insertDebugSignpost:@"Early flush due to upload to already-used texture"];
+		[m_dev->m_current_render.encoder insertDebugSignpost:@"Early flush due to upload to already-used texture"];
 		m_dev->FlushEncoders();
 	}
 
@@ -187,7 +157,7 @@ bool GSTextureMTL::Map(GSMap& m, const GSVector4i* _r, int layer)
 
 	if (m_last_read == m_dev->m_current_draw)
 	{
-		[m_dev->m_current_draw_encoder insertDebugSignpost:@"Early flush due to upload to already-used texture"];
+		[m_dev->m_current_render.encoder insertDebugSignpost:@"Early flush due to upload to already-used texture"];
 		m_dev->FlushEncoders();
 	}
 

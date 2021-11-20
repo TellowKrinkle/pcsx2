@@ -69,6 +69,10 @@ struct PipelineSelectorMTL
 	GSHWDrawConfig::PSSelector ps;
 	PipelineSelectorExtrasMTL extras;
 	GSHWDrawConfig::VSSelector vs;
+	PipelineSelectorMTL()
+	{
+		memset(this, 0, sizeof(*this));
+	}
 	PipelineSelectorMTL(GSHWDrawConfig::VSSelector vs, GSHWDrawConfig::PSSelector ps, PipelineSelectorExtrasMTL extras)
 	{
 		memset(this, 0, sizeof(*this));
@@ -120,6 +124,8 @@ class GSTextureMTL;
 class GSDeviceMTL final : public GSDevice
 {
 public:
+	using DepthStencilSelector = GSHWDrawConfig::DepthStencilSelector;
+	using SamplerSelector = GSHWDrawConfig::SamplerSelector;
 	enum class LoadAction
 	{
 		DontCare,
@@ -223,8 +229,6 @@ public:
 
 	MTLRenderPassDescriptor* m_render_pass_desc[8];
 
-	id<MTLSamplerState> m_sampler_ln;
-	id<MTLSamplerState> m_sampler_pt;
 	id<MTLSamplerState> m_sampler_hw[1 << 7];
 
 	id<MTLDepthStencilState> m_dss_destination_alpha;
@@ -235,11 +239,45 @@ public:
 	BufferPair m_vertex_upload_buf;
 
 	// MARK: Ephemeral resources
-	id<MTLCommandBuffer> m_current_draw_cmdbuf;
-	id<MTLRenderCommandEncoder> m_current_draw_encoder;
-	GSTexture* m_current_color_target;
-	GSTexture* m_current_depth_target;
-	GSTexture* m_current_stencil_target;
+	id<MTLCommandBuffer> m_current_render_cmdbuf;
+	struct MainRenderEncoder
+	{
+		id<MTLRenderCommandEncoder> encoder;
+		GSTexture* color_target = nullptr;
+		GSTexture* depth_target = nullptr;
+		GSTexture* stencil_target = nullptr;
+		GSTexture* tex[8] = {};
+		GSVector4i scissor;
+		void* vertex_buffer = nullptr;
+		void* pipeline = nullptr;
+		void* depth = nullptr;
+		PipelineSelectorMTL pipeline_sel;
+		DepthStencilSelector depth_sel = DepthStencilSelector::NoDepth();
+		SamplerSelector sampler_sel;
+		GSMTLMainVSUniform cb_vs;
+		GSMTLMainPSUniform cb_ps;
+		u8 blend_color;
+		bool has_cb_vs = false;
+		bool has_cb_ps = false;
+		bool has_scissor = false;
+		bool has_blend_color = false;
+		bool has_pipeline_sel = false;
+		bool has_depth_sel = true;
+		bool has_sampler = false;
+		void SetVertices(id<MTLBuffer> buffer, size_t offset);
+		void SetVertexBytes(void* buffer, size_t size);
+		void SetScissor(const GSVector4i& scissor);
+		void ClearScissor();
+		void SetCB(const GSMTLMainVSUniform& cb_vs);
+		void SetCB(const GSMTLMainPSUniform& cb_ps);
+		void SetPSCB(const void* bytes, size_t len);
+		void SetBlendColor(u8 blend_color);
+		void SetPipeline(id<MTLRenderPipelineState> pipe);
+		void SetDepth(id<MTLDepthStencilState> dss);
+
+		MainRenderEncoder(const MainRenderEncoder&) = delete;
+		MainRenderEncoder() = default;
+	} m_current_render;
 	id<MTLCommandBuffer> m_texture_upload_cmdbuf;
 	id<MTLBlitCommandEncoder> m_texture_upload_encoder;
 	id<MTLCommandBuffer> m_vertex_upload_cmdbuf;
@@ -265,7 +303,7 @@ public:
 	/// End current render pass without flushing
 	void EndRenderPass();
 	/// Begin a new render pass (may reuse existing)
-	id<MTLRenderCommandEncoder> BeginRenderPass(GSTexture* color, MTLLoadAction color_load, GSTexture* depth, MTLLoadAction depth_load, GSTexture* stencil = nullptr, MTLLoadAction stencil_load = MTLLoadActionDontCare);
+	MainRenderEncoder& BeginRenderPass(GSTexture* color, MTLLoadAction color_load, GSTexture* depth, MTLLoadAction depth_load, GSTexture* stencil = nullptr, MTLLoadAction stencil_load = MTLLoadActionDontCare);
 
 	GSTexture* CreateSurface(GSTexture::Type type, int w, int h, GSTexture::Format format) override;
 	GSTexture* FetchSurface(GSTexture::Type type, int w, int h, GSTexture::Format format) override;
@@ -301,7 +339,11 @@ public:
 	void StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture* dTex, const GSVector4& dRect, ShaderConvert shader = ShaderConvert::COPY, bool linear = true) override;
 	void StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture* dTex, const GSVector4& dRect, bool red, bool green, bool blue, bool alpha) override;
 
-	id<MTLRenderPipelineState> GetHWPipelineState(GSHWDrawConfig::VSSelector vs, GSHWDrawConfig::PSSelector ps, PipelineSelectorExtrasMTL extras);
+	void FlushClears(GSTexture* tex);
+	void SetHWPipelineState(MainRenderEncoder& enc, GSHWDrawConfig::VSSelector vs, GSHWDrawConfig::PSSelector ps, PipelineSelectorExtrasMTL extras);
+	void SetDSS(MainRenderEncoder& enc, DepthStencilSelector sel);
+	void SetSampler(MainRenderEncoder& enc, SamplerSelector sel);
+	void SetTexture(MainRenderEncoder& enc, GSTexture* tex, int pos);
 	GSMTLMainVSUniform ConvertCB(const GSHWDrawConfig::VSConstantBuffer& cb);
 	GSMTLMainPSUniform ConvertCB(const GSHWDrawConfig::PSConstantBuffer& cb, int atst);
 	void SetupDestinationAlpha(GSTexture* rt, GSTexture* ds, const GSVector4i& r, bool datm);
