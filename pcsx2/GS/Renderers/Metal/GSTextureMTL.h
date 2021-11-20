@@ -64,11 +64,8 @@ public:
 	bool GetResetNeedsDepthClear(float& depthOut);
 	/// Reads whether a stencil clear was requested, then clears the request
 	bool GetResetNeedsStencilClear(int& stencilOut);
-
-	/// Applies a clear load action if necessary, otherwise `base`, to desc's first color attachment, then resets the clear request
-	void ApplyColorLoadAction(MTLRenderPassDescriptor* desc, MTLLoadAction base);
-	/// Applies a clear load action if necessary, otherwise `base`, to desc's depth attachment, then resets the clear request
-	void ApplyDepthLoadAction(MTLRenderPassDescriptor* desc, MTLLoadAction base);
+	/// Flushes requested clears to the texture
+	void FlushClears();
 
 	bool Update(const GSVector4i& r, const void* data, int pitch, int layer = 0) override;
 	bool Map(GSMap& m, const GSVector4i* r = NULL, int layer = 0) override;
