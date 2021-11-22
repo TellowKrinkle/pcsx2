@@ -28,6 +28,16 @@ struct WindowInfo
 		MacOS
 	};
 
+	enum class Options
+	{
+		None = 0,
+#ifdef __APPLE__
+		MTGLEngine = 1 << 0,
+#endif
+	};
+
+	Options options = Options::None;
+
 	/// The type of the surface. Surfaceless indicates it will not be displayed on screen at all.
 	Type type = Type::Surfaceless;
 

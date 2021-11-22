@@ -143,6 +143,11 @@ int _GSopen(const WindowInfo& wi, const char* title, GSRendererType renderer, in
 {
 	GSDevice* dev = NULL;
 
+#ifdef __APPLE__
+	// Not great but will do for now
+	const_cast<WindowInfo&>(wi).options = theApp.GetConfigB("multithreaded_gl") ? WindowInfo::Options::MTGLEngine : WindowInfo::Options::None;
+#endif
+
 	// Fresh start up or config file changed
 	if (renderer == GSRendererType::Undefined)
 	{
@@ -1255,6 +1260,9 @@ void GSApp::Init()
 	m_default_configuration["override_GL_ARB_copy_image"]                 = "-1";
 #ifdef GL_EXT_TEX_SUB_IMAGE
 	m_default_configuration["override_GL_ARB_get_texture_sub_image"]      = "-1";
+#endif
+#ifdef __APPLE__
+	m_default_configuration["multithreaded_gl"]                           = "1";
 #endif
 	m_default_configuration["paltex"]                                     = "0";
 	m_default_configuration["png_compression_level"]                      = std::to_string(Z_BEST_SPEED);

@@ -193,10 +193,7 @@ namespace GL
 		if (m_context == nil)
 			return false;
 
-		bool useThreads = true;
-		if (const char* flag = getenv("THREAD_GL"))
-			useThreads = flag[0] != '0' && flag[0] != 'n' && flag[0] != 'N';
-		if (useThreads)
+		if (static_cast<int>(m_wi.options) & static_cast<int>(WindowInfo::Options::MTGLEngine))
 		{
 			CGLError error = CGLEnable([m_context CGLContextObj], kCGLCEMPEngine);
 			if (error == kCGLNoError)

@@ -278,6 +278,9 @@ RendererTab::RendererTab(wxWindow* parent)
 	m_ui.addCheckBox(hw_checks_box, "Accurate Destination Alpha Test", "accurate_date",            IDC_ACCURATE_DATE,   hw_prereq);
 	m_ui.addCheckBox(hw_checks_box, "Conservative Buffer Allocation",  "conservative_framebuffer", IDC_CONSERVATIVE_FB, hw_prereq);
 	m_ui.addCheckBox(hw_checks_box, "GPU Palette Conversion",          "paltex",                   IDC_PALTEX,          hw_prereq);
+#ifdef __APPLE__
+	m_ui.addCheckBox(hw_checks_box, "Multithreaded GL Engine", "multithreaded_gl", IDC_MULTITHREADED_GL, hw_prereq);
+#endif
 
 	auto* hw_choice_grid = new wxFlexGridSizer(2, space, space);
 
