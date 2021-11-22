@@ -343,6 +343,8 @@ std::optional<WindowInfo> GSPanel::GetWindowInfo()
 	ret.surface_width  = static_cast<u32>(ret.surface_width  * ret.surface_scale);
 	ret.surface_height = static_cast<u32>(ret.surface_height * ret.surface_scale);
 	ret.window_handle = GetHandle();
+	if (theApp.GetConfigB("multithreaded_gl"))
+		ret.options = static_cast<WindowInfo::Options>(static_cast<u32>(ret.options) | static_cast<u32>(WindowInfo::Options::MTGLEngine));
 #endif
 
 	if (ret.type == WindowInfo::Type::Surfaceless)
