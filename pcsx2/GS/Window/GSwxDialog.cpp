@@ -283,6 +283,10 @@ RendererTab::RendererTab(wxWindow* parent)
 	auto* paltex_prereq = m_ui.addCheckBox(hw_checks_box, "GPU Palette Conversion", "paltex", IDC_PALTEX, hw_prereq);
 	auto aniso_prereq = [this, paltex_prereq]{ return m_is_hardware && paltex_prereq->GetValue() == false; };
 
+#ifdef __APPLE__
+	m_ui.addCheckBox(hw_checks_box, "Multithreaded GL Engine", "multithreaded_gl", IDC_MULTITHREADED_GL, hw_prereq);
+#endif
+
 	auto* hw_choice_grid = new wxFlexGridSizer(2, space, space);
 
 	m_internal_resolution = m_ui.addComboBoxAndLabel(hw_choice_grid, "Internal Resolution:", "upscale_multiplier", &theApp.m_gs_upscale_multiplier, -1, hw_prereq).first;

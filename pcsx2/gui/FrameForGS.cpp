@@ -341,6 +341,8 @@ std::optional<WindowInfo> GSPanel::GetWindowInfo()
 #elif defined(__WXOSX__)
 	ret.type = WindowInfo::Type::MacOS;
 	ret.window_handle = GetHandle();
+	if (theApp.GetConfigB("multithreaded_gl"))
+		ret.options = static_cast<WindowInfo::Options>(static_cast<u32>(ret.options) | static_cast<u32>(WindowInfo::Options::MTGLEngine));
 #endif
 
 	if (ret.type == WindowInfo::Type::Surfaceless)
