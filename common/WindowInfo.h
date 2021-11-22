@@ -16,6 +16,10 @@
 #pragma once
 #include "Pcsx2Defs.h"
 
+#ifdef None
+	#undef None
+#endif
+
 /// Contains the information required to create a graphics context in a window.
 struct WindowInfo
 {
@@ -27,6 +31,16 @@ struct WindowInfo
 		Wayland,
 		MacOS
 	};
+
+	enum class Options
+	{
+		None = 0,
+#ifdef __APPLE__
+		MTGLEngine = 1 << 0,
+#endif
+	};
+
+	Options options = Options::None;
 
 	/// The type of the surface. Surfaceless indicates it will not be displayed on screen at all.
 	Type type = Type::Surfaceless;
