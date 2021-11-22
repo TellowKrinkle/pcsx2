@@ -379,6 +379,7 @@ bool Pcsx2Config::GSOptions::OptionsAreEqual(const GSOptions& right) const
 		OpEqu(bitset) &&
 
 		OpEqu(VsyncEnable) &&
+		OpEqu(ThreadedGL) &&
 
 		OpEqu(InterlaceMode) &&
 
@@ -450,6 +451,7 @@ bool Pcsx2Config::GSOptions::RestartOptionsAreEqual(const GSOptions& right) cons
 		   OpEqu(DisableDualSourceBlend) &&
 		   OpEqu(DisableFramebufferFetch) &&
 		   OpEqu(ThreadedPresentation) &&
+		   OpEqu(ThreadedGL) &&
 		   OpEqu(OverrideTextureBarriers) &&
 		   OpEqu(OverrideGeometryShaders);
 }
@@ -537,6 +539,9 @@ void Pcsx2Config::GSOptions::ReloadIniSettings()
 	GSSettingBool(DisableDualSourceBlend);
 	GSSettingBool(DisableFramebufferFetch);
 	GSSettingBool(ThreadedPresentation);
+#ifdef __APPLE__
+	GSSettingBoolEx(ThreadedGL, "multithreaded_gl");
+#endif
 	GSSettingBool(SkipDuplicateFrames);
 	GSSettingBool(OsdShowMessages);
 	GSSettingBool(OsdShowSpeed);

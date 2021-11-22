@@ -79,7 +79,7 @@ namespace GL
 		return {};
 	}
 
-	std::unique_ptr<GL::Context> Context::Create(const WindowInfo& wi, const Version* versions_to_try,
+	std::unique_ptr<GL::Context> Context::Create(const WindowInfo& wi, bool threaded, const Version* versions_to_try,
 		size_t num_versions_to_try)
 	{
 		if (ShouldPreferESContext())
@@ -104,7 +104,7 @@ namespace GL
 #if defined(_WIN32) && !defined(_M_ARM64)
 		context = ContextWGL::Create(wi, versions_to_try, num_versions_to_try);
 #elif defined(__APPLE__)
-		context = ContextAGL::Create(wi, versions_to_try, num_versions_to_try);
+		context = ContextAGL::Create(wi, threaded, versions_to_try, num_versions_to_try);
 #endif
 
 #if defined(X11_API)

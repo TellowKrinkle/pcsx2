@@ -21,6 +21,7 @@
 #include "common/ScopedGuard.h"
 #include "common/StringUtil.h"
 #include "common/GL/Program.h"
+#include "GS/GSExtra.h"
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include <array>
@@ -200,7 +201,7 @@ bool OpenGLHostDisplay::HasSurface() const
 
 bool OpenGLHostDisplay::CreateDevice(const WindowInfo& wi)
 {
-	m_gl_context = GL::Context::Create(wi);
+	m_gl_context = GL::Context::Create(wi, GSConfig.ThreadedGL);
 	if (!m_gl_context)
 	{
 		Console.Error("Failed to create any GL context");

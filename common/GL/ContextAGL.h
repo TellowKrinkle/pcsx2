@@ -33,7 +33,7 @@ namespace GL
 		ContextAGL(const WindowInfo& wi);
 		~ContextAGL() override;
 
-		static std::unique_ptr<Context> Create(const WindowInfo& wi, const Version* versions_to_try,
+		static std::unique_ptr<Context> Create(const WindowInfo& wi, bool threaded, const Version* versions_to_try,
 			size_t num_versions_to_try);
 
 		void* GetProcAddress(const char* name) override;
@@ -46,8 +46,8 @@ namespace GL
 		std::unique_ptr<Context> CreateSharedContext(const WindowInfo& wi) override;
 
 	private:
-		bool Initialize(const Version* versions_to_try, size_t num_versions_to_try);
-		bool CreateContext(NSOpenGLContext* share_context, int profile, bool make_current);
+		bool Initialize(bool threaded, const Version* versions_to_try, size_t num_versions_to_try);
+		bool CreateContext(NSOpenGLContext* share_context, int profile, bool make_current, bool threaded);
 		void BindContextToView();
 		void CleanupView();
 
