@@ -44,22 +44,22 @@ namespace GL
 			dlclose(m_opengl_module_handle);
 	}
 
-	std::unique_ptr<Context> ContextAGL::Create(const WindowInfo& wi, const Version* versions_to_try,
+	std::unique_ptr<Context> ContextAGL::Create(const WindowInfo& wi, bool threaded, const Version* versions_to_try,
 		size_t num_versions_to_try)
 	{
 		std::unique_ptr<ContextAGL> context = std::make_unique<ContextAGL>(wi);
-		if (!context->Initialize(versions_to_try, num_versions_to_try))
+		if (!context->Initialize(threaded, versions_to_try, num_versions_to_try))
 			return nullptr;
 
 		return context;
 	}
 
-	bool ContextAGL::Initialize(const Version* versions_to_try, size_t num_versions_to_try)
+	bool ContextAGL::Initialize(bool threaded, const Version* versions_to_try, size_t num_versions_to_try)
 	{
 		for (size_t i = 0; i < num_versions_to_try; i++)
 		{
 			const Version& cv = versions_to_try[i];
-			if (cv.profile == Profile::NoProfile && CreateContext(nullptr, NSOpenGLProfileVersionLegacy, true))
+			if (cv.profile == Profile::NoProfile && CreateContext(nullptr, NSOpenGLProfileVersionLegacy, true, threaded))
 			{
 				// we already have the dummy context, so just use that
 				m_version = cv;
@@ -71,7 +71,7 @@ namespace GL
 					continue;
 
 				const NSOpenGLPixelFormatAttribute profile = (cv.major_version > 3 || cv.minor_version > 2) ? NSOpenGLProfileVersion4_1Core : NSOpenGLProfileVersion3_2Core;
-				if (CreateContext(nullptr, static_cast<int>(profile), true))
+				if (CreateContext(nullptr, static_cast<int>(profile), true, threaded))
 				{
 					m_version = cv;
 					return true;
@@ -170,7 +170,7 @@ namespace GL
 		return context;
 	}
 
-	bool ContextAGL::CreateContext(NSOpenGLContext* share_context, int profile, bool make_current)
+	bool ContextAGL::CreateContext(NSOpenGLContext* share_context, int profile, bool make_current, bool threaded)
 	{
 		if (m_context)
 			m_context = nullptr;
@@ -193,10 +193,7 @@ namespace GL
 		if (m_context == nil)
 			return false;
 
-		bool useThreads = true;
-		if (const char* flag = getenv("THREAD_GL"))
-			useThreads = flag[0] != '0' && flag[0] != 'n' && flag[0] != 'N';
-		if (useThreads)
+		if (threaded)
 		{
 			CGLError error = CGLEnable([m_context CGLContextObj], kCGLCEMPEngine);
 			if (error == kCGLNoError)

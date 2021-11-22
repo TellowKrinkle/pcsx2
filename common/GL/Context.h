@@ -66,16 +66,16 @@ public:
 
   virtual std::vector<FullscreenModeInfo> EnumerateFullscreenModes();
 
-  static std::unique_ptr<Context> Create(const WindowInfo& wi, const Version* versions_to_try,
+  static std::unique_ptr<Context> Create(const WindowInfo& wi, bool threaded, const Version* versions_to_try,
                                          size_t num_versions_to_try);
 
   template<size_t N>
-  static std::unique_ptr<Context> Create(const WindowInfo& wi, const std::array<Version, N>& versions_to_try)
+  static std::unique_ptr<Context> Create(const WindowInfo& wi, bool threaded, const std::array<Version, N>& versions_to_try)
   {
-    return Create(wi, versions_to_try.data(), versions_to_try.size());
+    return Create(wi, threaded, versions_to_try.data(), versions_to_try.size());
   }
 
-  static std::unique_ptr<Context> Create(const WindowInfo& wi) { return Create(wi, GetAllVersionsList()); }
+  static std::unique_ptr<Context> Create(const WindowInfo& wi, bool threaded) { return Create(wi, threaded, GetAllVersionsList()); }
 
   static const std::array<Version, 16>& GetAllVersionsList();
 
