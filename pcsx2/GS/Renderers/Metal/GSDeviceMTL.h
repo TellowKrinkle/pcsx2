@@ -25,6 +25,7 @@
 
 #include "GS/GS.h"
 #include "GSMTLSharedHeader.h"
+#include "MTLDrawableFetcher.h"
 #include <AppKit/AppKit.h>
 #include <Metal/Metal.h>
 #include <QuartzCore/QuartzCore.h>
@@ -230,6 +231,7 @@ public:
 
 	// MARK: Permanent resources
 	std::shared_ptr<std::pair<std::mutex, GSDeviceMTL*>> m_backref;
+	MTLDrawableFetcher m_drawable_fetcher;
 	id<MTLDevice> m_dev;
 	id<MTLCommandQueue> m_queue;
 	id<MTLFence> m_draw_sync_fences[16];
