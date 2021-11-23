@@ -17,12 +17,14 @@
 #include "GS.h"
 #include "GSExtra.h"
 #include "GSUtil.h"
+#include "Renderers/Metal/GSMetalCPPAccessible.h"
 #include <locale>
 #include <codecvt>
 
 #ifdef _WIN32
 #include <VersionHelpers.h>
 #include "svnrev.h"
+#include "Renderers/DX11/D3D.h"
 #include <wil/com.h>
 #else
 #define SVN_REV 0
@@ -185,6 +187,36 @@ bool GSUtil::CheckSSE()
 CRCHackLevel GSUtil::GetRecommendedCRCHackLevel(GSRendererType type)
 {
 	return type != GSRendererType::DX1011_HW ? CRCHackLevel::Partial : CRCHackLevel::Full;
+}
+
+GSRendererType GSUtil::GetPreferredRenderer()
+{
+#ifdef __APPLE__
+	if (!getMTLAdapters(nullptr).empty())
+		return GSRendererType::MTL_HW;
+#endif
+#ifdef _WIN32
+	if (D3D::ShouldPreferD3D())
+		return GSRendererType::DX1011_HW;
+#endif
+	return GSRendererType::OGL_HW;
+}
+
+std::vector<std::string> GSUtil::GetAdapterList(GSRendererType renderer, size_t& default_adapter)
+{
+#ifdef __APPLE__
+	if (renderer == GSRendererType::MTL_HW)
+		return getMTLAdapters(&default_adapter);
+#endif
+#ifdef _WIN32
+	if (renderer == GSRendererType::DX1011_HW)
+	{
+		default_adapter = 0;
+		auto factory = D3D::CreateFactory(false);
+		return D3D::GetAdapterList(factory.get());
+	}
+#endif
+	return {};
 }
 
 #ifdef _WIN32
