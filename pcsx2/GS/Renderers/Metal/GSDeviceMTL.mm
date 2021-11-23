@@ -106,6 +106,7 @@ static void GSDeviceMTLCleanup(NSView* view, CAMetalLayer* layer)
 
 GSDeviceMTL::~GSDeviceMTL()
 { @autoreleasepool {
+	m_drawable_fetcher.Stop();
 	FlushEncoders();
 	GSDeviceMTLCleanup(m_view, m_layer);
 	std::lock_guard<std::mutex> guard(m_backref->first);
@@ -632,6 +633,7 @@ bool GSDeviceMTL::Create(const WindowInfo& wi)
 		dispatch_sync(dispatch_get_main_queue(), [this, &wi]{ InitWindow(wi); });
 
 	Reset(wi.surface_width, wi.surface_height);
+	m_drawable_fetcher.Start(m_layer);
 
 	m_features.geometry_shader = false;
 	m_features.image_load_store = false;
@@ -899,6 +901,15 @@ bool GSDeviceMTL::Reset(int w, int h)
 	return true;
 }
 
+static constexpr ShaderConvert s_present_shader[5] =
+{
+	ShaderConvert::COPY,
+	ShaderConvert::SCANLINE,
+	ShaderConvert::DIAGONAL_FILTER,
+	ShaderConvert::TRIANGULAR_FILTER,
+	ShaderConvert::COMPLEX_FILTER,
+};
+
 void GSDeviceMTL::Present(const GSVector4i& r, int shader)
 { @autoreleasepool {
 
@@ -912,27 +923,28 @@ void GSDeviceMTL::Present(const GSVector4i& r, int shader)
 
 	{
 		id<MTLCommandBuffer> cmdbuf = GetRenderCmdBuf();
-		GSScopedDebugGroupMTL dbg(cmdbuf, @"Present");
 
-		id<CAMetalDrawable> drawable = [m_layer nextDrawable];
+		// TODO: Use synchronous fetch if vsync is enabled
+		id<CAMetalDrawable> drawable = m_drawable_fetcher.GetIfAvailable();
 
-		if (m_current)
+		if (drawable)
 		{
-			static constexpr ShaderConvert s_shader[5] =
-			{
-				ShaderConvert::COPY,
-				ShaderConvert::SCANLINE,
-				ShaderConvert::DIAGONAL_FILTER,
-				ShaderConvert::TRIANGULAR_FILTER,
-				ShaderConvert::COMPLEX_FILTER,
-			};
-			GSTextureMTL backbuffer(this, drawable.texture, GSTexture::Type::Backbuffer, GSTexture::Format::Backbuffer);
-			backbuffer.RequestColorClear(GSVector4::zero());
-			StretchRect(m_current, GSVector4(0, 0, 1, 1), &backbuffer, GSVector4(r), s_shader[shader], m_linear_present);
-			RenderOsd(&backbuffer);
-		}
+			GSScopedDebugGroupMTL dbg(cmdbuf, @"Present");
 
-		[cmdbuf presentDrawable:drawable];
+			if (m_current)
+			{
+				GSTextureMTL backbuffer(this, drawable.texture, GSTexture::Type::Backbuffer, GSTexture::Format::Backbuffer);
+				backbuffer.RequestColorClear(GSVector4::zero());
+				StretchRect(m_current, GSVector4(0, 0, 1, 1), &backbuffer, GSVector4(r), s_present_shader[shader], m_linear_present);
+				RenderOsd(&backbuffer);
+			}
+
+			[cmdbuf presentDrawable:drawable];
+		}
+		else
+		{
+			GSScopedDebugGroupMTL dbg(cmdbuf, @"Present Skipped");
+		}
 	}
 
 	FlushEncoders();
