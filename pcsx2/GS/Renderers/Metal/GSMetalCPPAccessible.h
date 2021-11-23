@@ -21,5 +21,6 @@
 #ifdef __APPLE__
 
 GSDevice* makeGSDeviceMTL();
+std::vector<std::string> getMTLAdapters(size_t* default_adapter);
 
 #endif

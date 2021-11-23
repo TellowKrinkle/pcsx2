@@ -30,6 +30,24 @@ GSDevice* makeGSDeviceMTL()
 	return new GSDeviceMTL();
 }
 
+std::vector<std::string> getMTLAdapters(size_t* default_adapter_idx)
+{
+	if (default_adapter_idx)
+		*default_adapter_idx = 0;
+	std::vector<std::string> ret;
+	@autoreleasepool
+	{
+		id<MTLDevice> default_adapter = MTLCreateSystemDefaultDevice();
+		for (id<MTLDevice> dev in MTLCopyAllDevices())
+		{
+			if (dev == default_adapter && default_adapter_idx)
+				*default_adapter_idx = ret.size();
+			ret.push_back([[dev name] UTF8String]);
+		}
+	}
+	return ret;
+}
+
 static MTLScissorRect makeScissorRect(NSUInteger x, NSUInteger y, NSUInteger width, NSUInteger height)
 {
 	MTLScissorRect rect;
