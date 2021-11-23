@@ -125,6 +125,7 @@ bool MetalHostDisplay::CreateRenderDevice(const WindowInfo& wi, std::string_view
 			[m_layer setDevice:m_dev];
 			AttachSurfaceOnMainThread();
 		});
+		m_drawable_fetcher.Start(m_layer);
 		return true;
 	}
 	else
@@ -150,6 +151,7 @@ void MetalHostDisplay::DestroyRenderSurface()
 {
 	if (!m_layer)
 		return;
+	m_drawable_fetcher.Stop();
 	OnMainThread([this]{ DetachSurfaceOnMainThread(); });
 	m_layer = nullptr;
 }
@@ -183,10 +185,16 @@ std::string MetalHostDisplay::GetDriverInfo() const
 
 void MetalHostDisplay::ResizeRenderWindow(s32 new_window_width, s32 new_window_height, float new_window_scale)
 {
+	m_window_info.surface_scale = new_window_scale;
+	if (m_window_info.surface_width == static_cast<u32>(new_window_width) && m_window_info.surface_height == static_cast<u32>(new_window_height))
+		return;
 	m_window_info.surface_width = new_window_width;
 	m_window_info.surface_height = new_window_height;
-	m_window_info.surface_scale = new_window_scale;
-	[m_layer setDrawableSize:CGSizeMake(new_window_width, new_window_height)];
+	@autoreleasepool
+	{
+		[m_layer setDrawableSize:CGSizeMake(new_window_width, new_window_height)];
+		m_drawable_fetcher.GetIfAvailable(); // Throw away the last drawable of the old size
+	}
 }
 
 std::unique_ptr<HostDisplayTexture> MetalHostDisplay::CreateTexture(u32 width, u32 height, const void* data, u32 data_stride, bool dynamic)
@@ -240,7 +248,7 @@ bool MetalHostDisplay::BeginPresent(bool frame_skip)
 		return false;
 	}
 	GSDeviceMTL* dev = static_cast<GSDeviceMTL*>(g_gs_device.get());
-	m_current_drawable = [m_layer nextDrawable];
+	m_current_drawable = m_drawable_fetcher.GetIfAvailable();
 	dev->EndRenderPass();
 	id<MTLCommandBuffer> buf = dev->GetRenderCmdBuf();
 	if (!m_current_drawable)

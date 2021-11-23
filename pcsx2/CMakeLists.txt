@@ -989,6 +989,7 @@ elseif(APPLE)
 	list(APPEND pcsx2GSSources
 		GS/Renderers/Metal/GSDeviceMTL.mm
 		GS/Renderers/Metal/GSTextureMTL.mm
+		GS/Renderers/Metal/MTLDrawableFetcher.mm
 	)
 	list(APPEND pcsx2GSHeaders
 		GS/Renderers/Metal/GSMetalCPPAccessible.h
@@ -996,6 +997,7 @@ elseif(APPLE)
 		GS/Renderers/Metal/GSTextureMTL.h
 		GS/Renderers/Metal/GSMTLSharedHeader.h
 		GS/Renderers/Metal/GSMTLShaderCommon.h
+		GS/Renderers/Metal/MTLDrawableFetcher.h
 	)
 	list(APPEND pcsx2FrontendSources
 		Frontend/MetalHostDisplay.mm

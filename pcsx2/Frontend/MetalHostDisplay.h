@@ -23,6 +23,7 @@
 
 #ifdef __APPLE__
 
+#include "GS/Renderers/Metal/MTLDrawableFetcher.h"
 #include <AppKit/AppKit.h>
 #include <Metal/Metal.h>
 #include <QuartzCore/QuartzCore.h>
@@ -36,6 +37,7 @@ class MetalHostDisplay final : public HostDisplay
 	id<MTLTexture> m_font_tex;
 	id<CAMetalDrawable> m_current_drawable;
 	MTLRenderPassDescriptor* m_pass_desc;
+	MTLDrawableFetcher m_drawable_fetcher;
 
 	void AttachSurfaceOnMainThread();
 	void DetachSurfaceOnMainThread();
