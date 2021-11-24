@@ -69,6 +69,7 @@ public:
 
 	bool Update(const GSVector4i& r, const void* data, int pitch, int layer = 0) override;
 	bool Map(GSMap& m, const GSVector4i* r = NULL, int layer = 0) override;
+	void* MapWithPitch(const GSVector4i& r, int pitch, int layer);
 	void Unmap() override;
 	void GenerateMipmap() override;
 	bool Save(const std::string& fn) override;
