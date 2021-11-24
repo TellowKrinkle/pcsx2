@@ -148,16 +148,20 @@ void* GSTextureMTL::MapWithPitch(const GSVector4i& r, int pitch, int layer)
 		return nullptr;
 	m_has_mipmaps = false;
 
-	if (m_last_read == m_dev->m_current_draw)
-	{
-		[m_dev->m_current_render.encoder insertDebugSignpost:@"Early flush due to upload to already-used texture"];
-		m_dev->FlushEncoders();
-	}
-
 	size_t size = pitch * r.height();
 	GSDeviceMTL::Map map = m_dev->Allocate(m_dev->m_texture_upload_buf, size);
 
-	id<MTLBlitCommandEncoder> enc = m_dev->GetTextureUploadEncoder();
+	id<MTLBlitCommandEncoder> enc;
+	if (m_last_read == m_dev->m_current_draw)
+	{
+		m_dev->EndRenderPass();
+		enc = [m_dev->GetRenderCmdBuf() blitCommandEncoder];
+		[enc setLabel:@"Texture Upload"];
+	}
+	else
+	{
+		enc = m_dev->GetTextureUploadEncoder();
+	}
 	// Copy is scheduled now, won't happen until the encoder is committed so no problems with ordering
 	[enc copyFromBuffer:map.gpu_buffer
 	       sourceOffset:map.gpu_offset
@@ -168,6 +172,9 @@ void* GSTextureMTL::MapWithPitch(const GSVector4i& r, int pitch, int layer)
 	   destinationSlice:0
 	   destinationLevel:layer
 	  destinationOrigin:MTLOriginMake(r.x, r.y, 0)];
+
+	if (m_last_read == m_dev->m_current_draw)
+		[enc endEncoding];
 
 	return map.cpu_buffer;
 }}
