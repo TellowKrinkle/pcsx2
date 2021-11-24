@@ -709,7 +709,11 @@ bool GSDeviceMTL::Create(const WindowInfo& wi)
 		applyAttribute(m_hw_vertex, GSMTLAttributeIndexF,  MTLVertexFormatUChar4Normalized, offsetof(GSVertex, FOG),     GSMTLBufferIndexVertices);
 
 		for (auto& desc : m_render_pass_desc)
+		{
 			desc = [MTLRenderPassDescriptor new];
+			desc.depthAttachment.storeAction = MTLStoreActionStore;
+			desc.stencilAttachment.storeAction = MTLStoreActionStore;
+		}
 
 		// Init samplers
 		MTLSamplerDescriptor* sdesc = [MTLSamplerDescriptor new];
