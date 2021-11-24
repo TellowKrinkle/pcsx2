@@ -121,9 +121,31 @@ void GSTextureMTL::FlushClears()
 }
 
 bool GSTextureMTL::Update(const GSVector4i& r, const void* data, int pitch, int layer)
+{
+	if (void* buffer = MapWithPitch(r, pitch, layer))
+	{
+		memcpy(buffer, data, pitch * r.height());
+		return true;
+	}
+	return false;
+}
+
+bool GSTextureMTL::Map(GSMap& m, const GSVector4i* _r, int layer)
+{
+	GSVector4i r = _r ? *_r : GSVector4i(0, 0, m_size.x, m_size.y);
+	m.pitch = r.width() << m_int_shift;
+	if (void* buffer = MapWithPitch(r, m.pitch, layer))
+	{
+		m.bits = static_cast<u8*>(buffer);
+		return true;
+	}
+	return false;
+}
+
+void* GSTextureMTL::MapWithPitch(const GSVector4i& r, int pitch, int layer)
 { @autoreleasepool {
 	if (layer >= m_max_layer)
-		return false;
+		return nullptr;
 	m_has_mipmaps = false;
 
 	if (m_last_read == m_dev->m_current_draw)
@@ -132,11 +154,11 @@ bool GSTextureMTL::Update(const GSVector4i& r, const void* data, int pitch, int 
 		m_dev->FlushEncoders();
 	}
 
-	int size = pitch * r.height();
+	size_t size = pitch * r.height();
 	GSDeviceMTL::Map map = m_dev->Allocate(m_dev->m_texture_upload_buf, size);
-	memcpy(map.cpu_buffer, data, size);
 
 	id<MTLBlitCommandEncoder> enc = m_dev->GetTextureUploadEncoder();
+	// Copy is scheduled now, won't happen until the encoder is committed so no problems with ordering
 	[enc copyFromBuffer:map.gpu_buffer
 	       sourceOffset:map.gpu_offset
 	  sourceBytesPerRow:pitch
@@ -146,40 +168,8 @@ bool GSTextureMTL::Update(const GSVector4i& r, const void* data, int pitch, int 
 	   destinationSlice:0
 	   destinationLevel:layer
 	  destinationOrigin:MTLOriginMake(r.x, r.y, 0)];
-	return true;
-}}
 
-bool GSTextureMTL::Map(GSMap& m, const GSVector4i* _r, int layer)
-{ @autoreleasepool {
-	if (layer >= m_max_layer)
-		return false;
-	m_has_mipmaps = false;
-
-	if (m_last_read == m_dev->m_current_draw)
-	{
-		[m_dev->m_current_render.encoder insertDebugSignpost:@"Early flush due to upload to already-used texture"];
-		m_dev->FlushEncoders();
-	}
-
-	GSVector4i r = _r ? *_r : GSVector4i(0, 0, m_size.x, m_size.y);
-	m.pitch = r.width() << m_int_shift;
-	size_t size = m.pitch * r.height();
-	GSDeviceMTL::Map map = m_dev->Allocate(m_dev->m_texture_upload_buf, size);
-
-	id<MTLBlitCommandEncoder> enc = m_dev->GetTextureUploadEncoder();
-	// Copy is scheduled now, won't happen until the encoder is committed so no problems with ordering
-	[enc copyFromBuffer:map.gpu_buffer
-	       sourceOffset:map.gpu_offset
-	  sourceBytesPerRow:m.pitch
-	sourceBytesPerImage:size
-	         sourceSize:MTLSizeMake(r.width(), r.height(), 1)
-	          toTexture:m_texture
-	   destinationSlice:0
-	   destinationLevel:layer
-	  destinationOrigin:MTLOriginMake(r.x, r.y, 0)];
-
-	m.bits = static_cast<u8*>(map.cpu_buffer);
-	return true;
+	return map.cpu_buffer;
 }}
 
 void GSTextureMTL::Unmap()
