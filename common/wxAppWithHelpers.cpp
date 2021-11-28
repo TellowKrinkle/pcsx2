@@ -25,7 +25,7 @@ wxDEFINE_EVENT(pxEvt_SynchronousCommand, pxSynchronousCommandEvent);
 
 wxIMPLEMENT_DYNAMIC_CLASS(pxSimpleEvent, wxEvent);
 
-LogSource appLog("AppEvents", LogStyle::General, &Log::PCSX2);
+static LogSource appLog("AppEvents", LogStyle::General, &Log::pxEvt);
 
 void BaseDeletableObject::DoDeletion()
 {
@@ -521,7 +521,7 @@ void wxAppWithHelpers::IdleEventDispatcher(const wxChar* action)
 			// thread to crash.  So we disallow deletions when those waits are in action, and continue
 			// to postpone the deletion of the thread until such time that it is safe.
 
-			threadLog.info("({:s}) Deletion postponed due to mutex or semaphore dependency.\n",
+			Log::pxThread.info("({:s}) Deletion postponed due to mutex or semaphore dependency.\n",
 				static_cast<pxThread*>(static_cast<wxCommandEvent*>(deleteMe.get())->GetClientData())->GetName());
 			postponed.push_back(deleteMe.release());
 		}
@@ -551,7 +551,7 @@ void wxAppWithHelpers::OnIdleEventTimeout(wxTimerEvent& evt)
 
 void wxAppWithHelpers::Ping()
 {
-	threadLog.info("({:s}) App Event Ping Requested.\n", pxGetCurrentThreadName());
+	Log::pxThread.info("({:s}) App Event Ping Requested.\n", pxGetCurrentThreadName());
 
 	SynchronousActionState sync;
 	pxActionEvent evt(sync);
@@ -623,7 +623,7 @@ void wxAppWithHelpers::DeleteObject(BaseDeletableObject& obj)
 
 void wxAppWithHelpers::DeleteThread(pxThread& obj)
 {
-	threadLog.info("({:s}) Scheduling for deletion...\n", obj.GetName());
+	Log::pxThread.info("({:s}) Scheduling for deletion...\n", obj.GetName());
 	wxCommandEvent evt(pxEvt_DeleteThread);
 	evt.SetClientData((void*)&obj);
 	AddIdleEvent(evt);
@@ -677,11 +677,11 @@ void wxAppWithHelpers::OnDeleteThread(wxCommandEvent& evt)
 	std::unique_ptr<pxThread> thr((pxThread*)evt.GetClientData());
 	if (!thr)
 	{
-		threadLog.info("OnDeleteThread: NULL thread object received (and ignored).\n");
+		Log::pxThread.info("OnDeleteThread: NULL thread object received (and ignored).\n");
 		return;
 	}
 
-	threadLog.info("({:s}) thread object deleted successfully{:s}\n", thr->GetName(), thr->HasPendingException() ? " [exception pending!]" : "");
+	Log::pxThread.info("({:s}) thread object deleted successfully{:s}\n", thr->GetName(), thr->HasPendingException() ? " [exception pending!]" : "");
 	thr->RethrowException();
 }
 

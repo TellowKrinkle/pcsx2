@@ -19,7 +19,7 @@
 
 using namespace pxSizerFlags;
 
-LogSource logEvent("SysEvents", LogStyle::General, &Log::PCSX2);
+static LogSource logEvent("SysEvents", LogStyle::General, &Log::pxEvt); 
 
 // --------------------------------------------------------------------------------------
 //  SysExecEvent  (implementations)

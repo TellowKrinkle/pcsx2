@@ -34,8 +34,6 @@
 #define AffinityAssert_AllowFrom_MainUI() \
 	pxAssertMsg(wxThread::IsMain(), "Thread affinity violation: Call allowed from main thread only.")
 
-extern LogSource threadLog;
-
 // --------------------------------------------------------------------------------------
 //  PCSX2_THREAD_LOCAL - Defines platform/operating system support for Thread Local Storage
 // --------------------------------------------------------------------------------------

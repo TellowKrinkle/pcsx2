@@ -26,7 +26,6 @@ using namespace Threading;
 
 class pxSynchronousCommandEvent;
 
-extern LogSource appLog;
 
 // --------------------------------------------------------------------------------------
 //  ModalButtonPanel

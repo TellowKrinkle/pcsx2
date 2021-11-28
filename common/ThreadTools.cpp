@@ -31,8 +31,6 @@ template class EventSource<EventListener_Thread>;
 // to avoid gui deadlock).
 const wxTimeSpan Threading::def_yieldgui_interval(0, 0, 0, 100);
 
-LogSource threadLog("pxThread", LogStyle::General, &Log::PCSX2);
-
 class StaticMutex : public Mutex
 {
 protected:
@@ -66,7 +64,7 @@ static void make_curthread_key(const pxThread* thr)
 
 	if (0 != pthread_key_create(&curthread_key, NULL))
 	{
-		threadLog.error("({:s}) Thread key creation failed (probably out of memory >_<)\n", thr->GetName());
+		Log::pxThread.error("({:s}) Thread key creation failed (probably out of memory >_<)\n", thr->GetName());
 		curthread_key = 0;
 	}
 }
@@ -142,7 +140,7 @@ bool Threading::_WaitGui_RecursionGuard(const wxChar* name)
 
 	if (!guard.IsReentrant())
 		return false;
-	threadLog.info("({:s}) Yield recursion in {:s}; opening modal dialog.\n", pxGetCurrentThreadName(), wxString(name));
+	Log::pxThread.info("({:s}) Yield recursion in {:s}; opening modal dialog.\n", pxGetCurrentThreadName(), wxString(name));
 	return true;
 }
 
@@ -178,13 +176,13 @@ Threading::pxThread::~pxThread()
 {
 	try
 	{
-		threadLog.info("({:s}) Executing default constructor!\n", GetName());
+		Log::pxThread.info("({:s}) Executing default constructor!\n", GetName());
 
 		if (m_running)
 		{
-			threadLog.info("({:s}) Waiting Waiting for running thread to end...\n", GetName());
+			Log::pxThread.info("({:s}) Waiting Waiting for running thread to end...\n", GetName());
 			m_mtx_InThread.Wait();
-			threadLog.info("({:s}) Thread ended gracefully.\n", GetName());
+			Log::pxThread.info("({:s}) Thread ended gracefully.\n", GetName());
 		}
 		Threading::Sleep(1);
 		Detach();
@@ -220,7 +218,7 @@ void Threading::pxThread::FrankenMutex(Mutex& mutex)
 	{
 		// Our lock is bupkis, which means  the previous thread probably deadlocked.
 		// Let's create a new mutex lock to replace it.
-		threadLog.error("({:s}) Possible deadlock detected on restarted mutex!\n", GetName());
+		Log::pxThread.error("({:s}) Possible deadlock detected on restarted mutex!\n", GetName());
 	}
 }
 
@@ -236,7 +234,7 @@ void Threading::pxThread::Start()
 	ScopedLock startlock(m_mtx_start);
 	if (m_running)
 	{
-		threadLog.info("({:s}) Start() called on running thread; ignorning...\n", GetName());
+		Log::pxThread.info("({:s}) Start() called on running thread; ignorning...\n", GetName());
 		return;
 	}
 
@@ -245,7 +243,7 @@ void Threading::pxThread::Start()
 
 	m_except = NULL;
 
-	threadLog.info("({:s}) Calling pthread_create...\n", GetName());
+	Log::pxThread.info("({:s}) Calling pthread_create...\n", GetName());
 	if (pthread_create(&m_thread, NULL, _internal_callback, this) != 0)
 		throw Exception::ThreadCreationError(this).SetDiagMsg(L"Thread creation error: " + wxString(std::strerror(errno)));
 
@@ -304,7 +302,7 @@ bool Threading::pxThread::_basecancel()
 
 	if (m_detached)
 	{
-		threadLog.warning("({:s}) Ignoring attempted cancellation of detached thread.\n", GetName());
+		Log::pxThread.warning("({:s}) Ignoring attempted cancellation of detached thread.\n", GetName());
 		return false;
 	}
 
@@ -433,7 +431,7 @@ void Threading::pxThread::_selfRunningTest(const wxChar* name) const
 {
 	if (HasPendingException())
 	{
-		threadLog.error("({:s}) An exception was thrown while waiting on a {:s}.\n", GetName(), wxString(name));
+		Log::pxThread.error("({:s}) An exception was thrown while waiting on a {:s}.\n", GetName(), wxString(name));
 		RethrowException();
 	}
 
