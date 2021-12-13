@@ -21,6 +21,9 @@ set(avxdetect_code "
 		if (test(7, 0, 1,  5) /* AVX2  */) return 51;
 		if (test(1, 0, 2, 28) /* AVX   */) return 50;
 		if (test(1, 0, 2, 19) /* SSE41 */) return 41;
+		if (test(1, 0, 2,  9) /* SSSE3 */) return 31;
+		if (test(1, 0, 2,  0) /* SSE3  */) return 30;
+		if (test(1, 0, 3, 26) /* SSE2  */) return 20;
 		return 0;
 	}
 ")
@@ -43,21 +46,29 @@ else()
 endif()
 if (MSVC)
 	if(_M_X86_32)
-		set(compile_options_sse4 /arch:SSE2)
+		set(compile_options_sse2  /arch:SSE2)
+		set(compile_options_ssse3 /arch:SSE2)
+		set(compile_options_sse4  /arch:SSE2)
 	endif()
 	set(compile_options_avx  /arch:AVX)
 	set(compile_options_avx2 /arch:AVX2)
-	set(definitions_sse4 _M_SSE=0x401)
-	set(definitions_avx  _M_SSE=0x500)
-	set(definitions_avx2 _M_SSE=0x501)
+	set(definitions_sse2  _M_SSE=0x200)
+	set(definitions_ssse3 _M_SSE=0x301)
+	set(definitions_sse4  _M_SSE=0x401)
+	set(definitions_avx   _M_SSE=0x500)
+	set(definitions_avx2  _M_SSE=0x501)
 else()
-	set(compile_options_sse4 -msse4.1)
-	set(compile_options_avx  -mavx)
-	set(compile_options_avx2 -mavx2 -mbmi -mbmi2)
+	set(compile_options_sse2  -msse2)
+	set(compile_options_ssse3 -mssse3)
+	set(compile_options_sse4  -msse4.1)
+	set(compile_options_avx   -mavx)
+	set(compile_options_avx2  -mavx2 -mbmi -mbmi2)
 endif()
-set(isa_number_sse4 41)
-set(isa_number_avx  50)
-set(isa_number_avx2 51)
+set(isa_number_sse2  20)
+set(isa_number_ssse3 31)
+set(isa_number_sse4  41)
+set(isa_number_avx   50)
+set(isa_number_avx2  51)
 
 enable_testing()
 add_custom_target(unittests)

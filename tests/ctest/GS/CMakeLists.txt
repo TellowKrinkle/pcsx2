@@ -1,4 +1,4 @@
-foreach(isa "sse4" "avx" "avx2")
+foreach(isa "sse2" "ssse3" "sse4" "avx" "avx2")
 	set(GSDir ${CMAKE_SOURCE_DIR}/pcsx2/GS)
 
 	if(${native_vector_isa} LESS ${isa_number_${isa}})
