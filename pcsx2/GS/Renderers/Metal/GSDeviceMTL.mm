@@ -96,11 +96,16 @@ void GSDeviceMTL::UsageTracker::Reset(size_t new_size)
 	m_pos = 0;
 }
 
+GSDeviceMTL::OutlivesDeviceObj::OutlivesDeviceObj(GSDeviceMTL* dev)
+	: backref(dev)
+	, gpu_work_sema(dispatch_semaphore_create(3))
+{
+}
+
 GSDeviceMTL::GSDeviceMTL()
-	: m_backref(std::make_shared<std::pair<std::mutex, GSDeviceMTL*>>())
+	: m_outlive(std::make_shared<OutlivesDeviceObj>(this))
 	, m_dev(nil)
 {
-	m_backref->second = this;
 	m_mipmap = theApp.GetConfigI("mipmap");
 	if (theApp.GetConfigB("UserHacks"))
 		m_filter = static_cast<TriFiltering>(theApp.GetConfigI("UserHacks_TriFilter"));
@@ -127,8 +132,8 @@ GSDeviceMTL::~GSDeviceMTL()
 	m_drawable_fetcher.Stop();
 	FlushEncoders();
 	GSDeviceMTLCleanup(m_view, m_layer);
-	std::lock_guard<std::mutex> guard(m_backref->first);
-	m_backref->second = nullptr;
+	std::lock_guard<std::mutex> guard(m_outlive->mtx);
+	m_outlive->backref = nullptr;
 }}
 
 GSDeviceMTL::Map GSDeviceMTL::Allocate(UploadBuffer& buffer, size_t amt)
@@ -287,10 +292,10 @@ void GSDeviceMTL::FlushEncoders()
 		m_texture_upload_encoder = nil;
 		m_texture_upload_cmdbuf = nil;
 	}
-	[m_current_render_cmdbuf addCompletedHandler:[backref = m_backref, draw = m_current_draw](id<MTLCommandBuffer> buf)
+	[m_current_render_cmdbuf addCompletedHandler:[obj = m_outlive, draw = m_current_draw](id<MTLCommandBuffer> buf)
 	{
-		std::lock_guard<std::mutex> guard(backref->first);
-		if (GSDeviceMTL* dev = backref->second)
+		std::lock_guard<std::mutex> guard(obj->mtx);
+		if (GSDeviceMTL* dev = obj->backref)
 		{
 			// We can do the update non-atomically because we only ever update under the lock
 			u64 newval = std::max(draw, dev->m_last_finished_draw.load(std::memory_order_relaxed));
@@ -947,6 +952,8 @@ void GSDeviceMTL::Present(const GSVector4i& r, int shader)
 		id<MTLCommandBuffer> cmdbuf = GetRenderCmdBuf();
 
 		// TODO: Use synchronous fetch if vsync is enabled
+		dispatch_semaphore_wait(m_outlive->gpu_work_sema, DISPATCH_TIME_FOREVER);
+		[cmdbuf addCompletedHandler:[obj = m_outlive](id<MTLCommandBuffer>){ dispatch_semaphore_signal(obj->gpu_work_sema); }];
 		id<CAMetalDrawable> drawable = m_drawable_fetcher.GetIfAvailable();
 
 		if (drawable)

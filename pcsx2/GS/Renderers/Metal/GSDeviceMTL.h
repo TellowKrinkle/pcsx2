@@ -195,6 +195,14 @@ public:
 		VSSelector(u8 key): key(key) {}
 	};
 
+	struct OutlivesDeviceObj
+	{
+		std::mutex mtx;
+		GSDeviceMTL* backref;
+		dispatch_semaphore_t gpu_work_sema;
+		OutlivesDeviceObj(GSDeviceMTL* dev);
+	};
+
 	// MARK: Configuration
 	bool m_unified_memory;
 	TriFiltering m_filter;
@@ -202,7 +210,7 @@ public:
 	int m_max_texsize;
 
 	// MARK: Permanent resources
-	std::shared_ptr<std::pair<std::mutex, GSDeviceMTL*>> m_backref;
+	std::shared_ptr<OutlivesDeviceObj> m_outlive;
 	MTLDrawableFetcher m_drawable_fetcher;
 	id<MTLDevice> m_dev;
 	id<MTLCommandQueue> m_queue;
