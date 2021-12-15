@@ -38,11 +38,13 @@ class MetalHostDisplay final : public HostDisplay
 	id<CAMetalDrawable> m_current_drawable;
 	MTLRenderPassDescriptor* m_pass_desc;
 	MTLDrawableFetcher m_drawable_fetcher;
+	dispatch_semaphore_t m_gpu_work_sema;
 
 	void AttachSurfaceOnMainThread();
 	void DetachSurfaceOnMainThread();
 
 public:
+	MetalHostDisplay();
 	RenderAPI GetRenderAPI() const override;
 	void* GetRenderDevice() const override;
 	void* GetRenderContext() const override;

@@ -47,6 +47,11 @@ HostDisplay* MakeMetalHostDisplay()
 	return new MetalHostDisplay();
 }
 
+MetalHostDisplay::MetalHostDisplay()
+	: m_gpu_work_sema(dispatch_semaphore_create(3))
+{
+}
+
 HostDisplay::AdapterAndModeList GetMetalAdapterAndModeList()
 { @autoreleasepool {
 	HostDisplay::AdapterAndModeList list;
@@ -249,9 +254,12 @@ bool MetalHostDisplay::BeginPresent(bool frame_skip)
 		return false;
 	}
 	GSDeviceMTL* dev = static_cast<GSDeviceMTL*>(g_gs_device.get());
+	id<MTLCommandBuffer> buf = dev->GetRenderCmdBuf();
+	// TODO: Use synchronous fetch if vsync is enabled
+	dispatch_semaphore_wait(m_gpu_work_sema, DISPATCH_TIME_FOREVER);
+	[buf addCompletedHandler:[sema = m_gpu_work_sema](id<MTLCommandBuffer>){ dispatch_semaphore_signal(sema); }];
 	m_current_drawable = m_drawable_fetcher.GetIfAvailable();
 	dev->EndRenderPass();
-	id<MTLCommandBuffer> buf = dev->GetRenderCmdBuf();
 	if (!m_current_drawable)
 	{
 		[buf pushDebugGroup:@"Present Skipped"];
