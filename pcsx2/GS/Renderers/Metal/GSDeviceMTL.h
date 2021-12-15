@@ -45,6 +45,7 @@ struct PipelineSelectorExtrasMTL
 			bool has_depth : 1;
 			bool has_stencil : 1;
 			bool accumulation_blend : 1;
+			bool mixed_hw_sw_blend : 1;
 		};
 		u32 key;
 	};
@@ -63,6 +64,7 @@ struct PipelineSelectorExtrasMTL
 		this->has_depth = has_depth;
 		this->has_stencil = has_stencil;
 		this->accumulation_blend = blend.is_accumulation;
+		this->mixed_hw_sw_blend = blend.is_mixed_hw_sw;
 	}
 };
 struct PipelineSelectorMTL

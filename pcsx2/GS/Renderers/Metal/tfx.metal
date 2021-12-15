@@ -440,15 +440,16 @@ struct PSMain
 		return sample_p(rt) * 255.f;
 	}
 
+	float4 fetch_green()
+	{
+		float rt = PS_TEX_IS_DEPTH ? float((fetch_raw_depth() >> 8) & 0xFF) / 255.f : fetch_raw_color().g;
+		return sample_p(rt) * 255.f;
+	}
+
 	float4 fetch_blue()
 	{
 		float rt = PS_TEX_IS_DEPTH ? float((fetch_raw_depth() >> 16) & 0xFF) / 255.f : fetch_raw_color().b;
 		return sample_p(rt) * 255.f;
-	}
-
-	float4 fetch_green()
-	{
-		return sample_p(fetch_raw_color().g) * 255.f;
 	}
 
 	float4 fetch_alpha()

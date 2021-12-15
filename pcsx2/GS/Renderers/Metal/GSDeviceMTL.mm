@@ -1249,6 +1249,8 @@ void GSDeviceMTL::SetHWPipelineState(MainRenderEncoder& enc, GSHWDrawConfig::VSS
 		HWBlend b = GetBlend(extras.blend);
 		if (extras.accumulation_blend)
 			b.src = b.dst = MTLBlendFactorOne;
+		if (extras.mixed_hw_sw_blend)
+			b.src = MTLBlendFactorOne;
 		color.blendingEnabled = YES;
 		color.rgbBlendOperation = static_cast<MTLBlendOperation>(b.op);
 		color.sourceRGBBlendFactor = static_cast<MTLBlendFactor>(b.src);
