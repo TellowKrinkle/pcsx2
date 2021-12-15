@@ -1046,10 +1046,18 @@ bool GSDeviceMTL::DownloadTexture(GSTexture* src, const GSVector4i& rect, GSText
 
 void GSDeviceMTL::CopyRect(GSTexture* sTex, GSTexture* dTex, const GSVector4i& r)
 { @autoreleasepool {
-	EndRenderPass();
 
 	GSTextureMTL* sT = static_cast<GSTextureMTL*>(sTex);
 	GSTextureMTL* dT = static_cast<GSTextureMTL*>(dTex);
+
+	// Process clears
+	GSVector2i dsize = dTex->GetSize();
+	if (r.width() < dsize.x || r.height() < dsize.y)
+		dT->FlushClears();
+	else
+		dT->InvalidateClears();
+
+	EndRenderPass();
 
 	sT->m_last_read  = m_current_draw;
 	dT->m_last_write = m_current_draw;
@@ -1521,7 +1529,6 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 	FlushClears(config.tex);
 	FlushClears(config.pal);
 	FlushClears(config.raw_tex);
-	FlushClears(config.rt);
 
 	auto& enc = BeginRenderPass(rt, MTLLoadActionLoad, config.ds, MTLLoadActionLoad, stencil, MTLLoadActionLoad);
 	id<MTLRenderCommandEncoder> mtlenc = enc.encoder;

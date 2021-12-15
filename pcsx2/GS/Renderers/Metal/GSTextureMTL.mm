@@ -120,6 +120,13 @@ void GSTextureMTL::FlushClears()
 	[enc.encoder setLabel:@"Clear"];
 }
 
+void GSTextureMTL::InvalidateClears()
+{
+	m_needs_color_clear = false;
+	m_needs_depth_clear = false;
+	m_needs_stencil_clear = false;
+}
+
 bool GSTextureMTL::Update(const GSVector4i& r, const void* data, int pitch, int layer)
 {
 	if (void* buffer = MapWithPitch(r, pitch, layer))
@@ -151,9 +158,23 @@ void* GSTextureMTL::MapWithPitch(const GSVector4i& r, int pitch, int layer)
 	size_t size = pitch * r.height();
 	GSDeviceMTL::Map map = m_dev->Allocate(m_dev->m_texture_upload_buf, size);
 
-	id<MTLBlitCommandEncoder> enc;
-	if (m_last_read == m_dev->m_current_draw)
+	bool needs_clear = false;
+	if (m_needs_color_clear)
 	{
+		m_needs_color_clear = false;
+		// Not uploading to full texture
+		needs_clear = r.left > 0 || r.top > 0 || r.right < m_size.x || r.bottom < m_size.y;
+	}
+
+	id<MTLBlitCommandEncoder> enc;
+	if (m_last_read == m_dev->m_current_draw || needs_clear)
+	{
+		if (needs_clear)
+		{
+			m_needs_color_clear = true;
+			auto& enc = m_dev->BeginRenderPass(this, MTLLoadActionLoad, nullptr, MTLLoadActionDontCare);
+			[enc.encoder setLabel:@"Pre-Upload Clear"];
+		}
 		m_dev->EndRenderPass();
 		enc = [m_dev->GetRenderCmdBuf() blitCommandEncoder];
 		[enc setLabel:@"Texture Upload"];

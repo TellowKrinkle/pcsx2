@@ -66,6 +66,8 @@ public:
 	bool GetResetNeedsStencilClear(int& stencilOut);
 	/// Flushes requested clears to the texture
 	void FlushClears();
+	/// Marks pending clears as done (e.g. if the whole texture is about to be overwritten)
+	void InvalidateClears();
 
 	bool Update(const GSVector4i& r, const void* data, int pitch, int layer = 0) override;
 	bool Map(GSMap& m, const GSVector4i* r = NULL, int layer = 0) override;
