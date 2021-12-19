@@ -103,8 +103,8 @@ if(WIN32)
 		windows/wxResources.rc
 		windows/PCSX2.manifest
 	)
+	target_compile_definitions(PCSX2 PRIVATE _M_SSE=0x401)
 	target_compile_definitions(PCSX2_FLAGS INTERFACE
-		_M_SSE=0x401 # TODO: Multiple ISA
 		DIRECTINPUT_VERSION=0x0800
 		WINVER=0x0603
 		_WIN32_WINNT=0x0603
@@ -658,6 +658,19 @@ else()
 endif()
 
 # GS sources
+set(pcsx2GSSourcesUnshared
+	GS/GSLocalMemoryMultiISA.cpp
+	GS/Renderers/Common/GSVertexTraceFMM.cpp
+	GS/Renderers/HW/GSRendererHWMultiISA.cpp
+	GS/Renderers/SW/GSDrawScanline.cpp
+	GS/Renderers/SW/GSDrawScanlineCodeGenerator.cpp
+	GS/Renderers/SW/GSDrawScanlineCodeGenerator.all.cpp
+	GS/Renderers/SW/GSRasterizer.cpp
+	GS/Renderers/SW/GSRendererSW.cpp
+	GS/Renderers/SW/GSSetupPrimCodeGenerator.cpp
+	GS/Renderers/SW/GSSetupPrimCodeGenerator.all.cpp
+)
+
 set(pcsx2GSSources
 	GS/GS.cpp
 	GS/GSAlignedClass.cpp
@@ -669,7 +682,6 @@ set(pcsx2GSSources
 	GS/GSDrawingContext.cpp
 	GS/GSDump.cpp
 	GS/GSLocalMemory.cpp
-	GS/GSLocalMemoryMultiISA.cpp
 	GS/GSLzma.cpp
 	GS/GSPerfMon.cpp
 	GS/GSPng.cpp
@@ -685,7 +697,6 @@ set(pcsx2GSSources
 	GS/Renderers/Common/GSRenderer.cpp
 	GS/Renderers/Common/GSTexture.cpp
 	GS/Renderers/Common/GSVertexTrace.cpp
-	GS/Renderers/Common/GSVertexTraceFMM.cpp
 	GS/Renderers/Null/GSDeviceNull.cpp
 	GS/Renderers/Null/GSRendererNull.cpp
 	GS/Renderers/Null/GSTextureNull.cpp
@@ -694,14 +705,7 @@ set(pcsx2GSSources
 	GS/Renderers/HW/GSTextureCache.cpp
 	GS/Renderers/HW/GSTextureReplacementLoaders.cpp
 	GS/Renderers/HW/GSTextureReplacements.cpp
-	GS/Renderers/SW/GSDrawScanline.cpp
-	GS/Renderers/SW/GSDrawScanlineCodeGenerator.cpp
-	GS/Renderers/SW/GSDrawScanlineCodeGenerator.all.cpp
 	GS/Renderers/SW/GSNewCodeGenerator.cpp
-	GS/Renderers/SW/GSRasterizer.cpp
-	GS/Renderers/SW/GSRendererSW.cpp
-	GS/Renderers/SW/GSSetupPrimCodeGenerator.cpp
-	GS/Renderers/SW/GSSetupPrimCodeGenerator.all.cpp
 	GS/Renderers/SW/GSTextureCacheSW.cpp
 	GS/Renderers/SW/GSTextureSW.cpp
 	GS/Window/GSSetting.cpp
@@ -753,7 +757,6 @@ set(pcsx2GSHeaders
 	GS/Renderers/Null/GSRendererNull.h
 	GS/Renderers/Null/GSTextureNull.h
 	GS/Renderers/HW/GSRendererHW.h
-	GS/Renderers/HW/GSRendererHWMultiISA.cpp
 	GS/Renderers/HW/GSTextureCache.h
 	GS/Renderers/HW/GSTextureReplacements.h
 	GS/Renderers/HW/GSVertexHW.h
@@ -962,6 +965,47 @@ else()
 		USB/usb-pad/evdev/evdev.h
 		USB/usb-pad/evdev/shared.h
 	)
+endif()
+
+
+set(MULTI_ISA_OBJS)
+if(DISABLE_ADVANCE_SIMD)
+	target_compile_definitions(PCSX2 PRIVATE MULTI_ISA_SHARED_COMPILATION)
+	if(USE_GCC)
+		target_link_options(PCSX2_FLAGS INTERFACE -Wno-odr)
+	endif()
+	if(WIN32)
+		set(compile_options_avx2 /arch:AVX2)
+		set(compile_options_avx  /arch:AVX)
+		if (_M_X86_32)
+			set(compile_options_sse4 /arch:SSE2)
+		endif()
+		set(pcsx2_defs_avx2 _M_SSE=0x501)
+		set(pcsx2_defs_avx  _M_SSE=0x500)
+		set(pcsx2_defs_sse4 _M_SSE=0x401)
+	else()
+		set(compile_options_avx2 -march=haswell -mtune=haswell)
+		set(compile_options_avx  -march=sandybridge -mtune=sandybridge)
+		set(compile_options_sse4 -msse4.1 -mtune=nehalem)
+	endif()
+	# ODR violation time!
+	# Everything would be fine if we only defined things in cpp files, but C++ tends to like inline functions (STL anyone?)
+	# Each ISA will bring with it its own copies of these inline header functions, and the linker gets to choose whichever one it wants!  Not fun if the linker chooses the avx2 version and uses it with everything
+	# Thankfully, most linkers don't choose at random.  When presented with a bunch of .o files, most linkers seem to choose the first implementation they see, so make sure you order these from oldest to newest
+	# Note: ld64 (macOS's linker) did not act in the same way when presented with .a files, hence the choice of OBJECT rather than STATIC
+	foreach(isa "sse4" "avx" "avx2")
+		set(is_first_isa "0")
+		if (${isa} STREQUAL "sse4")
+			set(is_first_isa "1")
+		endif()
+		add_library(GS-${isa} OBJECT ${pcsx2GSSourcesUnshared})
+		target_link_libraries(GS-${isa} PRIVATE PCSX2_FLAGS)
+		target_compile_definitions(GS-${isa} PRIVATE MULTI_ISA_UNSHARED_COMPILATION=isa_${isa} MULTI_ISA_IS_FIRST=${is_first_isa} ${pcsx2_defs_${isa}})
+		target_compile_options(GS-${isa} PRIVATE ${compile_options_${isa}})
+		list(APPEND MULTI_ISA_OBJS $<TARGET_OBJECTS:GS-${isa}>)
+	endforeach()
+else()
+	list(APPEND pcsx2GSSources ${pcsx2GSSourcesUnshared})
 endif()
 
 
@@ -1511,6 +1555,9 @@ set(pcsx2LTOSources
 
 if(LTO_PCSX2_CORE)
 	add_library(PCSX2_LTO ${pcsx2LTOSources})
+	if (WIN32)
+		target_compile_definitions(PCSX2_LTO PRIVATE _M_SSE=0x401)
+	endif()
 	target_link_libraries(PCSX2_LTO PRIVATE PCSX2_FLAGS)
 	target_link_libraries(PCSX2 PRIVATE PCSX2_LTO)
 	set_target_properties(PCSX2_LTO PROPERTIES INTERPROCEDURAL_OPTIMIZATION true)
@@ -1785,6 +1832,7 @@ endif()
 
 set_property(GLOBAL PROPERTY PCSX2_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set_property(GLOBAL PROPERTY PCSX2_METAL_SHADERS ${pcsx2GSMetalShaders})
+set_property(GLOBAL PROPERTY PCSX2_MULTI_ISA_OBJS ${MULTI_ISA_OBJS})
 
 function(setup_main_executable target)
 	file(GLOB_RECURSE RESOURCE_FILES ${CMAKE_SOURCE_DIR}/bin/resources/*)
@@ -1804,6 +1852,8 @@ function(setup_main_executable target)
 
 	get_property(PCSX2_SOURCE_DIR GLOBAL PROPERTY PCSX2_SOURCE_DIR)
 	get_property(PCSX2_METAL_SHADERS GLOBAL PROPERTY PCSX2_METAL_SHADERS)
+	get_property(PCSX2_MULTI_ISA_OBJS GLOBAL PROPERTY PCSX2_MULTI_ISA_OBJS)
+	target_sources(${target} PRIVATE ${PCSX2_MULTI_ISA_OBJS})
 
 	if(APPLE)
 		if(CMAKE_GENERATOR MATCHES "Xcode")
