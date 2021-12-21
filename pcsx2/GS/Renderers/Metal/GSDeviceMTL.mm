@@ -1368,21 +1368,68 @@ void GSDeviceMTL::MainRenderEncoder::ClearScissor()
 	[encoder setScissorRect:r];
 }
 
-void GSDeviceMTL::MainRenderEncoder::SetCB(const GSMTLMainVSUniform& cb)
+template <typename Dst, typename Src>
+void bitcpy(Dst& dst, const Src& src)
 {
-	if (has_cb_vs && BitEqual(cb_vs, cb))
+	static_assert(sizeof(dst) == sizeof(src), "Must be the same size");
+	memcpy(&dst, &src, sizeof(dst));
+}
+
+static GSMTLMainVSUniform convertCB(const GSHWDrawConfig::VSConstantBuffer& cb)
+{
+	GSMTLMainVSUniform ret;
+	memset(&ret, 0, sizeof(ret));
+	ret.vertex_scale.x = cb.vertex_scale.x;
+	ret.vertex_scale.y = -cb.vertex_scale.y;
+	ret.vertex_offset.x = cb.vertex_offset.x;
+	ret.vertex_offset.y = -cb.vertex_offset.y;
+	bitcpy(ret.texture_offset, cb.texture_offset);
+	bitcpy(ret.texture_scale, cb.texture_scale);
+	bitcpy(ret.max_depth, cb.max_depth.x);
+	return ret;
+}
+
+static GSMTLMainPSUniform convertCB(const GSHWDrawConfig::PSConstantBuffer& cb, int atst)
+{
+	GSMTLMainPSUniform ret;
+	memset(&ret, 0, sizeof(ret));
+	bitcpy(ret.fog_color_aref, GSVector4(GSVector4i::load(cb.fog_color_aref).u8to32()));
+	if (atst == 1 || atst == 2) // Greater / Less alpha
+		ret.fog_color_aref.a -= 0.1;
+	bitcpy(ret.wh, cb.texture_size);
+	ret.ta.x = static_cast<float>(cb.ta0) / 255.f;
+	ret.ta.y = static_cast<float>(cb.ta1) / 255.f;
+	ret.alpha_fix = static_cast<float>(cb.alpha_fix) / 128.f;
+	bitcpy(ret.uv_msk_fix, cb.uv_msk_fix);
+	bitcpy(ret.fbmask, cb.fbmask_int);
+	bitcpy(ret.half_texel, cb.half_texel);
+	bitcpy(ret.uv_min_max, cb.uv_min_max);
+	bitcpy(ret.tc_offset, cb.tc_offset);
+	ret.max_depth = cb.max_depth * 0x1p-32f;
+	bitcpy(ret.dither_matrix, cb.dither_matrix);
+	ret.channel_shuffle_int = cb.channel_shuffle_int;
+	return ret;
+}
+
+
+void GSDeviceMTL::MainRenderEncoder::SetCB(const GSHWDrawConfig::VSConstantBuffer& cb)
+{
+	if (has_cb_vs && cb_vs == cb)
 		return;
-	[encoder setVertexBytes:&cb length:sizeof(cb) atIndex:GSMTLBufferIndexUniforms];
+	GSMTLMainVSUniform cb_mtl = convertCB(cb);
+	[encoder setVertexBytes:&cb_mtl length:sizeof(cb_mtl) atIndex:GSMTLBufferIndexUniforms];
 	has_cb_vs = true;
 	memcpy(&cb_vs, &cb, sizeof(cb));
 }
 
-void GSDeviceMTL::MainRenderEncoder::SetCB(const GSMTLMainPSUniform& cb)
+void GSDeviceMTL::MainRenderEncoder::SetCB(const GSHWDrawConfig::PSConstantBuffer& cb, int atst)
 {
-	if (has_cb_ps && BitEqual(cb_ps, cb))
+	if (has_cb_ps && cb_ps == cb && (atst == 1 || atst == 2) == cb_ps_aref_off)
 		return;
-	[encoder setFragmentBytes:&cb length:sizeof(cb) atIndex:GSMTLBufferIndexUniforms];
+	GSMTLMainPSUniform cb_mtl = convertCB(cb, atst);
+	[encoder setFragmentBytes:&cb_mtl length:sizeof(cb_mtl) atIndex:GSMTLBufferIndexUniforms];
 	has_cb_ps = true;
+	cb_ps_aref_off = (atst == 1 || atst == 2);
 	memcpy(&cb_ps, &cb, sizeof(cb));
 }
 
@@ -1421,49 +1468,6 @@ void GSDeviceMTL::MainRenderEncoder::SetDepth(id<MTLDepthStencilState> dss)
 }
 
 // MARK: - HW Render
-
-template <typename Dst, typename Src>
-void bitcpy(Dst& dst, const Src& src)
-{
-	static_assert(sizeof(dst) == sizeof(src), "Must be the same size");
-	memcpy(&dst, &src, sizeof(dst));
-}
-
-GSMTLMainVSUniform GSDeviceMTL::ConvertCB(const GSHWDrawConfig::VSConstantBuffer& cb)
-{
-	GSMTLMainVSUniform ret;
-	memset(&ret, 0, sizeof(ret));
-	ret.vertex_scale.x = cb.vertex_scale.x;
-	ret.vertex_scale.y = -cb.vertex_scale.y;
-	ret.vertex_offset.x = cb.vertex_offset.x;
-	ret.vertex_offset.y = -cb.vertex_offset.y;
-	bitcpy(ret.texture_offset, cb.texture_offset);
-	bitcpy(ret.texture_scale, cb.texture_scale);
-	bitcpy(ret.max_depth, cb.max_depth.x);
-	return ret;
-}
-
-GSMTLMainPSUniform GSDeviceMTL::ConvertCB(const GSHWDrawConfig::PSConstantBuffer& cb, int atst)
-{
-	GSMTLMainPSUniform ret;
-	memset(&ret, 0, sizeof(ret));
-	bitcpy(ret.fog_color_aref, GSVector4(GSVector4i::load(cb.fog_color_aref).u8to32()));
-	if (atst == 1 || atst == 2) // Greater / Less alpha
-		ret.fog_color_aref.a -= 0.1;
-	bitcpy(ret.wh, cb.texture_size);
-	ret.ta.x = static_cast<float>(cb.ta0) / 255.f;
-	ret.ta.y = static_cast<float>(cb.ta1) / 255.f;
-	ret.alpha_fix = static_cast<float>(cb.alpha_fix) / 128.f;
-	bitcpy(ret.uv_msk_fix, cb.uv_msk_fix);
-	bitcpy(ret.fbmask, cb.fbmask_int);
-	bitcpy(ret.half_texel, cb.half_texel);
-	bitcpy(ret.uv_min_max, cb.uv_min_max);
-	bitcpy(ret.tc_offset, cb.tc_offset);
-	ret.max_depth = cb.max_depth * 0x1p-32f;
-	bitcpy(ret.dither_matrix, cb.dither_matrix);
-	ret.channel_shuffle_int = cb.channel_shuffle_int;
-	return ret;
-}
 
 void GSDeviceMTL::SetupDestinationAlpha(GSTexture* rt, GSTexture* ds, const GSVector4i& r, bool datm)
 {
@@ -1552,10 +1556,8 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 	SetHWPipelineState(enc, config.vs, config.ps, sel);
 	SetDSS(enc, config.depth);
 
-	GSMTLMainVSUniform cb_vs = ConvertCB(config.cb_vs);
-	GSMTLMainPSUniform cb_ps = ConvertCB(config.cb_ps, config.ps.atst);
-	enc.SetCB(cb_vs);
-	enc.SetCB(cb_ps);
+	enc.SetCB(config.cb_vs);
+	enc.SetCB(config.cb_ps, config.ps.atst);
 
 	size_t vertsize = config.nverts * sizeof(*config.verts);
 	size_t idxsize = config.nindices * sizeof(*config.indices);
@@ -1574,11 +1576,7 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 
 	if (config.alpha_second_pass.enable)
 	{
-		if (0 != memcmp(&config.cb_ps, &config.alpha_second_pass.cb_ps, sizeof(config.cb_ps)))
-		{
-			cb_ps = ConvertCB(config.alpha_second_pass.cb_ps, config.alpha_second_pass.ps.atst);
-			enc.SetCB(cb_ps);
-		}
+		enc.SetCB(config.alpha_second_pass.cb_ps, config.alpha_second_pass.ps.atst);
 		sel = PipelineSelectorExtrasMTL(config.blend, rt, config.alpha_second_pass.colormask, config.ds, stencil);
 		SetHWPipelineState(enc, config.vs, config.ps, sel);
 		SetDSS(enc, config.alpha_second_pass.depth);

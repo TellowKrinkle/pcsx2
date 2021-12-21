@@ -266,8 +266,9 @@ public:
 		PipelineSelectorMTL pipeline_sel;
 		DepthStencilSelector depth_sel = DepthStencilSelector::NoDepth();
 		SamplerSelector sampler_sel;
-		GSMTLMainVSUniform cb_vs;
-		GSMTLMainPSUniform cb_ps;
+		GSHWDrawConfig::VSConstantBuffer cb_vs;
+		GSHWDrawConfig::PSConstantBuffer cb_ps;
+		bool cb_ps_aref_off;
 		u8 blend_color;
 		bool has_cb_vs = false;
 		bool has_cb_ps = false;
@@ -280,8 +281,8 @@ public:
 		void SetVertexBytes(void* buffer, size_t size);
 		void SetScissor(const GSVector4i& scissor);
 		void ClearScissor();
-		void SetCB(const GSMTLMainVSUniform& cb_vs);
-		void SetCB(const GSMTLMainPSUniform& cb_ps);
+		void SetCB(const GSHWDrawConfig::VSConstantBuffer& cb_vs);
+		void SetCB(const GSHWDrawConfig::PSConstantBuffer& cb_ps, int atst);
 		void SetPSCB(const void* bytes, size_t len);
 		void SetBlendColor(u8 blend_color);
 		void SetPipeline(id<MTLRenderPipelineState> pipe);
@@ -357,8 +358,6 @@ public:
 	void SetDSS(MainRenderEncoder& enc, DepthStencilSelector sel);
 	void SetSampler(MainRenderEncoder& enc, SamplerSelector sel);
 	void SetTexture(MainRenderEncoder& enc, GSTexture* tex, int pos);
-	GSMTLMainVSUniform ConvertCB(const GSHWDrawConfig::VSConstantBuffer& cb);
-	GSMTLMainPSUniform ConvertCB(const GSHWDrawConfig::PSConstantBuffer& cb, int atst);
 	void SetupDestinationAlpha(GSTexture* rt, GSTexture* ds, const GSVector4i& r, bool datm);
 	void RenderHW(GSHWDrawConfig& config) override;
 	void SendHWDraw(GSHWDrawConfig& config, id<MTLRenderCommandEncoder> enc, id<MTLBuffer> buffer, size_t off);
