@@ -1490,7 +1490,7 @@ void GSRendererNew::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sour
 	const GSVector4i scissor = GSVector4i(GSVector4(rtscale).xyxy() * hacked_scissor).rintersect(GSVector4i(rtsize).zwxy());
 
 	const GSVector4i commitRect = ComputeBoundingBox(rtscale, rtsize);
-	m_conf.scissor = (DATE && !DATE_GL45) ? scissor.rintersect(commitRect) : scissor;
+	m_conf.scissor = ((DATE && !DATE_GL45) || m_conf.ps.hdr) ? scissor.rintersect(commitRect) : scissor;
 
 	SetupIA(sx, sy);
 
