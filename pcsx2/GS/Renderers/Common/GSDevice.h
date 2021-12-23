@@ -30,23 +30,26 @@
 enum class ShaderConvert
 {
 	COPY = 0,
+	COPY_DEPTH,
 	RGBA8_TO_16_BITS,
 	DATM_1,
 	DATM_0,
+	DATM_1_FULL,
+	DATM_0_FULL,
 	MOD_256,
-	SCANLINE = 5,
+	SCANLINE,
 	DIAGONAL_FILTER,
 	TRANSPARENCY_FILTER,
 	TRIANGULAR_FILTER,
 	COMPLEX_FILTER,
-	FLOAT32_TO_32_BITS = 10,
+	FLOAT32_TO_32_BITS,
 	FLOAT32_TO_RGBA8,
 	FLOAT16_TO_RGB5A1,
-	RGBA8_TO_FLOAT32 = 13,
+	RGBA8_TO_FLOAT32,
 	RGBA8_TO_FLOAT24,
 	RGBA8_TO_FLOAT16,
 	RGB5A1_TO_FLOAT16,
-	RGBA_TO_8I = 17,
+	RGBA_TO_8I,
 	YUV,
 	OSD,
 	Count
@@ -150,6 +153,7 @@ struct alignas(16) GSHWDrawConfig
 				GSTopology topology : 2;
 				bool expand : 1;
 				bool iip : 1;
+				bool forward_primid : 1;
 			};
 			u8 key;
 		};
@@ -194,7 +198,7 @@ struct alignas(16) GSHWDrawConfig
 				// Flat/goround shading
 				u32 iip : 1;
 				// Pixel test
-				u32 date : 3; // 0 → Off, 1 → PrimID Check, 2 3 → PrimID Init, 6 7 → RT Read & Discard
+				u32 date : 3; // 0 → Off, 1 → PrimID Check, 2 3 → PrimID Init, 4 5 → Full Stencil Init, 6 7 → RT Read & Discard
 				u32 atst : 3;
 				// Color sampling
 				u32 fst : 1; // Investigate to do it on the VS
@@ -280,14 +284,20 @@ struct alignas(16) GSHWDrawConfig
 	};
 	struct DepthStencilSelector
 	{
+		enum class DATE : u8
+		{
+			Off = 0,
+			ReadOnly,
+			One,
+			Full,
+		};
 		union
 		{
 			struct
 			{
 				u8 ztst : 2;
 				u8 zwe  : 1;
-				u8 date : 1;
-				u8 date_one : 1;
+				DATE date : 2;
 
 				u8 _free : 3;
 			};
@@ -438,6 +448,7 @@ struct alignas(16) GSHWDrawConfig
 		Off,            ///< No destination alpha test
 		Stencil,        ///< Emulate using read-only stencil
 		StencilOne,     ///< Emulate using read-write stencil (first write wins)
+		StencilFull,    ///< Emulate by tracking # of prims to let through in stencil
 		PrimIDTracking, ///< Emulate by tracking the primitive ID of the last pixel allowed through
 		Full,           ///< Full emulation (using barriers / ROV)
 	};

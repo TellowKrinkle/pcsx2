@@ -1177,6 +1177,7 @@ void GSRendererNew::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sour
 	bool DATE_GL42 = false;
 	bool DATE_GL45 = false;
 	bool DATE_one  = false;
+	bool DATE_full = false;
 
 	const bool ate_first_pass = m_context->TEST.DoFirstPass();
 	const bool ate_second_pass = m_context->TEST.DoSecondPass();
@@ -1256,16 +1257,13 @@ void GSRendererNew::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sour
 				GL_PERF("DATE: Fast with alpha %d-%d", GetAlphaMinMax().min, GetAlphaMinMax().max);
 				DATE_one = true;
 			}
-			else if ((m_vt.m_primclass == GS_SPRITE_CLASS && m_drawlist.size() < 50) || (m_index.tail < 100))
+			else if (m_dev->Features().texture_barrier && ((m_vt.m_primclass == GS_SPRITE_CLASS && m_drawlist.size() < 50) || (m_index.tail < 100)))
 			{
 				// texture barrier will split the draw call into n draw call. It is very efficient for
 				// few primitive draws. Otherwise it sucks.
 				GL_PERF("DATE: Slow with alpha %d-%d", GetAlphaMinMax().min, GetAlphaMinMax().max);
-				if (m_dev->Features().texture_barrier)
-				{
-					m_conf.require_full_barrier = true;
-					DATE_GL45 = true;
-				}
+				m_conf.require_full_barrier = true;
+				DATE_GL45 = true;
 			}
 			else if (m_accurate_date)
 			{
@@ -1282,7 +1280,7 @@ void GSRendererNew::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sour
 				}
 				else
 				{
-					DATE_one = true;
+					DATE_full = true;
 				}
 			}
 		}
@@ -1294,9 +1292,7 @@ void GSRendererNew::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sour
 		}
 
 		// Will save my life !
-		ASSERT(!(DATE_GL45 && DATE_one));
-		ASSERT(!(DATE_GL42 && DATE_one));
-		ASSERT(!(DATE_GL42 && DATE_GL45));
+		ASSERT(DATE_GL45 + DATE_GL42 + DATE_one + DATE_full <= 1);
 	}
 
 	// Blend
@@ -1325,6 +1321,8 @@ void GSRendererNew::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sour
 		m_conf.destination_alpha = GSHWDrawConfig::DestinationAlphaMode::Off;
 	else if (DATE_one)
 		m_conf.destination_alpha = GSHWDrawConfig::DestinationAlphaMode::StencilOne;
+	else if (DATE_full)
+		m_conf.destination_alpha = GSHWDrawConfig::DestinationAlphaMode::StencilFull;
 	else if (DATE_GL42)
 		m_conf.destination_alpha = GSHWDrawConfig::DestinationAlphaMode::PrimIDTracking;
 	else if (DATE_GL45)
@@ -1381,15 +1379,16 @@ void GSRendererNew::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sour
 			m_conf.require_one_barrier = true;
 			m_conf.ps.date = 6 + m_context->TEST.DATM;
 		}
-		m_conf.depth.date = 1;
-		m_conf.depth.date_one = 1;
+		m_conf.depth.date = GSHWDrawConfig::DepthStencilSelector::DATE::One;
 	}
 	else if (DATE)
 	{
 		if (DATE_GL42)
 			m_conf.ps.date = 2 + m_context->TEST.DATM;
+		else if (DATE_full)
+			m_conf.depth.date = GSHWDrawConfig::DepthStencilSelector::DATE::Full;
 		else
-			m_conf.depth.date = 1;
+			m_conf.depth.date = GSHWDrawConfig::DepthStencilSelector::DATE::ReadOnly;
 	}
 
 	m_conf.ps.fba = m_context->FBA.FBA;

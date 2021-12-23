@@ -13,6 +13,7 @@
 #define GS_IIP 0
 #define GS_PRIM 3
 #define GS_EXPAND 0
+#define GS_FORWARD_PRIMID 0
 #endif
 
 #ifndef PS_FST
@@ -23,6 +24,7 @@
 #define PS_AEM 0
 #define PS_TFX 0
 #define PS_TCC 1
+#define PS_DATE 0
 #define PS_ATST 1
 #define PS_FOG 0
 #define PS_CLR1 0
@@ -81,13 +83,18 @@ struct PS_INPUT
 	float4 t : TEXCOORD0;
 	float4 ti : TEXCOORD2;
 	float4 c : COLOR0;
+#if PS_DATE >= 2 || GS_FORWARD_PRIMID
+	uint primid : SV_PrimitiveID;
+#endif
 };
 
 struct PS_OUTPUT
 {
+#if PS_DATE < 4
 	float4 c0 : SV_Target0;
 	float4 c1 : SV_Target1;
-#if PS_ZCLAMP
+#endif
+#if PS_ZCLAMP || PS_DATE >= 2
 	float depth : SV_Depth;
 #endif
 };
@@ -763,6 +770,24 @@ PS_OUTPUT ps_main(PS_INPUT input)
 	// Must be done before alpha correction
 	float alpha_blend = C.a / 128.0f;
 
+#if PS_DATE >= 2
+#if (PS_DATE & 1) == 0
+	// DATM == 0: Pixel with alpha equal to 1 will failed
+	bool bad = C.a > 127.5f;
+#else
+	// DATM == 1: Pixel with alpha equal to 0 will failed
+	bool bad = C.a < 127.5f;
+#endif
+	// If this draw writes a failing alpha value, we want to make all future draws fail the depth test
+	// Depth test is set to greater than or equal.  Depth is cleared to 0, and if there's a failing alpha on the rt depth is set to 1
+	// A succeeding value will have depth 0, which passes only if destination depth is still 0 (no failing values have been written)
+	// A failing value will use a primid-based value to ensure that it is greater than 0 but less than any previous failing value (so it doesn't accidentally pass by being equal to a previous value).
+	output.depth = bad ? 1 - ((input.primid + 1) * exp2(-23)) : 0;
+#endif
+// Warning: No discard allowed below this line!
+// Full stencil destination alpha relies on the same set of primitives being rendered in the pre-pass (which ends here) and the real draw, otherwise counting will be mismatched
+#if PS_DATE < 4
+
 	// Alpha correction
 	if (PS_DFMT == FMT_16)
 	{
@@ -790,7 +815,7 @@ PS_OUTPUT ps_main(PS_INPUT input)
 #if PS_ZCLAMP
 	output.depth = min(input.p.z, MaxDepthPS);
 #endif
-
+#endif // PS_DATE < 4
 	return output;
 }
 
@@ -854,21 +879,48 @@ VS_OUTPUT vs_main(VS_INPUT input)
 // Geometry Shader
 //////////////////////////////////////////////////////////////////////
 
+#if GS_FORWARD_PRIMID
+#define PRIMID_IN , uint primid : SV_PrimitiveID
+#define VS2PS(x) vs2ps_impl(x, primid)
+PS_INPUT vs2ps_impl(VS_OUTPUT vs, uint primid)
+{
+	PS_INPUT o;
+	o.p = vs.p;
+	o.t = vs.t;
+	o.ti = vs.ti;
+	o.c = vs.c;
+	o.primid = primid;
+	return o;
+}
+#else
+#define PRIMID_IN
+#define VS2PS(x) vs2ps_impl(x)
+PS_INPUT vs2ps_impl(VS_OUTPUT vs)
+{
+	PS_INPUT o;
+	o.p = vs.p;
+	o.t = vs.t;
+	o.ti = vs.ti;
+	o.c = vs.c;
+	return o;
+}
+#endif
+
 #if GS_PRIM == 0 && GS_EXPAND == 0
 
 [maxvertexcount(1)]
-void gs_main(point VS_OUTPUT input[1], inout PointStream<VS_OUTPUT> stream)
+void gs_main(point VS_OUTPUT input[1], inout PointStream<PS_INPUT> stream PRIMID_IN)
 {
-	stream.Append(input[0]);
+	stream.Append(VS2PS(input[0]));
 }
 
 #elif GS_PRIM == 0 && GS_EXPAND == 1
 
 [maxvertexcount(6)]
-void gs_main(point VS_OUTPUT input[1], inout TriangleStream<VS_OUTPUT> stream)
+void gs_main(point VS_OUTPUT input[1], inout TriangleStream<PS_INPUT> stream PRIMID_IN)
 {
 	// Transform a point to a NxN sprite
-	VS_OUTPUT Point = input[0];
+	PS_INPUT Point = VS2PS(input[0]);
 
 	// Get new position
 	float4 lt_p = input[0].p;
@@ -902,24 +954,24 @@ void gs_main(point VS_OUTPUT input[1], inout TriangleStream<VS_OUTPUT> stream)
 #elif GS_PRIM == 1 && GS_EXPAND == 0
 
 [maxvertexcount(2)]
-void gs_main(line VS_OUTPUT input[2], inout LineStream<VS_OUTPUT> stream)
+void gs_main(line VS_OUTPUT input[2], inout LineStream<PS_INPUT> stream PRIMID_IN)
 {
 #if GS_IIP == 0
 	input[0].c = input[1].c;
 #endif
 
-	stream.Append(input[0]);
-	stream.Append(input[1]);
+	stream.Append(VS2PS(input[0]));
+	stream.Append(VS2PS(input[1]));
 }
 
 #elif GS_PRIM == 1 && GS_EXPAND == 1
 
 [maxvertexcount(6)]
-void gs_main(line VS_OUTPUT input[2], inout TriangleStream<VS_OUTPUT> stream)
+void gs_main(line VS_OUTPUT input[2], inout TriangleStream<PS_INPUT> stream PRIMID_IN)
 {
 	// Transform a line to a thick line-sprite
-	VS_OUTPUT left = input[0];
-	VS_OUTPUT right = input[1];
+	PS_INPUT left = VS2PS(input[0]);
+	PS_INPUT right = VS2PS(input[1]);
 	float2 lt_p = input[0].p.xy;
 	float2 rt_p = input[1].p.xy;
 
@@ -963,25 +1015,25 @@ void gs_main(line VS_OUTPUT input[2], inout TriangleStream<VS_OUTPUT> stream)
 #elif GS_PRIM == 2
 
 [maxvertexcount(3)]
-void gs_main(triangle VS_OUTPUT input[3], inout TriangleStream<VS_OUTPUT> stream)
+void gs_main(triangle VS_OUTPUT input[3], inout TriangleStream<PS_INPUT> stream PRIMID_IN)
 {
 	#if GS_IIP == 0
 	input[0].c = input[2].c;
 	input[1].c = input[2].c;
 	#endif
 
-	stream.Append(input[0]);
-	stream.Append(input[1]);
-	stream.Append(input[2]);
+	stream.Append(VS2PS(input[0]));
+	stream.Append(VS2PS(input[1]));
+	stream.Append(VS2PS(input[2]));
 }
 
 #elif GS_PRIM == 3
 
 [maxvertexcount(4)]
-void gs_main(line VS_OUTPUT input[2], inout TriangleStream<VS_OUTPUT> stream)
+void gs_main(line VS_OUTPUT input[2], inout TriangleStream<PS_INPUT> stream PRIMID_IN)
 {
-	VS_OUTPUT lt = input[0];
-	VS_OUTPUT rb = input[1];
+	PS_INPUT lt = VS2PS(input[0]);
+	PS_INPUT rb = VS2PS(input[1]);
 
 	// flat depth
 	lt.p.z = rb.p.z;
@@ -992,13 +1044,13 @@ void gs_main(line VS_OUTPUT input[2], inout TriangleStream<VS_OUTPUT> stream)
 	lt.c = rb.c;
 
 	// Swap texture and position coordinate
-	VS_OUTPUT lb = rb;
+	PS_INPUT lb = rb;
 	lb.p.x = lt.p.x;
 	lb.t.x = lt.t.x;
 	lb.ti.x = lt.ti.x;
 	lb.ti.z = lt.ti.z;
 
-	VS_OUTPUT rt = rb;
+	PS_INPUT rt = rb;
 	rt.p.y = lt.p.y;
 	rt.t.y = lt.t.y;
 	rt.ti.y = lt.ti.y;

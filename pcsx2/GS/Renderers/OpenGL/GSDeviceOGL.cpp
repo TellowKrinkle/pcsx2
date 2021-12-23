@@ -861,10 +861,10 @@ GSDepthStencilOGL* GSDeviceOGL::CreateDepthStencil(OMDepthStencilSelector dssel)
 {
 	GSDepthStencilOGL* dss = new GSDepthStencilOGL();
 
-	if (dssel.date)
+	if (dssel.date != OMDepthStencilSelector::DATE::Off)
 	{
 		dss->EnableStencil();
-		if (dssel.date_one)
+		if (dssel.date == OMDepthStencilSelector::DATE::One)
 			dss->SetStencil(GL_EQUAL, GL_ZERO);
 		else
 			dss->SetStencil(GL_EQUAL, GL_KEEP);

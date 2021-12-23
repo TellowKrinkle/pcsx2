@@ -403,12 +403,19 @@ bool GSDevice11::Create(const WindowInfo& wi)
 	dsd.FrontFace.StencilPassOp = D3D11_STENCIL_OP_REPLACE;
 	dsd.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
 	dsd.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
-	dsd.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-	dsd.BackFace.StencilPassOp = D3D11_STENCIL_OP_REPLACE;
-	dsd.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-	dsd.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	dsd.BackFace = dsd.FrontFace;
 
 	m_dev->CreateDepthStencilState(&dsd, m_date.dss.put());
+
+	dsd.DepthEnable = true;
+	dsd.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+	dsd.DepthFunc = D3D11_COMPARISON_GREATER_EQUAL;
+	dsd.StencilReadMask = 0xFF;
+	dsd.StencilWriteMask = 0xFF;
+	dsd.FrontFace.StencilPassOp = D3D11_STENCIL_OP_INCR_SAT;
+	dsd.BackFace.StencilPassOp  = D3D11_STENCIL_OP_INCR_SAT;
+
+	m_dev->CreateDepthStencilState(&dsd, m_date.dss_full.put());
 
 	D3D11_BLEND_DESC blend;
 
@@ -730,10 +737,7 @@ void GSDevice11::StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture*
 		return;
 	}
 
-	const bool draw_in_depth = ps == m_convert.ps[static_cast<int>(ShaderConvert::RGBA8_TO_FLOAT32)]
-	                        || ps == m_convert.ps[static_cast<int>(ShaderConvert::RGBA8_TO_FLOAT24)]
-	                        || ps == m_convert.ps[static_cast<int>(ShaderConvert::RGBA8_TO_FLOAT16)]
-	                        || ps == m_convert.ps[static_cast<int>(ShaderConvert::RGB5A1_TO_FLOAT16)];
+	const bool draw_in_depth = dTex->GetFormat() == GSTexture::Format::DepthStencil;
 
 	BeginScene();
 
@@ -1487,7 +1491,45 @@ void GSDevice11::RenderHW(GSHWDrawConfig& config)
 	preprocessSel(config.ps);
 	preprocessSel(config.sampler);
 
-	if (config.destination_alpha != GSHWDrawConfig::DestinationAlphaMode::Off)
+	// For any stretchrect calls
+	const GSVector2i size = config.rt ? config.rt->GetSize() : config.ds->GetSize();
+	const GSVector4 dRect(config.drawarea);
+	const GSVector4 sRect = dRect / GSVector4(size.x, size.y).xyxy();
+
+	GSTexture* tmp_depth = nullptr;
+	GSTexture* full_date_tex = nullptr;
+	if (config.destination_alpha == GSHWDrawConfig::DestinationAlphaMode::StencilFull)
+	{
+		// Full destination alpha involves running the destination alpha test in the depth buffer to initialize a stencil to the number of primitives to let through.
+		// This means we need a depth buffer that we can trash
+		// DX11 can't bind separate depth and stencil and also can't copy stencil, so we use one of three algorithms:
+		// - If the game writes to depth, we need the stencil paired with the real depth buffer, so...
+		//   1. Back up current depth to tmp
+		//   2. Use depth for stencil init
+		//   3. Restore depth from tmp
+		//   4. Render with real depth buffer
+		// - If the game reads depth but doesn't write it, we can save one copy
+		//   1. Use tmp for stencil init
+		//   2. Copy current depth to tmp
+		//   3. Render with tmp depth buffer
+		// - If the game doesn't use depth at all (!zwe and ztst == ZTST_ALWAYS)
+		//   1. Use tmp for stencil init
+		//   2. Render with tmp depth buffer
+		tmp_depth = CreateDepthStencil(size.x, size.y, GSTexture::Format::DepthStencil);
+		tmp_depth->CommitRegion(GSVector2i(config.scissor.z, config.scissor.w));
+		if (config.depth.zwe)
+		{
+			StretchRect(config.ds, sRect, tmp_depth, dRect, ShaderConvert::COPY_DEPTH, false);
+			full_date_tex = config.ds;
+		}
+		else
+		{
+			full_date_tex = tmp_depth;
+		}
+		ClearStencil(full_date_tex, 0);
+		StretchRect(config.rt, sRect, full_date_tex, dRect, config.datm ? ShaderConvert::DATM_1_FULL : ShaderConvert::DATM_0_FULL, false);
+	}
+	else if (config.destination_alpha != GSHWDrawConfig::DestinationAlphaMode::Off)
 	{
 		const GSVector4 src = GSVector4(config.drawarea) / GSVector4(config.ds->GetSize()).xyxy();
 		const GSVector4 dst = src * 2.0f - 1.0f;
@@ -1506,9 +1548,6 @@ void GSDevice11::RenderHW(GSHWDrawConfig& config)
 	GSTexture* hdr_rt = nullptr;
 	if (config.ps.hdr)
 	{
-		const GSVector2i size = config.rt->GetSize();
-		const GSVector4 dRect(config.drawarea);
-		const GSVector4 sRect = dRect / GSVector4(size.x, size.y).xyxy();
 		hdr_rt = CreateRenderTarget(size.x, size.y, GSTexture::Format::FloatColor);
 		hdr_rt->CommitRegion(GSVector2i(config.drawarea.z, config.drawarea.w));
 		// Warning: StretchRect must be called before BeginScene otherwise
@@ -1537,6 +1576,41 @@ void GSDevice11::RenderHW(GSHWDrawConfig& config)
 	PSSetShaderResources(config.tex, config.pal);
 	PSSetShaderResource(4, config.raw_tex);
 
+	SetupVS(config.vs, &config.cb_vs);
+
+	if (config.destination_alpha == GSHWDrawConfig::DestinationAlphaMode::StencilFull)
+	{
+		PSSelector ps = config.ps;
+		GSSelector gs = config.gs;
+		ps.date = 4 + config.datm;
+		gs.forward_primid = 1;
+		SetupGS(gs);
+		SetupPS(ps, &config.cb_ps, config.sampler);
+		OMSetBlendState(m_date.bs.get(), 0);
+		OMSetDepthStencilState(m_date.dss_full.get(), 0);
+		OMSetRenderTargets(nullptr, full_date_tex, &config.scissor);
+		DrawIndexedPrimitive();
+		if (config.depth.zwe || config.depth.ztst != ZTST_ALWAYS)
+		{
+			EndScene();
+			if (config.depth.zwe)
+				StretchRect(tmp_depth, sRect, config.ds, dRect, ShaderConvert::COPY_DEPTH, false);
+			else
+				StretchRect(config.ds, sRect, tmp_depth, dRect, ShaderConvert::COPY_DEPTH, false);
+			BeginScene();
+			// TODO: Reduce amount of things double-uploaded when we have to stretchrect in the middle
+			if (IAMapVertexBuffer(&ptr, sizeof(*config.verts), config.nverts))
+			{
+				GSVector4i::storent(ptr, config.verts, config.nverts * sizeof(*config.verts));
+				IAUnmapVertexBuffer();
+			}
+			IASetIndexBuffer(config.indices, config.nindices);
+			SetupVS(config.vs, &config.cb_vs);
+			PSSetShaderResources(config.tex, config.pal);
+			PSSetShaderResource(4, config.raw_tex);
+		}
+	}
+
 	if (config.require_one_barrier) // Used as "bind rt" flag when texture barrier is unsupported
 	{
 		// Bind the RT.This way special effect can use it.
@@ -1547,11 +1621,10 @@ void GSDevice11::RenderHW(GSHWDrawConfig& config)
 	}
 
 	SetupOM(config.depth, convertSel(config.colormask, config.blend), config.blend.factor);
-	SetupVS(config.vs, &config.cb_vs);
 	SetupGS(config.gs);
 	SetupPS(config.ps, &config.cb_ps, config.sampler);
 
-	OMSetRenderTargets(hdr_rt ? hdr_rt : config.rt, config.ds, &config.scissor);
+	OMSetRenderTargets(hdr_rt ? hdr_rt : config.rt, full_date_tex ? full_date_tex : config.ds, &config.scissor);
 
 	DrawIndexedPrimitive();
 
@@ -1578,12 +1651,11 @@ void GSDevice11::RenderHW(GSHWDrawConfig& config)
 
 	if (hdr_rt)
 	{
-		const GSVector2i size = config.rt->GetSize();
-		const GSVector4 dRect(config.drawarea);
-		const GSVector4 sRect = dRect / GSVector4(size.x, size.y).xyxy();
 		StretchRect(hdr_rt, sRect, config.rt, dRect, ShaderConvert::MOD_256, false);
 		Recycle(hdr_rt);
 	}
+	if (tmp_depth)
+		Recycle(tmp_depth);
 }
 
 u16 GSDevice11::ConvertBlendEnum(u16 generic)

@@ -58,6 +58,11 @@ PS_OUTPUT ps_copy(PS_INPUT input)
 	return output;
 }
 
+float ps_copy_depth(PS_INPUT input) : SV_Depth
+{
+	return sample_c(input.t).r;
+}
+
 PS_OUTPUT ps_filter_transparency(PS_INPUT input)
 {
 	PS_OUTPUT output;
@@ -126,6 +131,16 @@ PS_OUTPUT ps_datm0(PS_INPUT input)
 	output.c = 0;
 
 	return output;
+}
+
+float ps_datm1full(PS_INPUT input) : SV_Depth
+{
+	return sample_c(input.t).a > (127.5f / 255) ? 0 : 1;
+}
+
+float ps_datm0full(PS_INPUT input) : SV_Depth
+{
+	return sample_c(input.t).a < (127.5f / 255) ? 0 : 1;
 }
 
 PS_OUTPUT ps_mod256(PS_INPUT input)

@@ -23,9 +23,12 @@ const char* shaderName(ShaderConvert value)
 	switch (value)
 	{
 		case ShaderConvert::COPY:                return "ps_copy";
+		case ShaderConvert::COPY_DEPTH:          return "ps_copy_depth";
 		case ShaderConvert::RGBA8_TO_16_BITS:    return "ps_convert_rgba8_16bits";
 		case ShaderConvert::DATM_1:              return "ps_datm1";
 		case ShaderConvert::DATM_0:              return "ps_datm0";
+		case ShaderConvert::DATM_1_FULL:         return "ps_datm1full";
+		case ShaderConvert::DATM_0_FULL:         return "ps_datm0full";
 		case ShaderConvert::MOD_256:             return "ps_mod256";
 		case ShaderConvert::SCANLINE:            return "ps_filter_scanlines";
 		case ShaderConvert::DIAGONAL_FILTER:     return "ps_filter_diagonal";

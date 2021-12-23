@@ -203,6 +203,7 @@ private:
 	struct
 	{
 		wil::com_ptr_nothrow<ID3D11DepthStencilState> dss;
+		wil::com_ptr_nothrow<ID3D11DepthStencilState> dss_full;
 		wil::com_ptr_nothrow<ID3D11BlendState> bs;
 	} m_date;
 

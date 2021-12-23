@@ -137,6 +137,7 @@ void GSDevice11::SetupGS(GSSelector sel)
 			sm.AddMacro("GS_IIP", sel.iip);
 			sm.AddMacro("GS_PRIM", static_cast<int>(sel.topology));
 			sm.AddMacro("GS_EXPAND", sel.expand);
+			sm.AddMacro("GS_FORWARD_PRIMID", sel.forward_primid);
 
 			CreateShader(m_tfx_source, "tfx.fx", nullptr, "gs_main", sm.GetPtr(), gs.put());
 
@@ -163,6 +164,7 @@ void GSDevice11::SetupPS(PSSelector sel, const GSHWDrawConfig::PSConstantBuffer*
 		sm.AddMacro("PS_AEM", sel.aem);
 		sm.AddMacro("PS_TFX", sel.tfx);
 		sm.AddMacro("PS_TCC", sel.tcc);
+		sm.AddMacro("PS_DATE", sel.date);
 		sm.AddMacro("PS_ATST", sel.atst);
 		sm.AddMacro("PS_FOG", sel.fog);
 		sm.AddMacro("PS_CLR1", sel.clr1);
@@ -266,19 +268,33 @@ void GSDevice11::SetupOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, u8 
 
 		memset(&dsd, 0, sizeof(dsd));
 
-		if (dssel.date)
+		if (dssel.date != OMDepthStencilSelector::DATE::Off)
 		{
 			dsd.StencilEnable = true;
 			dsd.StencilReadMask = 1;
 			dsd.StencilWriteMask = 1;
 			dsd.FrontFace.StencilFunc = D3D11_COMPARISON_EQUAL;
-			dsd.FrontFace.StencilPassOp = dssel.date_one ? D3D11_STENCIL_OP_ZERO : D3D11_STENCIL_OP_KEEP;
 			dsd.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
 			dsd.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
-			dsd.BackFace.StencilFunc = D3D11_COMPARISON_EQUAL;
-			dsd.BackFace.StencilPassOp = dssel.date_one ? D3D11_STENCIL_OP_ZERO : D3D11_STENCIL_OP_KEEP;
-			dsd.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-			dsd.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+			switch (dssel.date)
+			{
+				case OMDepthStencilSelector::DATE::Off:
+					break;
+				case OMDepthStencilSelector::DATE::ReadOnly:
+					dsd.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+					break;
+				case OMDepthStencilSelector::DATE::One:
+					dsd.FrontFace.StencilFailOp = D3D11_STENCIL_OP_ZERO;
+					break;
+				case OMDepthStencilSelector::DATE::Full:
+					dsd.StencilReadMask  = 0xFF;
+					dsd.StencilWriteMask = 0xFF;
+					dsd.FrontFace.StencilFunc = D3D11_COMPARISON_NOT_EQUAL;
+					dsd.FrontFace.StencilPassOp      = D3D11_STENCIL_OP_DECR_SAT;
+					dsd.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR_SAT;
+					break;
+			}
+			dsd.BackFace = dsd.FrontFace;
 		}
 
 		if (dssel.ztst != ZTST_ALWAYS || dssel.zwe)
@@ -302,7 +318,7 @@ void GSDevice11::SetupOM(OMDepthStencilSelector dssel, OMBlendSelector bsel, u8 
 		i = m_om_dss.try_emplace(dssel.key, std::move(dss)).first;
 	}
 
-	OMSetDepthStencilState(i->second.get(), 1);
+	OMSetDepthStencilState(i->second.get(), dssel.date == OMDepthStencilSelector::DATE::Full ? 0 : 1);
 
 	auto j = std::as_const(m_om_bs).find(bsel);
 

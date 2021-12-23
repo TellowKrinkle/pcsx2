@@ -66,6 +66,13 @@ void ps_copy()
 }
 #endif
 
+#ifdef ps_copy_depth
+void ps_copy_depth()
+{
+    gl_FragDepth = sample_c().r;
+}
+#endif
+
 #ifdef ps_convert_rgba8_16bits
 void ps_convert_rgba8_16bits()
 {
@@ -371,6 +378,20 @@ void ps_datm0()
 {
     if((127.5f / 255.0f) < sample_c().a) // < 0x80 pass (== 0x80 should not pass)
         discard;
+}
+#endif
+
+#ifdef ps_datm1full
+void ps_datm1full()
+{
+    gl_FragDepth = sample_c().a > (127.5f / 255) ? 0 : 1;
+}
+#endif
+
+#ifdef ps_datm0full
+void ps_datm0full()
+{
+    gl_FragDepth = sample_c().a < (127.5f / 255) ? 0 : 1;
 }
 #endif
 
