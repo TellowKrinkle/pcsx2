@@ -171,7 +171,6 @@ public:
 		id<MTLBuffer> gpubuffer;
 		void* buffer = nullptr;
 		size_t last_upload = 0;
-		size_t bytes_since_last_fence = 0;
 	};
 
 	struct ConvertShaderVertex
@@ -214,8 +213,8 @@ public:
 	MTLDrawableFetcher m_drawable_fetcher;
 	id<MTLDevice> m_dev;
 	id<MTLCommandQueue> m_queue;
-	id<MTLFence> m_draw_sync_fences[16];
-	size_t m_draw_sync_fence_idx = 0;
+	id<MTLFence> m_draw_sync_fence;
+	bool m_wait_on_draw_sync_fence;
 	NSView* m_view;
 	CAMetalLayer* m_layer;
 	id<MTLLibrary> m_shaders;
@@ -302,7 +301,7 @@ public:
 	/// Allocate space in the given buffer
 	Map Allocate(UploadBuffer& buffer, size_t amt);
 	/// Allocate space in the given buffer for use with the given render command encoder
-	Map Allocate(BufferPair& buffer, size_t amt, id<MTLRenderCommandEncoder> encoder);
+	Map Allocate(BufferPair& buffer, size_t amt);
 	/// Enqueue upload of any outstanding data
 	void Sync(BufferPair& buffer);
 	/// Get the texture upload encoder, creating a new one if it doesn't exist

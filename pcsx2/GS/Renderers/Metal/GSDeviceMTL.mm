@@ -162,16 +162,16 @@ GSDeviceMTL::Map GSDeviceMTL::Allocate(UploadBuffer& buffer, size_t amt)
 }
 
 /// Allocate space in the given buffer for use with the given render command encoder
-GSDeviceMTL::Map GSDeviceMTL::Allocate(BufferPair& buffer, size_t amt, id<MTLRenderCommandEncoder> encoder)
+GSDeviceMTL::Map GSDeviceMTL::Allocate(BufferPair& buffer, size_t amt)
 {
 	amt = (amt + 31) & ~31ull;
 	u64 last_draw = m_last_finished_draw.load(std::memory_order_acquire);
 	size_t base_pos = buffer.usage.Pos();
 	bool needs_new = buffer.usage.PrepareForAllocation(last_draw, amt);
-	bool needs_sync = buffer.bytes_since_last_fence && (needs_new || buffer.usage.Pos() == 0);
-	if (!m_unified_memory)
+	bool needs_upload = needs_new || buffer.usage.Pos() == 0;
+	if (!m_unified_memory && needs_upload)
 	{
-		if (needs_sync)
+		if (base_pos != buffer.last_upload)
 		{
 			id<MTLBlitCommandEncoder> enc = GetVertexUploadEncoder();
 			[enc copyFromBuffer:buffer.cpubuffer
@@ -179,16 +179,8 @@ GSDeviceMTL::Map GSDeviceMTL::Allocate(BufferPair& buffer, size_t amt, id<MTLRen
 			           toBuffer:buffer.gpubuffer
 			  destinationOffset:buffer.last_upload
 			               size:base_pos - buffer.last_upload];
-			buffer.last_upload = 0;
 		}
-		if (buffer.bytes_since_last_fence == 0)
-		{
-			buffer.last_upload = buffer.usage.Pos(); // In case of wrap
-			m_draw_sync_fence_idx = (m_draw_sync_fence_idx + 1) % std::size(m_draw_sync_fences);
-			[encoder waitForFence:m_draw_sync_fences[m_draw_sync_fence_idx]
-			         beforeStages:MTLRenderStageVertex];
-		}
-		buffer.bytes_since_last_fence += amt;
+		buffer.last_upload = 0;
 	}
 	if (unlikely(needs_new))
 	{
@@ -218,7 +210,7 @@ GSDeviceMTL::Map GSDeviceMTL::Allocate(BufferPair& buffer, size_t amt, id<MTLRen
 
 void GSDeviceMTL::Sync(BufferPair& buffer)
 {
-	if (m_unified_memory || !buffer.bytes_since_last_fence)
+	if (m_unified_memory || buffer.usage.Pos() == buffer.last_upload)
 		return;
 
 	id<MTLBlitCommandEncoder> enc = GetVertexUploadEncoder();
@@ -227,9 +219,9 @@ void GSDeviceMTL::Sync(BufferPair& buffer)
 	           toBuffer:buffer.gpubuffer
 	  destinationOffset:buffer.last_upload
 	               size:buffer.usage.Pos() - buffer.last_upload];
-	[enc updateFence:m_draw_sync_fences[m_draw_sync_fence_idx]];
+	[enc updateFence:m_draw_sync_fence];
+	m_wait_on_draw_sync_fence = true;
 	buffer.last_upload = buffer.usage.Pos();
-	buffer.bytes_since_last_fence = 0;
 }
 
 id<MTLBlitCommandEncoder> GSDeviceMTL::GetTextureUploadEncoder()
@@ -376,6 +368,12 @@ GSDeviceMTL::MainRenderEncoder& GSDeviceMTL::BeginRenderPass(GSTexture* color, M
 
 	EndRenderPass();
 	m_current_render.encoder = [GetRenderCmdBuf() renderCommandEncoderWithDescriptor:desc];
+	if (m_wait_on_draw_sync_fence)
+	{
+		m_wait_on_draw_sync_fence = false;
+		[m_current_render.encoder waitForFence:m_draw_sync_fence
+		                          beforeStages:MTLRenderStageVertex];
+	}
 	m_current_render.color_target = color;
 	m_current_render.depth_target = depth;
 	m_current_render.stencil_target = stencil;
@@ -687,8 +685,8 @@ bool GSDeviceMTL::Create(const WindowInfo& wi)
 	{
 		// Init metal stuff
 		m_queue = [m_dev newCommandQueue];
-		for (auto& fence : m_draw_sync_fences)
-			fence = [m_dev newFence];
+		m_draw_sync_fence = [m_dev newFence];
+		m_wait_on_draw_sync_fence = !m_unified_memory;
 		m_shaders = [m_dev newDefaultLibrary];
 
 		m_fn_constants = [MTLFunctionConstantValues new];
@@ -1561,7 +1559,7 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 
 	size_t vertsize = config.nverts * sizeof(*config.verts);
 	size_t idxsize = config.nindices * sizeof(*config.indices);
-	Map allocation = Allocate(m_vertex_upload_buf, vertsize + idxsize, mtlenc);
+	Map allocation = Allocate(m_vertex_upload_buf, vertsize + idxsize);
 
 	enc.SetVertices(allocation.gpu_buffer, allocation.gpu_offset);
 	memcpy(allocation.cpu_buffer, config.verts, vertsize);
@@ -1687,7 +1685,7 @@ void GSDeviceMTL::RenderOsd(GSTexture* dt)
 	SetTexture(enc, m_font.get(), 0);
 	enc.ClearScissor();
 	enc.SetPipeline(m_convert_pipeline[static_cast<int>(ShaderConvert::OSD)]);
-	Map map = Allocate(m_vertex_upload_buf, count * sizeof(GSVertexPT1), mtlenc);
+	Map map = Allocate(m_vertex_upload_buf, count * sizeof(GSVertexPT1));
 	count = m_osd.GeneratePrimitives(static_cast<GSVertexPT1*>(map.cpu_buffer), count);
 	enc.SetVertices(map.gpu_buffer, map.gpu_offset);
 	[mtlenc drawPrimitives:MTLPrimitiveTypeTriangle
