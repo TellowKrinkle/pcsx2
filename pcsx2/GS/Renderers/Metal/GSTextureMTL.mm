@@ -156,7 +156,7 @@ void* GSTextureMTL::MapWithPitch(const GSVector4i& r, int pitch, int layer)
 	m_has_mipmaps = false;
 
 	size_t size = pitch * r.height();
-	GSDeviceMTL::Map map = m_dev->Allocate(m_dev->m_texture_upload_buf, size);
+	GSDeviceMTL::Map map;
 
 	bool needs_clear = false;
 	if (m_needs_color_clear)
@@ -178,10 +178,12 @@ void* GSTextureMTL::MapWithPitch(const GSVector4i& r, int pitch, int layer)
 		m_dev->EndRenderPass();
 		enc = [m_dev->GetRenderCmdBuf() blitCommandEncoder];
 		[enc setLabel:@"Texture Upload"];
+		map = m_dev->Allocate(m_dev->m_vertex_upload_buf, size);
 	}
 	else
 	{
 		enc = m_dev->GetTextureUploadEncoder();
+		map = m_dev->Allocate(m_dev->m_texture_upload_buf, size);
 	}
 	// Copy is scheduled now, won't happen until the encoder is committed so no problems with ordering
 	[enc copyFromBuffer:map.gpu_buffer
