@@ -236,6 +236,23 @@ id<MTLBlitCommandEncoder> GSDeviceMTL::GetTextureUploadEncoder()
 	return m_texture_upload_encoder;
 }
 
+id<MTLBlitCommandEncoder> GSDeviceMTL::GetLateTextureUploadEncoder()
+{
+	if (!m_late_texture_upload_encoder)
+	{
+		EndRenderPass();
+		m_late_texture_upload_encoder = [GetRenderCmdBuf() blitCommandEncoder];
+		pxAssertRel(m_late_texture_upload_encoder, "Failed to create late texture upload encoder!");
+		[m_late_texture_upload_encoder setLabel:@"Late Texture Upload"];
+		if (m_wait_on_draw_sync_fence)
+		{
+			m_wait_on_draw_sync_fence = false;
+			[m_late_texture_upload_encoder waitForFence:m_draw_sync_fence];
+		}
+	}
+	return m_late_texture_upload_encoder;
+}
+
 id<MTLBlitCommandEncoder> GSDeviceMTL::GetVertexUploadEncoder()
 {
 	if (!m_vertex_upload_cmdbuf)
@@ -283,6 +300,11 @@ void GSDeviceMTL::FlushEncoders()
 		[m_texture_upload_cmdbuf commit];
 		m_texture_upload_encoder = nil;
 		m_texture_upload_cmdbuf = nil;
+	}
+	if (m_late_texture_upload_encoder)
+	{
+		[m_late_texture_upload_encoder endEncoding];
+		m_late_texture_upload_encoder = nil;
 	}
 	[m_current_render_cmdbuf addCompletedHandler:[obj = m_outlive, draw = m_current_draw](id<MTLCommandBuffer> buf)
 	{
@@ -334,6 +356,12 @@ GSDeviceMTL::MainRenderEncoder& GSDeviceMTL::BeginRenderPass(GSTexture* color, M
 
 	if (!needs_new)
 		return m_current_render;
+
+	if (m_late_texture_upload_encoder)
+	{
+		[m_late_texture_upload_encoder endEncoding];
+		m_late_texture_upload_encoder = nullptr;
+	}
 
 	int idx = 0;
 	if (mc) idx |= 1;

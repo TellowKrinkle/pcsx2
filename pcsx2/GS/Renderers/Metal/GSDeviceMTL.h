@@ -292,6 +292,7 @@ public:
 	} m_current_render;
 	id<MTLCommandBuffer> m_texture_upload_cmdbuf;
 	id<MTLBlitCommandEncoder> m_texture_upload_encoder;
+	id<MTLBlitCommandEncoder> m_late_texture_upload_encoder;
 	id<MTLCommandBuffer> m_vertex_upload_cmdbuf;
 	id<MTLBlitCommandEncoder> m_vertex_upload_encoder;
 
@@ -306,6 +307,8 @@ public:
 	void Sync(BufferPair& buffer);
 	/// Get the texture upload encoder, creating a new one if it doesn't exist
 	id<MTLBlitCommandEncoder> GetTextureUploadEncoder();
+	/// Get the late texture upload encoder, creating a new one if it doesn't exist
+	id<MTLBlitCommandEncoder> GetLateTextureUploadEncoder();
 	/// Get the vertex upload encoder, creating a new one if it doesn't exist
 	id<MTLBlitCommandEncoder> GetVertexUploadEncoder();
 	/// Get the render command buffer, creating a new one if it doesn't exist

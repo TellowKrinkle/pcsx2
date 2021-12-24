@@ -176,8 +176,7 @@ void* GSTextureMTL::MapWithPitch(const GSVector4i& r, int pitch, int layer)
 			[enc.encoder setLabel:@"Pre-Upload Clear"];
 		}
 		m_dev->EndRenderPass();
-		enc = [m_dev->GetRenderCmdBuf() blitCommandEncoder];
-		[enc setLabel:@"Texture Upload"];
+		enc = m_dev->GetLateTextureUploadEncoder();
 		map = m_dev->Allocate(m_dev->m_vertex_upload_buf, size);
 	}
 	else
@@ -195,9 +194,6 @@ void* GSTextureMTL::MapWithPitch(const GSVector4i& r, int pitch, int layer)
 	   destinationSlice:0
 	   destinationLevel:layer
 	  destinationOrigin:MTLOriginMake(r.x, r.y, 0)];
-
-	if (m_last_read == m_dev->m_current_draw)
-		[enc endEncoding];
 
 	return map.cpu_buffer;
 }}
