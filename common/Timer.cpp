@@ -25,6 +25,7 @@
 #include <mach/mach_init.h>
 #include <mach/thread_act.h>
 #include <mach/mach_port.h>
+#include <mach/mach_time.h>
 #else
 #include <pthread.h>
 #include <sys/time.h>
@@ -86,6 +87,53 @@ namespace Common
 		return static_cast<Value>(ns * s_counter_frequency);
 	}
 
+#elif defined(__APPLE__)
+	static double getCounterToNS()
+	{
+		mach_timebase_info_data_t info;
+		if (mach_timebase_info(&info) != KERN_SUCCESS)
+			abort();
+		return static_cast<double>(info.numer) / static_cast<double>(info.denom);
+	}
+
+	static double s_counter_to_ns = getCounterToNS();
+	static double s_counter_to_ms = s_counter_to_ns / 1000000;
+	static double s_counter_to_s  = s_counter_to_ms / 1000;
+
+	Timer::Value Timer::GetCurrentValue()
+	{
+		return mach_absolute_time();
+	}
+
+	double Timer::ConvertValueToNanoseconds(Value value)
+	{
+		return static_cast<double>(value) * s_counter_to_ns;
+	}
+
+	double Timer::ConvertValueToMilliseconds(Value value)
+	{
+		return static_cast<double>(value) * s_counter_to_ms;
+	}
+
+	double Timer::ConvertValueToSeconds(Value value)
+	{
+		return static_cast<double>(value) * s_counter_to_s;
+	}
+
+	Timer::Value Timer::ConvertSecondsToValue(double s)
+	{
+		return static_cast<Value>(s / s_counter_to_s);
+	}
+
+	Timer::Value Timer::ConvertMillisecondsToValue(double ms)
+	{
+		return static_cast<Value>(ms / s_counter_to_ms);
+	}
+
+	Timer::Value Timer::ConvertNanosecondsToValue(double ns)
+	{
+		return static_cast<Value>(ns / s_counter_to_ns);
+	}
 #else
 
 	Timer::Value Timer::GetCurrentValue()
