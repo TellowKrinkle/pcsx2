@@ -108,7 +108,7 @@ struct std::hash<PipelineSelectorMTL>
 	}
 };
 
-class GSScopedDebugGroupMTL
+class API_AVAILABLE(macos(10.13)) GSScopedDebugGroupMTL
 {
 	id<MTLCommandBuffer> m_buffer;
 public:
@@ -124,7 +124,7 @@ public:
 
 class GSTextureMTL;
 
-class GSDeviceMTL final : public GSDevice
+class API_AVAILABLE(macos(10.13)) GSDeviceMTL final : public GSDevice
 {
 public:
 	using DepthStencilSelector = GSHWDrawConfig::DepthStencilSelector;

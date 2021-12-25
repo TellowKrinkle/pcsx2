@@ -49,7 +49,7 @@ struct GSMTLMainVSUniform
 	vector_float2 vertex_offset;
 	vector_float2 texture_offset;
 	vector_float2 texture_scale;
-	uint max_depth;
+	unsigned int max_depth;
 };
 
 struct GSMTLMainPSUniform

@@ -26,7 +26,7 @@
 
 class GSDeviceMTL;
 
-class GSTextureMTL : public GSTexture
+class API_AVAILABLE(macos(10.13)) GSTextureMTL : public GSTexture
 {
 	GSDeviceMTL* m_dev;
 	id<MTLTexture> m_texture;

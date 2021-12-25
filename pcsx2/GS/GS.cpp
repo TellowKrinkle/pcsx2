@@ -192,7 +192,10 @@ int _GSopen(const WindowInfo& wi, const char* title, GSRendererType renderer, in
 				dev = makeGSDeviceMTL();
 				s_renderer_name = "Metal";
 				renderer_name = "Metal";
-				break;
+				if (dev)
+					break;
+				fprintf(stderr, "Metal renderer not available!  Falling back to OpenGL!\n");
+				[[fallthrough]];
 #endif
 			case GSRendererType::OGL_HW:
 				dev = new GSDeviceOGL();

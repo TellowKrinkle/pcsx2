@@ -1430,6 +1430,7 @@ elseif(APPLE)
 		PCAP::PCAP
 		LibXml2::LibXml2
 	)
+	target_link_options(PCSX2_FLAGS INTERFACE "SHELL:-weak_framework Metal" "SHELL:-framework QuartzCore")
 else()
 	target_link_libraries(PCSX2_FLAGS INTERFACE
 		GTK::gtk
@@ -1525,14 +1526,18 @@ if (APPLE)
 			$<$<NOT:$<CONFIG:Release,MinSizeRel>>:-M0>
 		)
 		set(std macos-metal2.0)
-		set(target air64-apple-macos10.13)
+		if (${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS 10)
+			set(target)
+		else()
+			set(target -target air64-apple-macos10.13)
+		endif()
 		foreach(shader IN LISTS pcsx2GSMetalShaders)
 			set(shaderOut ${CMAKE_CURRENT_BINARY_DIR}/${shader}.air)
 			list(APPEND pcsx2GSMetalShaderOut ${shaderOut})
 			get_filename_component(shaderDir ${shaderOut} DIRECTORY)
 			add_custom_command(OUTPUT ${shaderOut}
 				COMMAND ${CMAKE_COMMAND} -E make_directory ${shaderDir}
-				COMMAND xcrun metal ${flags} -std=${std} -target ${target} -o ${shaderOut} -c ${CMAKE_CURRENT_SOURCE_DIR}/${shader}
+				COMMAND xcrun metal ${flags} -std=${std} ${target} -o ${shaderOut} -c ${CMAKE_CURRENT_SOURCE_DIR}/${shader}
 				DEPENDS ${shader} GS/Renderers/Metal/GSMTLSharedHeader.h GS/Renderers/Metal/GSMTLShaderCommon.h
 			)
 		endforeach()

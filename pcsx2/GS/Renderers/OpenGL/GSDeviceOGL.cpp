@@ -2060,10 +2060,19 @@ static GSDeviceOGL::PSConstantBuffer convertCB(const GSHWDrawConfig::PSConstantB
 	const GSVector4i ditherHi  = dither.sll16( 9).sra16( 5);
 	dither = ditherLow.blend8(ditherHi, GSVector4i(0xFF00FF00));
 
+#if _M_SSE >= 0x401
 	out.DitherMatrix[0] = GSVector4(dither.xxxx().i8to32());
 	out.DitherMatrix[1] = GSVector4(dither.yyyy().i8to32());
 	out.DitherMatrix[2] = GSVector4(dither.zzzz().i8to32());
 	out.DitherMatrix[3] = GSVector4(dither.wwww().i8to32());
+#else
+	const GSVector4i dl = dither.upl8(dither);
+	const GSVector4i dh = dither.uph8(dither);
+	out.DitherMatrix[0] = GSVector4(dl.upl8(dl).sra32(24));
+	out.DitherMatrix[1] = GSVector4(dl.uph8(dl).sra32(24));
+	out.DitherMatrix[2] = GSVector4(dh.upl8(dh).sra32(24));
+	out.DitherMatrix[3] = GSVector4(dh.uph8(dh).sra32(24));
+#endif
 
 	return out;
 }

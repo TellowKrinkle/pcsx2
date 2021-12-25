@@ -27,7 +27,9 @@
 
 GSDevice* makeGSDeviceMTL()
 {
-	return new GSDeviceMTL();
+	if (@available(macOS 10.13, *))
+		return new GSDeviceMTL();
+	return nullptr;
 }
 
 std::vector<std::string> getMTLAdapters(size_t* default_adapter_idx)
@@ -35,14 +37,17 @@ std::vector<std::string> getMTLAdapters(size_t* default_adapter_idx)
 	if (default_adapter_idx)
 		*default_adapter_idx = 0;
 	std::vector<std::string> ret;
-	@autoreleasepool
+	if (@available(macOS 10.13, *))
 	{
-		id<MTLDevice> default_adapter = MTLCreateSystemDefaultDevice();
-		for (id<MTLDevice> dev in MTLCopyAllDevices())
+		@autoreleasepool
 		{
-			if (dev == default_adapter && default_adapter_idx)
-				*default_adapter_idx = ret.size();
-			ret.push_back([[dev name] UTF8String]);
+			id<MTLDevice> default_adapter = MTLCreateSystemDefaultDevice();
+			for (id<MTLDevice> dev in MTLCopyAllDevices())
+			{
+				if (dev == default_adapter && default_adapter_idx)
+					*default_adapter_idx = ret.size();
+				ret.push_back([[dev name] UTF8String]);
+			}
 		}
 	}
 	return ret;
@@ -690,17 +695,17 @@ bool GSDeviceMTL::Create(const WindowInfo& wi)
 
 	if (char* env = getenv("MTL_UNIFIED_MEMORY"))
 		m_unified_memory = env[0] == '1' || env[0] == 'y' || env[0] == 'Y';
-	else if (@available(macOS 10.15, iOS 13.0, *))
-		m_unified_memory = [m_dev hasUnifiedMemory];
+//	else if (@available(macOS 10.15, iOS 13.0, *))
+//		m_unified_memory = [m_dev hasUnifiedMemory];
 	else
 		m_unified_memory = false;
 
 	m_max_texsize = 8192;
 	if ([m_dev supportsFeatureSet:MTLFeatureSet_macOS_GPUFamily1_v1])
 		m_max_texsize = 16384;
-	if (@available(macOS 10.15, iOS 13.0, *))
-		if ([m_dev supportsFamily:MTLGPUFamilyApple3])
-			m_max_texsize = 16384;
+//	if (@available(macOS 10.15, iOS 13.0, *))
+//		if ([m_dev supportsFamily:MTLGPUFamilyApple3])
+//			m_max_texsize = 16384;
 
 	if (!(m_dev && m_layer && m_view))
 		return false;
@@ -1323,13 +1328,13 @@ void GSDeviceMTL::SetSampler(MainRenderEncoder& enc, SamplerSelector sel)
 
 static void textureBarrier(id<MTLRenderCommandEncoder> enc)
 {
-	if (@available(macOS 10.14, *)) {
-		[enc memoryBarrierWithScope:MTLBarrierScopeRenderTargets
-		                afterStages:MTLRenderStageVertex
-		               beforeStages:MTLRenderStageFragment];
-	} else {
+//	if (@available(macOS 10.14, *)) {
+//		[enc memoryBarrierWithScope:MTLBarrierScopeRenderTargets
+//		                afterStages:MTLRenderStageVertex
+//		               beforeStages:MTLRenderStageFragment];
+//	} else {
 		[enc textureBarrier];
-	}
+//	}
 }
 
 void GSDeviceMTL::SetTexture(MainRenderEncoder& enc, GSTexture* tex, int pos)
@@ -1382,10 +1387,22 @@ void GSDeviceMTL::MainRenderEncoder::ClearScissor()
 	if (!has_scissor)
 		return;
 	has_scissor = false;
-	GSVector4i size = GSVector4i(0);
-	if (color_target)   size = size.max_u32(GSVector4i(color_target  ->GetSize()));
-	if (depth_target)   size = size.max_u32(GSVector4i(depth_target  ->GetSize()));
-	if (stencil_target) size = size.max_u32(GSVector4i(stencil_target->GetSize()));
+	GSVector2i size = GSVector2i(0);
+	if (color_target)
+	{
+		size.x = std::max(size.x, color_target->GetSize().x);
+		size.y = std::max(size.y, color_target->GetSize().y);
+	}
+	if (depth_target)
+	{
+		size.x = std::max(size.x, depth_target->GetSize().x);
+		size.y = std::max(size.y, depth_target->GetSize().y);
+	}
+	if (stencil_target)
+	{
+		size.x = std::max(size.x, stencil_target->GetSize().x);
+		size.y = std::max(size.y, stencil_target->GetSize().y);
+	}
 	MTLScissorRect r;
 	r.x = 0;
 	r.y = 0;
@@ -1523,7 +1540,7 @@ void GSDeviceMTL::SetupDestinationAlpha(GSTexture* rt, GSTexture* ds, const GSVe
 	EndScene();
 }
 
-static id<MTLTexture> getTexture(GSTexture* tex)
+static API_AVAILABLE(macos(10.13)) id<MTLTexture> getTexture(GSTexture* tex)
 {
 	return tex ? static_cast<GSTextureMTL*>(tex)->GetTexture() : nil;
 }
