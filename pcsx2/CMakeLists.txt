@@ -1510,16 +1510,39 @@ if (APPLE)
 	find_library(METAL_LIBRARY Metal)
 	target_link_libraries(PCSX2 PRIVATE ${METAL_LIBRARY})
 
-	foreach(shader IN LISTS pcsx2GSMetalShaders)
+	if(CMAKE_GENERATOR MATCHES "Xcode")
 		# If we're generating an xcode project, you can just add the shaders to the main pcsx2 target and xcode will deal with them properly
 		# This will make sure xcode supplies code completion, etc (if you use a custom command, it won't)
-		if (CMAKE_GENERATOR MATCHES "Xcode")
+		foreach(shader IN LISTS pcsx2GSMetalShaders)
 			target_sources(PCSX2 PRIVATE ${shader})
 			set_source_files_properties(${shader} PROPERTIES LANGUAGE METAL)
-		else()
-			# TODO: Compile metal with custom command
-		endif()
-	endforeach()
+		endforeach()
+	else()
+		set(pcsx2GSMetalShaderOut)
+		set(flags
+			-ffast-math
+			$<$<NOT:$<CONFIG:Release,MinSizeRel>>:-gline-tables-only>
+			$<$<NOT:$<CONFIG:Release,MinSizeRel>>:-M0>
+		)
+		set(std macos-metal2.0)
+		set(target air64-apple-macos10.13)
+		foreach(shader IN LISTS pcsx2GSMetalShaders)
+			set(shaderOut ${CMAKE_CURRENT_BINARY_DIR}/${shader}.air)
+			list(APPEND pcsx2GSMetalShaderOut ${shaderOut})
+			get_filename_component(shaderDir ${shaderOut} DIRECTORY)
+			add_custom_command(OUTPUT ${shaderOut}
+				COMMAND ${CMAKE_COMMAND} -E make_directory ${shaderDir}
+				COMMAND xcrun metal ${flags} -std=${std} -target ${target} -o ${shaderOut} -c ${CMAKE_CURRENT_SOURCE_DIR}/${shader}
+				DEPENDS ${shader} GS/Renderers/Metal/GSMTLSharedHeader.h GS/Renderers/Metal/GSMTLShaderCommon.h
+			)
+		endforeach()
+		set(metallib ${CMAKE_CURRENT_BINARY_DIR}/default.metallib)
+		add_custom_command(OUTPUT ${metallib}
+			COMMAND xcrun metallib -o ${metallib} ${pcsx2GSMetalShaderOut}
+			DEPENDS ${pcsx2GSMetalShaderOut}
+		)
+		pcsx2_resource(${metallib} ${CMAKE_CURRENT_BINARY_DIR})
+	endif()
 
 	# MacOS defaults to having a maximum protection of the __DATA segment of rw (non-executable)
 	# We have a bunch of page-sized arrays in bss that we use for jit
@@ -1577,6 +1600,7 @@ source_group(System/Ps2/DEV9 REGULAR_EXPRESSION DEV9/*)
 source_group(System/Ps2/PAD FILES ${pcsx2PADSources} ${pcsx2PADHeaders})
 source_group(System/Ps2/SPU2 REGULAR_EXPRESSION SPU2/*)
 source_group(System/Ps2/USB REGULAR_EXPRESSION USB/*)
+source_group(System/Ps2/GS/Renderers/Metal REGULAR_EXPRESSION GS/Renderers/Metal/*)
 
 # Generated resource files
 source_group(Resources/GUI FILES ${pcsx2GuiResources})
