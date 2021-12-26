@@ -225,7 +225,6 @@ void GSDeviceMTL::Sync(BufferPair& buffer)
 	  destinationOffset:buffer.last_upload
 	               size:buffer.usage.Pos() - buffer.last_upload];
 	[enc updateFence:m_draw_sync_fence];
-	m_wait_on_draw_sync_fence = true;
 	buffer.last_upload = buffer.usage.Pos();
 }
 
@@ -249,11 +248,8 @@ id<MTLBlitCommandEncoder> GSDeviceMTL::GetLateTextureUploadEncoder()
 		m_late_texture_upload_encoder = [GetRenderCmdBuf() blitCommandEncoder];
 		pxAssertRel(m_late_texture_upload_encoder, "Failed to create late texture upload encoder!");
 		[m_late_texture_upload_encoder setLabel:@"Late Texture Upload"];
-		if (m_wait_on_draw_sync_fence)
-		{
-			m_wait_on_draw_sync_fence = false;
+		if (!m_unified_memory)
 			[m_late_texture_upload_encoder waitForFence:m_draw_sync_fence];
-		}
 	}
 	return m_late_texture_upload_encoder;
 }
@@ -401,12 +397,9 @@ GSDeviceMTL::MainRenderEncoder& GSDeviceMTL::BeginRenderPass(GSTexture* color, M
 
 	EndRenderPass();
 	m_current_render.encoder = [GetRenderCmdBuf() renderCommandEncoderWithDescriptor:desc];
-	if (m_wait_on_draw_sync_fence)
-	{
-		m_wait_on_draw_sync_fence = false;
+	if (!m_unified_memory)
 		[m_current_render.encoder waitForFence:m_draw_sync_fence
 		                          beforeStages:MTLRenderStageVertex];
-	}
 	m_current_render.color_target = color;
 	m_current_render.depth_target = depth;
 	m_current_render.stencil_target = stencil;
@@ -719,7 +712,6 @@ bool GSDeviceMTL::Create(const WindowInfo& wi)
 		// Init metal stuff
 		m_queue = [m_dev newCommandQueue];
 		m_draw_sync_fence = [m_dev newFence];
-		m_wait_on_draw_sync_fence = !m_unified_memory;
 		m_shaders = [m_dev newDefaultLibrary];
 
 		m_fn_constants = [MTLFunctionConstantValues new];
