@@ -214,7 +214,6 @@ public:
 	id<MTLDevice> m_dev;
 	id<MTLCommandQueue> m_queue;
 	id<MTLFence> m_draw_sync_fence;
-	bool m_wait_on_draw_sync_fence;
 	NSView* m_view;
 	CAMetalLayer* m_layer;
 	id<MTLLibrary> m_shaders;
