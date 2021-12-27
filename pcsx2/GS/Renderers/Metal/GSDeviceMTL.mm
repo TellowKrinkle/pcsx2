@@ -899,6 +899,7 @@ bool GSDeviceMTL::Create(const WindowInfo& wi)
 			m_merge_pipeline[i] = MakePipeline(pdesc, vs_convert, LoadShader(name), name);
 		}
 
+		pdesc.colorAttachments[0].blendingEnabled = NO;
 		pdesc.colorAttachments[0].pixelFormat = MTLPixelFormatInvalid;
 		pdesc.stencilAttachmentPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
 		m_convert_pipeline[static_cast<int>(ShaderConvert::DATM_0)] = MakePipeline(pdesc, vs_convert, LoadShader(@"ps_datm0"), @"datm0");
@@ -908,6 +909,7 @@ bool GSDeviceMTL::Create(const WindowInfo& wi)
 		applyAttribute(pdesc.vertexDescriptor, 1, MTLVertexFormatFloat2,           offsetof(GSVertexPT1, t), 0);
 		applyAttribute(pdesc.vertexDescriptor, 2, MTLVertexFormatUChar4Normalized, offsetof(GSVertexPT1, c), 0);
 		pdesc.vertexDescriptor.layouts[0].stride = sizeof(GSVertexPT1);
+		pdesc.colorAttachments[0].blendingEnabled = YES;
 		pdesc.colorAttachments[0].pixelFormat = [m_layer pixelFormat];
 		pdesc.stencilAttachmentPixelFormat = MTLPixelFormatInvalid;
 		m_convert_pipeline[static_cast<int>(ShaderConvert::OSD)] = MakePipeline(pdesc, LoadShader(@"vs_osd"), LoadShader(@"ps_osd"), @"osd");
