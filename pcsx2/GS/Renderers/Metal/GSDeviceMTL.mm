@@ -669,6 +669,19 @@ bool GSDeviceMTL::Create(const WindowInfo& wi)
 	}
 	Console.WriteLn("Metal: Rendering with %s", [[m_dev name] UTF8String]);
 
+	if (char* env = getenv("MTL_CAPTURE"))
+	{
+		m_capture_frame = atoi(env);
+		if (m_capture_frame)
+			Console.WriteLn("Metal: Will capture frame %d", m_capture_frame);
+		else
+			Console.Warning("Metal: Failed to parse capture frame!");
+	}
+	else
+	{
+		m_capture_frame = 0;
+	}
+
 	if ([NSThread isMainThread])
 		InitWindow(wi);
 	else
@@ -997,6 +1010,40 @@ void GSDeviceMTL::Present(const GSVector4i& r, int shader)
 	}
 
 	FlushEncoders();
+
+	if (m_capture_frame)
+	{
+		static u8 s_capturing = 0;
+		if (s_capturing > 4)
+		{
+			s_capturing = 0;
+			[[MTLCaptureManager sharedCaptureManager] stopCapture];
+		}
+		else if (s_capturing > 0)
+		{
+			s_capturing++;
+		}
+		else if (m_capture_frame == m_frame)
+		{
+			if (@available(macOS 10.15, *))
+			{
+				MTLCaptureDescriptor* desc = [[MTLCaptureDescriptor alloc] init];
+				[desc setCaptureObject:m_dev];
+				[desc setDestination:MTLCaptureDestinationGPUTraceDocument];
+				[desc setOutputURL:[NSURL fileURLWithPath:@"/tmp/PCSX2Capture.gputrace"]];
+				NSError* err = nullptr;
+				[[MTLCaptureManager sharedCaptureManager] startCaptureWithDescriptor:desc error:&err];
+				if (err)
+					Console.Error([[NSString stringWithFormat:@"Metal: Failed to start capture: %@", [err localizedDescription]] UTF8String]);
+				else
+					s_capturing = 1;
+			}
+			else
+			{
+				Console.Error("Metal: Failed to start capture: macOS version too old");
+			}
+		}
+	}
 }}
 
 void GSDeviceMTL::Present(GSTexture* sTex, GSTexture* dTex, const GSVector4& dRect, ShaderConvert shader)

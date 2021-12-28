@@ -207,6 +207,7 @@ public:
 	TriFiltering m_filter;
 	int m_mipmap;
 	int m_max_texsize;
+	u32 m_capture_frame;
 
 	// MARK: Permanent resources
 	std::shared_ptr<OutlivesDeviceObj> m_outlive;
