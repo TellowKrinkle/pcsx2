@@ -19,7 +19,7 @@
 #include "GSExtra.h"
 
 // Note: GL messages are present in common code, so in all renderers.
-
+#define ENABLE_OGL_DEBUG
 #define GL_INSERT(type, code, sev, ...) \
 	do \
 		if (glDebugMessageInsert) glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, type, code, sev, -1, format(__VA_ARGS__).c_str()); \

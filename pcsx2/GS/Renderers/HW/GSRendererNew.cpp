@@ -1257,7 +1257,7 @@ void GSRendererNew::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sour
 				GL_PERF("DATE: Fast with alpha %d-%d", GetAlphaMinMax().min, GetAlphaMinMax().max);
 				DATE_one = true;
 			}
-			else if (m_dev->Features().texture_barrier && ((m_vt.m_primclass == GS_SPRITE_CLASS && m_drawlist.size() < 50) || (m_index.tail < 100)))
+			else if (false && m_dev->Features().texture_barrier && ((m_vt.m_primclass == GS_SPRITE_CLASS && m_drawlist.size() < 50) || (m_index.tail < 100)))
 			{
 				// texture barrier will split the draw call into n draw call. It is very efficient for
 				// few primitive draws. Otherwise it sucks.
@@ -1269,11 +1269,11 @@ void GSRendererNew::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sour
 			{
 				// Note: Fast level (DATE_one) was removed as it's less accurate.
 				GL_PERF("DATE: Full AD with alpha %d-%d", GetAlphaMinMax().min, GetAlphaMinMax().max);
-				if (m_dev->Features().image_load_store)
+				if (false && m_dev->Features().image_load_store)
 				{
 					DATE_GL42 = true;
 				}
-				else if (m_dev->Features().texture_barrier)
+				else if (false && m_dev->Features().texture_barrier)
 				{
 					m_conf.require_full_barrier = true;
 					DATE_GL45 = true;
