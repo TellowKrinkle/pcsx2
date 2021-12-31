@@ -194,7 +194,7 @@ struct alignas(16) GSHWDrawConfig
 				// Flat/goround shading
 				u32 iip : 1;
 				// Pixel test
-				u32 date : 3;
+				u32 date : 3; // 0 → Off, 1 → PrimID Check, 2 3 → PrimID Init, 6 7 → RT Read & Discard
 				u32 atst : 3;
 				// Color sampling
 				u32 fst : 1; // Investigate to do it on the VS

@@ -42,8 +42,7 @@ layout(binding = 1) uniform sampler2D PaletteSampler;
 layout(binding = 3) uniform sampler2D RtSampler; // note 2 already use by the image below
 layout(binding = 4) uniform sampler2D RawTextureSampler;
 
-#ifndef DISABLE_GL42_image
-#if PS_DATE > 0
+#if PS_DATE > 0 && PS_DATE < 4
 // Performance note: images mustn't be declared if they are unused. Otherwise it will
 // require extra shader validation.
 
@@ -62,15 +61,12 @@ layout(r32i, binding = 2) uniform iimage2D img_prim_min;
 // 2/ do the full depth (current depth writes are disabled)
 // 3/ restore the depth buffer for 2nd pass
 // Of course, it is likely too costly.
-#if PS_DATE == 1 || PS_DATE == 2
+#if PS_DATE == 2 || PS_DATE == 3
 layout(early_fragment_tests) in;
 #endif
 
 // I don't remember why I set this parameter but it is surely useless
 //layout(pixel_center_integer) in vec4 gl_FragCoord;
-#endif
-#else
-// use basic stencil
 #endif
 
 vec4 sample_c(vec2 uv)
@@ -728,7 +724,7 @@ void ps_main()
  	if ((int(gl_FragCoord.y) & 1) == (PS_SCANMSK & 1))
  	 	discard;
 #endif
-#if ((PS_DATE & 3) == 1 || (PS_DATE & 3) == 2)
+#if PS_DATE > 1
 
 #if PS_WRITE_RG == 1
     // Pseudo 16 bits access.
@@ -737,18 +733,18 @@ void ps_main()
     float rt_a = texelFetch(RtSampler, ivec2(gl_FragCoord.xy), 0).a;
 #endif
 
-#if (PS_DATE & 3) == 1
+#if (PS_DATE & 1) == 0
     // DATM == 0: Pixel with alpha equal to 1 will failed
     bool bad = (127.5f / 255.0f) < rt_a;
-#elif (PS_DATE & 3) == 2
+#else
     // DATM == 1: Pixel with alpha equal to 0 will failed
     bool bad = rt_a < (127.5f / 255.0f);
 #endif
 
     if (bad) {
-#if PS_DATE >= 5 || defined(DISABLE_GL42_image)
+#if PS_DATE >= 6
         discard;
-#else
+#elif PS_DATE < 4
         imageStore(img_prim_min, ivec2(gl_FragCoord.xy), ivec4(-1));
         return;
 #endif
@@ -756,7 +752,7 @@ void ps_main()
 
 #endif
 
-#if PS_DATE == 3 && !defined(DISABLE_GL42_image)
+#if PS_DATE == 1
     int stencil_ceil = imageLoad(img_prim_min, ivec2(gl_FragCoord.xy)).r;
     // Note gl_PrimitiveID == stencil_ceil will be the primitive that will update
     // the bad alpha value so we must keep it.
@@ -835,14 +831,14 @@ void ps_main()
 #endif
 
     // Get first primitive that will write a failling alpha value
-#if PS_DATE == 1 && !defined(DISABLE_GL42_image)
+#if PS_DATE == 2
     // DATM == 0
     // Pixel with alpha equal to 1 will failed (128-255)
     if (C.a > 127.5f) {
         imageAtomicMin(img_prim_min, ivec2(gl_FragCoord.xy), gl_PrimitiveID);
     }
     return;
-#elif PS_DATE == 2 && !defined(DISABLE_GL42_image)
+#elif PS_DATE == 3
     // DATM == 1
     // Pixel with alpha equal to 0 will failed (0-127)
     if (C.a < 127.5f) {

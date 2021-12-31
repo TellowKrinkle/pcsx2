@@ -942,10 +942,6 @@ std::string GSDeviceOGL::GenGlslHeader(const std::string_view& entry, GLenum typ
 		// Need GL version 420
 		header += "#extension GL_ARB_shader_image_load_store: require\n";
 	}
-	else
-	{
-		header += "#define DISABLE_GL42_image\n";
-	}
 
 	if (GLLoader::vendor_id_amd || GLLoader::vendor_id_intel)
 		header += "#define BROKEN_DRIVER as_usual\n";
@@ -1909,8 +1905,8 @@ void GSDeviceOGL::RenderHW(GSHWDrawConfig& config)
 		// Ask PS to discard shader above the primitiveID max
 		glDepthMask(GLState::depth_mask);
 
-		psel.ps.date = 3;
-		config.alpha_second_pass.ps.date = 3;
+		psel.ps.date = 1;
+		config.alpha_second_pass.ps.date = 1;
 		SetupPipeline(psel);
 
 		// Be sure that first pass is finished !

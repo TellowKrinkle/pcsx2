@@ -1372,14 +1372,14 @@ void GSRendererNew::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sour
 
 	if (DATE_GL45)
 	{
-		m_conf.ps.date = 5 + m_context->TEST.DATM;
+		m_conf.ps.date = 6 + m_context->TEST.DATM;
 	}
 	else if (DATE_one)
 	{
 		if (m_dev->Features().texture_barrier)
 		{
 			m_conf.require_one_barrier = true;
-			m_conf.ps.date = 5 + m_context->TEST.DATM;
+			m_conf.ps.date = 6 + m_context->TEST.DATM;
 		}
 		m_conf.depth.date = 1;
 		m_conf.depth.date_one = 1;
@@ -1387,7 +1387,7 @@ void GSRendererNew::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sour
 	else if (DATE)
 	{
 		if (DATE_GL42)
-			m_conf.ps.date = 1 + m_context->TEST.DATM;
+			m_conf.ps.date = 2 + m_context->TEST.DATM;
 		else
 			m_conf.depth.date = 1;
 	}
