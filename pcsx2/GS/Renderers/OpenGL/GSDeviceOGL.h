@@ -284,6 +284,7 @@ private:
 	struct
 	{
 		GSDepthStencilOGL* dss;
+		GSDepthStencilOGL* dss_full;
 		GSTexture* t;
 	} m_date;
 

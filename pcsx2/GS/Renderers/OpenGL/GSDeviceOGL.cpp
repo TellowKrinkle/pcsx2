@@ -112,6 +112,7 @@ GSDeviceOGL::~GSDeviceOGL()
 
 	// Clean m_date
 	delete m_date.dss;
+	delete m_date.dss_full;
 
 	// Clean various opengl allocation
 	glDeleteFramebuffers(1, &m_fbo);
@@ -489,6 +490,12 @@ bool GSDeviceOGL::Create(const WindowInfo& wi)
 		m_date.dss = new GSDepthStencilOGL();
 		m_date.dss->EnableStencil();
 		m_date.dss->SetStencil(GL_ALWAYS, GL_REPLACE);
+
+		m_date.dss_full = new GSDepthStencilOGL();
+		m_date.dss_full->EnableDepth();
+		m_date.dss_full->EnableStencil();
+		m_date.dss_full->SetDepth(GL_GEQUAL, true);
+		m_date.dss_full->SetStencil(GL_ALWAYS, GL_INCR, GL_KEEP, 0, 0xFF);
 	}
 
 	// ****************************************************************
@@ -864,10 +871,20 @@ GSDepthStencilOGL* GSDeviceOGL::CreateDepthStencil(OMDepthStencilSelector dssel)
 	if (dssel.date != OMDepthStencilSelector::DATE::Off)
 	{
 		dss->EnableStencil();
-		if (dssel.date == OMDepthStencilSelector::DATE::One)
-			dss->SetStencil(GL_EQUAL, GL_ZERO);
-		else
-			dss->SetStencil(GL_EQUAL, GL_KEEP);
+		switch (dssel.date)
+		{
+			case OMDepthStencilSelector::DATE::Off:
+				break;
+			case OMDepthStencilSelector::DATE::ReadOnly:
+				dss->SetStencil(GL_EQUAL, GL_KEEP);
+				break;
+			case OMDepthStencilSelector::DATE::One:
+				dss->SetStencil(GL_EQUAL, GL_ZERO);
+				break;
+			case OMDepthStencilSelector::DATE::Full:
+				dss->SetStencil(GL_NOTEQUAL, GL_DECR, GL_DECR, 0, 0xFF);
+				break;
+		}
 	}
 
 	if (dssel.ztst != ZTST_ALWAYS || dssel.zwe)
@@ -1153,10 +1170,7 @@ void GSDeviceOGL::StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture
 		return;
 	}
 
-	const bool draw_in_depth = ps == m_convert.ps[static_cast<int>(ShaderConvert::RGBA8_TO_FLOAT32)]
-	                        || ps == m_convert.ps[static_cast<int>(ShaderConvert::RGBA8_TO_FLOAT24)]
-	                        || ps == m_convert.ps[static_cast<int>(ShaderConvert::RGBA8_TO_FLOAT16)]
-	                        || ps == m_convert.ps[static_cast<int>(ShaderConvert::RGB5A1_TO_FLOAT16)];
+	const bool draw_in_depth = dTex->GetFormat() == GSTexture::Format::DepthStencil;
 
 	// Performance optimization. It might be faster to use a framebuffer blit for standard case
 	// instead to emulate it with shader
@@ -1786,6 +1800,12 @@ void GSDeviceOGL::RenderHW(GSHWDrawConfig& config)
 		GLState::scissor = config.scissor;
 	}
 
+	// For any stretchrect calls
+	const GSVector2i size = config.rt ? config.rt->GetSize() : config.ds->GetSize();
+	const GSVector4 dRect(config.drawarea);
+	const GSVector4 sRect = dRect / GSVector4(size.x, size.y).xyxy();
+
+	GSTexture* tmp_ds = nullptr;
 	// Destination Alpha Setup
 	switch (config.destination_alpha)
 	{
@@ -1794,6 +1814,12 @@ void GSDeviceOGL::RenderHW(GSHWDrawConfig& config)
 			break; // No setup
 		case GSHWDrawConfig::DestinationAlphaMode::PrimIDTracking:
 			InitPrimDateTexture(config.rt, config.drawarea);
+			break;
+		case GSHWDrawConfig::DestinationAlphaMode::StencilFull:
+			tmp_ds = GSDevice::CreateDepthStencil(size.x, size.y, GSTexture::Format::DepthStencil);
+			tmp_ds->CommitRegion(GSVector2i(config.scissor.z, config.scissor.w));
+			ClearStencil(tmp_ds, 0);
+			StretchRect(config.rt, sRect, tmp_ds, dRect, config.datm ? ShaderConvert::DATM_1_FULL : ShaderConvert::DATM_0_FULL, false);
 			break;
 		case GSHWDrawConfig::DestinationAlphaMode::StencilOne:
 			ClearStencil(config.ds, 1);
@@ -1912,8 +1938,26 @@ void GSDeviceOGL::RenderHW(GSHWDrawConfig& config)
 		// Be sure that first pass is finished !
 		Barrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	}
+	if (config.destination_alpha == GSHWDrawConfig::DestinationAlphaMode::StencilFull)
+	{
+		GL_PUSH("Date Full Stencil Init");
+		psel.ps.date = 4 + config.datm;
+		SetupPipeline(psel);
+		OMSetRenderTargets(nullptr, tmp_ds, tmp_ds, &config.scissor);
+		OMSetDepthStencilState(m_date.dss_full);
 
-	OMSetRenderTargets(hdr_rt ? hdr_rt : config.rt, config.ds, config.ds, &config.scissor);
+		DrawIndexedPrimitive();
+
+		psel.ps.date = 0;
+		SetupPipeline(psel);
+		SetupOM(config.depth);
+		OMSetRenderTargets(hdr_rt ? hdr_rt : config.rt, config.ds, tmp_ds, &config.scissor);
+	}
+	else
+	{
+		OMSetRenderTargets(hdr_rt ? hdr_rt : config.rt, config.ds, config.ds, &config.scissor);
+	}
+
 	SendHWDraw(config);
 
 	if (config.alpha_second_pass.enable)
@@ -1950,6 +1994,9 @@ void GSDeviceOGL::RenderHW(GSHWDrawConfig& config)
 
 		Recycle(hdr_rt);
 	}
+
+	if (tmp_ds)
+		Recycle(tmp_ds);
 }
 
 void GSDeviceOGL::SendHWDraw(const GSHWDrawConfig& config)

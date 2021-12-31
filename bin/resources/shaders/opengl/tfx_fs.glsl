@@ -724,7 +724,7 @@ void ps_main()
  	if ((int(gl_FragCoord.y) & 1) == (PS_SCANMSK & 1))
  	 	discard;
 #endif
-#if PS_DATE > 1
+#if (PS_DATE & 2) == 2 // 2, 3, 6, 7
 
 #if PS_WRITE_RG == 1
     // Pseudo 16 bits access.
@@ -830,22 +830,35 @@ void ps_main()
     if(C.a < 128.0f) C.a += 128.0f;
 #endif
 
+
+#if PS_DATE >= 2 && PS_DATE < 6
+    #if (PS_DATE & 1) == 0
+        // DATM == 0
+        // Pixel with alpha equal to 1 will failed (128-255)
+        bool blocks_future = C.a > 127.5f;
+    #else
+        // DATM == 1
+        // Pixel with alpha equal to 0 will failed (0-127)
+        bool blocks_future = C.a < 127.5f;
+    #endif
+
+#if PS_DATE == 2 || PS_DATE == 3
     // Get first primitive that will write a failling alpha value
-#if PS_DATE == 2
-    // DATM == 0
-    // Pixel with alpha equal to 1 will failed (128-255)
-    if (C.a > 127.5f) {
+    if (blocks_future) {
         imageAtomicMin(img_prim_min, ivec2(gl_FragCoord.xy), gl_PrimitiveID);
     }
-    return;
-#elif PS_DATE == 3
-    // DATM == 1
-    // Pixel with alpha equal to 0 will failed (0-127)
-    if (C.a < 127.5f) {
-        imageAtomicMin(img_prim_min, ivec2(gl_FragCoord.xy), gl_PrimitiveID);
-    }
+#else
+    // If this draw writes a failing alpha value, we want to make all future draws fail the depth test
+    // Depth test is set to greater than or equal.  Depth is cleared to 0, and if there's a failing alpha on the rt depth is set to 1
+    // A succeeding value will have depth 0, which passes only if destination depth is still 0 (no failing values have been written)
+    // A failing value will use a primid-based value to ensure that it is greater than 0 but less than any previous failing value (so it doesn't accidentally pass by being equal to a previous value).
+    gl_FragDepth = blocks_future ? 1 - ((gl_PrimitiveID + 1) * exp2(-23)) : 0;
+#endif
     return;
 #endif
+
+    // Warning: No discard allowed below this line!
+    // Full stencil destination alpha relies on the same set of primitives being rendered in the pre-pass (which ends here) and the real draw, otherwise counting will be mismatched
 
     ps_blend(C, alpha_blend);
 
