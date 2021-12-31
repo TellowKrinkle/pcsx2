@@ -232,10 +232,18 @@ GSTextureOGL::GSTextureOGL(Type type, int w, int h, Format format, GLuint fbo_re
 
 		// Depth buffer
 		case Format::DepthStencil:
-			gl_fmt          = GL_DEPTH32F_STENCIL8;
-			m_int_format    = GL_DEPTH_STENCIL;
+			gl_fmt          = GL_DEPTH_COMPONENT32F;
+			m_int_format    = GL_DEPTH;
 			m_int_type      = GL_FLOAT_32_UNSIGNED_INT_24_8_REV;
-			m_int_shift     = 3; // 4 bytes for depth + 4 bytes for stencil by texels
+			m_int_shift     = 2; // 4 bytes for depth + 4 bytes for stencil by texels
+			break;
+
+		// Stencil buffer
+		case Format::Stencil:
+			gl_fmt          = GL_STENCIL_INDEX8;
+			m_int_format    = GL_STENCIL;
+			m_int_type      = GL_UNSIGNED_BYTE;
+			m_int_shift     = 0;
 			break;
 
 		// Backbuffer

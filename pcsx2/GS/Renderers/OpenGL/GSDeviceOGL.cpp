@@ -1805,7 +1805,8 @@ void GSDeviceOGL::RenderHW(GSHWDrawConfig& config)
 	const GSVector4 dRect(config.drawarea);
 	const GSVector4 sRect = dRect / GSVector4(size.x, size.y).xyxy();
 
-	GSTexture* tmp_ds = nullptr;
+	GSTexture* tmp_depth = nullptr;
+	GSTexture* stencil = nullptr;
 	// Destination Alpha Setup
 	switch (config.destination_alpha)
 	{
@@ -1816,10 +1817,12 @@ void GSDeviceOGL::RenderHW(GSHWDrawConfig& config)
 			InitPrimDateTexture(config.rt, config.drawarea);
 			break;
 		case GSHWDrawConfig::DestinationAlphaMode::StencilFull:
-			tmp_ds = GSDevice::CreateDepthStencil(size.x, size.y, GSTexture::Format::DepthStencil);
-			tmp_ds->CommitRegion(GSVector2i(config.scissor.z, config.scissor.w));
-			ClearStencil(tmp_ds, 0);
-			StretchRect(config.rt, sRect, tmp_ds, dRect, config.datm ? ShaderConvert::DATM_1_FULL : ShaderConvert::DATM_0_FULL, false);
+			tmp_depth = GSDevice::CreateDepthStencil(size.x, size.y, GSTexture::Format::DepthStencil);
+			stencil   = GSDevice::CreateDepthStencil(size.x, size.y, GSTexture::Format::Stencil);
+			tmp_depth->CommitRegion(GSVector2i(config.scissor.z, config.scissor.w));
+			stencil  ->CommitRegion(GSVector2i(config.scissor.z, config.scissor.w));
+			ClearStencil(stencil, 0);
+			StretchRect(config.rt, sRect, tmp_depth, dRect, config.datm ? ShaderConvert::DATM_1_FULL : ShaderConvert::DATM_0_FULL, false);
 			break;
 		case GSHWDrawConfig::DestinationAlphaMode::StencilOne:
 			ClearStencil(config.ds, 1);
@@ -1943,7 +1946,7 @@ void GSDeviceOGL::RenderHW(GSHWDrawConfig& config)
 		GL_PUSH("Date Full Stencil Init");
 		psel.ps.date = 4 + config.datm;
 		SetupPipeline(psel);
-		OMSetRenderTargets(nullptr, tmp_ds, tmp_ds, &config.scissor);
+		OMSetRenderTargets(nullptr, tmp_depth, stencil, &config.scissor);
 		OMSetDepthStencilState(m_date.dss_full);
 
 		DrawIndexedPrimitive();
@@ -1951,7 +1954,7 @@ void GSDeviceOGL::RenderHW(GSHWDrawConfig& config)
 		psel.ps.date = 0;
 		SetupPipeline(psel);
 		SetupOM(config.depth);
-		OMSetRenderTargets(hdr_rt ? hdr_rt : config.rt, config.ds, tmp_ds, &config.scissor);
+		OMSetRenderTargets(hdr_rt ? hdr_rt : config.rt, config.ds, stencil, &config.scissor);
 	}
 	else
 	{
@@ -1995,8 +1998,10 @@ void GSDeviceOGL::RenderHW(GSHWDrawConfig& config)
 		Recycle(hdr_rt);
 	}
 
-	if (tmp_ds)
-		Recycle(tmp_ds);
+	if (tmp_depth)
+		Recycle(tmp_depth);
+	if (stencil && stencil != config.ds)
+		Recycle(stencil);
 }
 
 void GSDeviceOGL::SendHWDraw(const GSHWDrawConfig& config)

@@ -44,7 +44,8 @@ public:
 		Backbuffer,   ///< For displaying to the screen
 		Color,        ///< Standard (RGBA8) color texture
 		FloatColor,   ///< Float-based color texture for colclip emulation (RGBA32F)
-		DepthStencil, ///< Depth stencil texture
+		DepthStencil, ///< Depth stencil texture (or possibly depth-only texture if stencil-only textures are supported)
+		Stencil,      ///< Stencil-only texture
 		UNorm8,       ///< A8UNorm texture for paletted textures and the OSD font
 		UInt16,       ///< UInt16 texture for reading back 16-bit depth
 		UInt32,       ///< UInt32 texture for reading back 24 and 32-bit depth
