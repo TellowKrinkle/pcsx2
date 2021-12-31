@@ -34,13 +34,17 @@ namespace GLState
 	bool depth_mask;
 
 	bool stencil;
+	u8 stencil_mask;
+	u8 stencil_reference;
 	GLenum stencil_func;
 	GLenum stencil_pass;
+	GLenum stencil_depth_fail;
 
 	GLuint ps_ss;
 
 	GLuint rt;
-	GLuint ds;
+	GLuint depth_target;
+	GLuint stencil_target;
 	GLuint tex_unit[8];
 	GLuint64 tex_handle[8];
 
@@ -64,13 +68,17 @@ namespace GLState
 		depth_mask = true;
 
 		stencil = false;
+		stencil_mask = 0;
+		stencil_reference = 0;
 		stencil_func = 0;
 		stencil_pass = 0xFFFF; // Note 0 is valid (GL_ZERO)
+		stencil_depth_fail = 0xFFFF;
 
 		ps_ss = 0;
 
 		rt = 0;
-		ds = 0;
+		depth_target = 0;
+		stencil_target = 0;
 		std::fill(std::begin(tex_unit), std::end(tex_unit), 0);
 		std::fill(std::begin(tex_handle), std::end(tex_handle), 0);
 

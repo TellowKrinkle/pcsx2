@@ -38,8 +38,11 @@ class GSDepthStencilOGL
 	bool m_depth_mask;
 	// Note front face and back might be split but it seems they have same parameter configuration
 	bool m_stencil_enable;
+	u8 m_stencil_mask;
+	u8 m_stencil_reference;
 	GLenum m_stencil_func;
 	GLenum m_stencil_spass_dpass_op;
+	GLenum m_stencil_spass_dfail_op;
 
 public:
 	GSDepthStencilOGL()
@@ -47,8 +50,11 @@ public:
 		, m_depth_func(GL_ALWAYS)
 		, m_depth_mask(0)
 		, m_stencil_enable(false)
+		, m_stencil_mask(0)
+		, m_stencil_reference(0)
 		, m_stencil_func(0)
 		, m_stencil_spass_dpass_op(GL_KEEP)
+		, m_stencil_spass_dfail_op(GL_KEEP)
 	{
 	}
 
@@ -60,10 +66,13 @@ public:
 		m_depth_func = func;
 		m_depth_mask = mask;
 	}
-	void SetStencil(GLenum func, GLenum pass)
+	void SetStencil(GLenum func, GLenum pass, GLenum dfail = GL_KEEP, u8 ref = 1, u8 mask = 1)
 	{
 		m_stencil_func = func;
 		m_stencil_spass_dpass_op = pass;
+		m_stencil_spass_dfail_op = dfail;
+		m_stencil_reference = ref;
+		m_stencil_mask = mask;
 	}
 
 	void SetupDepth()
@@ -106,15 +115,18 @@ public:
 		if (m_stencil_enable)
 		{
 			// Note: here the mask control which bitplane is considered by the operation
-			if (GLState::stencil_func != m_stencil_func)
+			if (GLState::stencil_func != m_stencil_func || GLState::stencil_reference != m_stencil_reference || GLState::stencil_mask != m_stencil_mask)
 			{
 				GLState::stencil_func = m_stencil_func;
-				glStencilFunc(m_stencil_func, 1, 1);
+				GLState::stencil_reference = m_stencil_reference;
+				GLState::stencil_mask = m_stencil_mask;
+				glStencilFunc(m_stencil_func, m_stencil_reference, m_stencil_mask);
 			}
-			if (GLState::stencil_pass != m_stencil_spass_dpass_op)
+			if (GLState::stencil_pass != m_stencil_spass_dpass_op || GLState::stencil_depth_fail != m_stencil_spass_dfail_op)
 			{
 				GLState::stencil_pass = m_stencil_spass_dpass_op;
-				glStencilOp(GL_KEEP, GL_KEEP, m_stencil_spass_dpass_op);
+				GLState::stencil_depth_fail = m_stencil_spass_dfail_op;
+				glStencilOp(GL_KEEP, m_stencil_spass_dfail_op, m_stencil_spass_dpass_op);
 			}
 		}
 	}
@@ -311,7 +323,7 @@ private:
 	void RenderOsd(GSTexture* dt) final;
 
 	void OMAttachRt(GSTextureOGL* rt = NULL);
-	void OMAttachDs(GSTextureOGL* ds = NULL);
+	void OMAttachDs(GSTextureOGL* depth, GSTextureOGL* stencil);
 	void OMSetFBO(GLuint fbo);
 
 	u16 ConvertBlendEnum(u16 generic) final;
@@ -371,7 +383,7 @@ public:
 
 	void OMSetDepthStencilState(GSDepthStencilOGL* dss);
 	void OMSetBlendState(u8 blend_index = 0, u8 blend_factor = 0, bool is_blend_constant = false, bool accumulation_blend = false, bool blend_mix = false);
-	void OMSetRenderTargets(GSTexture* rt, GSTexture* ds, const GSVector4i* scissor = NULL);
+	void OMSetRenderTargets(GSTexture* rt, GSTexture* depth, GSTexture* stencil = nullptr, const GSVector4i* scissor = nullptr);
 	void OMSetColorMaskState(OMColorMaskSelector sel = OMColorMaskSelector());
 
 	bool HasColorSparse() final { return GLLoader::found_compatible_GL_ARB_sparse_texture2; }

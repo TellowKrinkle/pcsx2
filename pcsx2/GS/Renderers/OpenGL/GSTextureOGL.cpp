@@ -344,8 +344,10 @@ GSTextureOGL::~GSTextureOGL()
 
 	if (m_texture_id == GLState::rt)
 		GLState::rt = 0;
-	if (m_texture_id == GLState::ds)
-		GLState::ds = 0;
+	if (m_texture_id == GLState::depth_target)
+		GLState::depth_target = 0;
+	if (m_texture_id == GLState::stencil_target)
+		GLState::stencil_target = 0;
 	for (GLuint& tex : GLState::tex_unit)
 	{
 		if (m_texture_id == tex)

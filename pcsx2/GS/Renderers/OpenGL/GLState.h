@@ -36,13 +36,17 @@ namespace GLState
 	extern bool depth_mask;
 
 	extern bool stencil;
+	extern u8 stencil_mask;
+	extern u8 stencil_reference;
 	extern GLenum stencil_func;
 	extern GLenum stencil_pass;
+	extern GLenum stencil_depth_fail;
 
 	extern GLuint ps_ss; // sampler
 
 	extern GLuint rt; // render target
-	extern GLuint ds; // Depth-Stencil
+	extern GLuint depth_target;
+	extern GLuint stencil_target;
 	extern GLuint tex_unit[8]; // shader input texture
 	extern GLuint64 tex_handle[8]; // shader input texture
 

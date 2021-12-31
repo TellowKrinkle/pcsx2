@@ -746,7 +746,7 @@ void GSDeviceOGL::ClearDepth(GSTexture* t)
 		// RT must be detached, if RT is too small, depth won't be fully cleared
 		// AT tolenico 2 map clip bug
 		OMAttachRt(NULL);
-		OMAttachDs(T);
+		OMAttachDs(T, nullptr);
 
 		// TODO: check size of scissor before toggling it
 		glDisable(GL_SCISSOR_TEST);
@@ -777,7 +777,7 @@ void GSDeviceOGL::ClearStencil(GSTexture* t, u8 c)
 	// Keep SCISSOR_TEST enabled on purpose to reduce the size
 	// of clean in DATE (impact big upscaling)
 	OMSetFBO(m_fbo);
-	OMAttachDs(T);
+	OMAttachDs(nullptr, T);
 	const GLint color = c;
 
 	glClearBufferiv(GL_STENCIL, 0, &color);
@@ -1494,7 +1494,7 @@ void GSDeviceOGL::SetupDATE(GSTexture* rt, GSTexture* ds, const GSVertexPT1* ver
 	{
 		glDisable(GL_BLEND);
 	}
-	OMSetRenderTargets(NULL, ds, &GLState::scissor);
+	OMSetRenderTargets(NULL, NULL, ds, &GLState::scissor);
 
 	// ia
 
@@ -1588,19 +1588,30 @@ void GSDeviceOGL::OMAttachRt(GSTextureOGL* rt)
 	}
 }
 
-void GSDeviceOGL::OMAttachDs(GSTextureOGL* ds)
+void GSDeviceOGL::OMAttachDs(GSTextureOGL* depth, GSTextureOGL* stencil)
 {
-	GLuint id = 0;
-	if (ds)
+	GLuint depth_id = 0;
+	GLuint stencil_id = 0;
+	if (depth)
 	{
-		ds->WasAttached();
-		id = ds->GetID();
+		depth->WasAttached();
+		depth_id = depth->GetID();
+	}
+	if (stencil)
+	{
+		stencil->WasAttached();
+		stencil_id = stencil->GetID();
 	}
 
-	if (GLState::ds != id)
+	if (GLState::depth_target != depth_id)
 	{
-		GLState::ds = id;
-		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, id, 0);
+		GLState::depth_target = depth_id;
+		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depth_id, 0);
+	}
+	if (GLState::stencil_target != stencil_id)
+	{
+		GLState::stencil_target = stencil_id;
+		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, stencil_id, 0);
 	}
 }
 
@@ -1680,28 +1691,17 @@ void GSDeviceOGL::OMSetBlendState(u8 blend_index, u8 blend_factor, bool is_blend
 	}
 }
 
-void GSDeviceOGL::OMSetRenderTargets(GSTexture* rt, GSTexture* ds, const GSVector4i* scissor)
+void GSDeviceOGL::OMSetRenderTargets(GSTexture* rt, GSTexture* depth, GSTexture* stencil, const GSVector4i* scissor)
 {
 	GSTextureOGL* RT = static_cast<GSTextureOGL*>(rt);
-	GSTextureOGL* DS = static_cast<GSTextureOGL*>(ds);
 
 	if (rt == NULL || !RT->IsBackbuffer())
 	{
 		OMSetFBO(m_fbo);
-		if (rt)
-		{
-			OMAttachRt(RT);
-		}
-		else
-		{
-			OMAttachRt();
-		}
+		OMAttachRt(RT);
 
 		// Note: it must be done after OMSetFBO
-		if (ds)
-			OMAttachDs(DS);
-		else
-			OMAttachDs();
+		OMAttachDs(static_cast<GSTextureOGL*>(depth), static_cast<GSTextureOGL*>(stencil));
 	}
 	else
 	{
@@ -1710,7 +1710,7 @@ void GSDeviceOGL::OMSetRenderTargets(GSTexture* rt, GSTexture* ds, const GSVecto
 	}
 
 
-	const GSVector2i size = rt ? rt->GetSize() : ds ? ds->GetSize() : GLState::viewport;
+	const GSVector2i size = rt ? rt->GetSize() : depth ? depth->GetSize() : stencil ? stencil->GetSize() : GLState::viewport;
 	if (GLState::viewport != size)
 	{
 		GLState::viewport = size;
@@ -1819,7 +1819,7 @@ void GSDeviceOGL::RenderHW(GSHWDrawConfig& config)
 		GSVector2i size = config.rt->GetSize();
 		hdr_rt = CreateRenderTarget(size.x, size.y, GSTexture::Format::FloatColor);
 		hdr_rt->CommitRegion(GSVector2i(config.drawarea.z, config.drawarea.w));
-		OMSetRenderTargets(hdr_rt, config.ds, &config.scissor);
+		OMSetRenderTargets(hdr_rt, config.ds, config.ds, &config.scissor);
 
 		// save blend state, since BlitRect destroys it
 		const bool old_blend = GLState::blend;
@@ -1894,7 +1894,7 @@ void GSDeviceOGL::RenderHW(GSHWDrawConfig& config)
 
 		// I don't know how much is it legal to mount rt as Texture/RT. No write is done.
 		// In doubt let's detach RT.
-		OMSetRenderTargets(NULL, config.ds, &config.scissor);
+		OMSetRenderTargets(NULL, config.ds, config.ds, &config.scissor);
 
 		// Don't write anything on the color buffer
 		// Neither in the depth buffer
@@ -1913,8 +1913,7 @@ void GSDeviceOGL::RenderHW(GSHWDrawConfig& config)
 		Barrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	}
 
-	OMSetRenderTargets(hdr_rt ? hdr_rt : config.rt, config.ds, &config.scissor);
-
+	OMSetRenderTargets(hdr_rt ? hdr_rt : config.rt, config.ds, config.ds, &config.scissor);
 	SendHWDraw(config);
 
 	if (config.alpha_second_pass.enable)
