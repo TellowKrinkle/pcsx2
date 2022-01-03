@@ -878,7 +878,7 @@ bool GSDeviceMTL::Create(const WindowInfo& wi)
 		pdesc.colorAttachments[0].pixelFormat = MTLPixelFormatR16Uint;
 		m_convert_pipeline_f2i[0] = MakePipeline(pdesc, vs_convert, ps_f2i, @"f2i_u16");
 		pdesc.colorAttachments[0].pixelFormat = MTLPixelFormatR32Uint;
-		m_convert_pipeline_f2i[0] = MakePipeline(pdesc, vs_convert, ps_f2i, @"f2i_u32");
+		m_convert_pipeline_f2i[1] = MakePipeline(pdesc, vs_convert, ps_f2i, @"f2i_u32");
 
 		pdesc.colorAttachments[0].pixelFormat = MTLPixelFormatRGBA8Unorm;
 		for (size_t i = 0; i < std::size(m_convert_pipeline_copy_mask); i++)
