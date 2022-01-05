@@ -207,7 +207,7 @@ namespace StringUtil
 		return ss.str();
 	}
 
-	std::string toLower(const std::string_view& input)
+	std::string ToLower(const std::string_view& input)
 	{
 		std::string newStr;
 		std::transform(input.begin(), input.end(), std::back_inserter(newStr),
@@ -215,7 +215,7 @@ namespace StringUtil
 		return newStr;
 	}
 
-	bool compareNoCase(const std::string_view& str1, const std::string_view& str2)
+	bool CompareNoCase(const std::string_view& str1, const std::string_view& str2)
 	{
 		if (str1.length() != str2.length())
 		{
@@ -224,7 +224,7 @@ namespace StringUtil
 		return Strncasecmp(str1.data(), str2.data(), str1.length()) == 0;
 	}
 
-	std::vector<std::string> splitOnNewLine(const std::string& str)
+	std::vector<std::string> SplitOnNewLine(const std::string& str)
 	{
 		std::vector<std::string> lines;
 		std::istringstream stream(str);

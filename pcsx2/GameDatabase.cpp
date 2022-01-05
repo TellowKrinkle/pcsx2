@@ -59,7 +59,7 @@ std::string GameDatabaseSchema::GameEntry::memcardFiltersAsString() const
 
 const GameDatabaseSchema::Patch* GameDatabaseSchema::GameEntry::findPatch(const std::string_view& crc) const
 {
-	std::string crcLower = StringUtil::toLower(crc);
+	std::string crcLower = StringUtil::ToLower(crc);
 	Console.WriteLn(fmt::format("[GameDB] Searching for patch with CRC '{}'", crc));
 
 	auto it = patches.find(crcLower);
@@ -245,7 +245,7 @@ void GameDatabase::parseAndInsert(const std::string_view& serial, const c4::yml:
 	{
 		for (const ryml::NodeRef& n : node["patches"].children())
 		{
-			auto crc = StringUtil::toLower(std::string(n.key().str, n.key().len));
+			auto crc = StringUtil::ToLower(std::string(n.key().str, n.key().len));
 			if (gameEntry.patches.count(crc) == 1)
 			{
 				Console.Error(fmt::format("[GameDB] Duplicate CRC '{}' found for serial: '{}'. Skipping, CRCs are case-insensitive!", crc, serial));
@@ -256,7 +256,7 @@ void GameDatabase::parseAndInsert(const std::string_view& serial, const c4::yml:
 			{
 				std::string patchLines;
 				n["content"] >> patchLines;
-				patch = StringUtil::splitOnNewLine(patchLines);
+				patch = StringUtil::SplitOnNewLine(patchLines);
 			}
 			gameEntry.patches[crc] = patch;
 		}
@@ -602,7 +602,7 @@ void GameDatabase::initDatabase()
 
 		for (const ryml::NodeRef& n : root.children())
 		{
-			auto serial = StringUtil::toLower(std::string(n.key().str, n.key().len));
+			auto serial = StringUtil::ToLower(std::string(n.key().str, n.key().len));
 
 			// Serials and CRCs must be inserted as lower-case, as that is how they are retrieved
 			// this is because the application may pass a lowercase CRC or serial along
@@ -640,7 +640,7 @@ const GameDatabaseSchema::GameEntry* GameDatabase::findGame(const std::string_vi
 {
 	GameDatabase::ensureLoaded();
 
-	std::string serialLower = StringUtil::toLower(serial);
+	std::string serialLower = StringUtil::ToLower(serial);
 	Console.WriteLn(fmt::format("[GameDB] Searching for '{}' in GameDB", serialLower));
 	const auto gameEntry = s_game_db.find(serialLower);
 	if (gameEntry != s_game_db.end())
