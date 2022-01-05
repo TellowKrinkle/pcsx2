@@ -246,7 +246,7 @@ void GameDatabase::parseAndInsert(const std::string_view& serial, const c4::yml:
 		{
 			// use a crc of 0 for default patches
 			const std::string_view crc_str(n.key().str, n.key().len);
-			const std::optional<u32> crc = (StringUtil::compareNoCase(crc_str, "default")) ? std::optional<u32>(0) : StringUtil::FromChars<u32>(crc_str, 16);
+			const std::optional<u32> crc = (StringUtil::CompareNoCase(crc_str, "default")) ? std::optional<u32>(0) : StringUtil::FromChars<u32>(crc_str, 16);
 			if (!crc.has_value())
 			{
 				Console.Error(fmt::format("[GameDB] Invalid CRC '{}' found for serial: '{}'. Skipping!", crc_str, serial));
@@ -698,7 +698,7 @@ void GameDatabase::initDatabase()
 
 		for (const ryml::NodeRef& n : root.children())
 		{
-			auto serial = StringUtil::toLower(std::string(n.key().str, n.key().len));
+			auto serial = StringUtil::ToLower(std::string(n.key().str, n.key().len));
 
 			// Serials and CRCs must be inserted as lower-case, as that is how they are retrieved
 			// this is because the application may pass a lowercase CRC or serial along
@@ -736,7 +736,7 @@ const GameDatabaseSchema::GameEntry* GameDatabase::findGame(const std::string_vi
 {
 	GameDatabase::ensureLoaded();
 
-	std::string serialLower = StringUtil::toLower(serial);
+	std::string serialLower = StringUtil::ToLower(serial);
 	Console.WriteLn(fmt::format("[GameDB] Searching for '{}' in GameDB", serialLower));
 	const auto gameEntry = s_game_db.find(serialLower);
 	if (gameEntry != s_game_db.end())

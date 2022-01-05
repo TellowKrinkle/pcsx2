@@ -656,7 +656,7 @@ const GameList::Entry* GameList::GetEntryBySerialAndCRC(const std::string_view& 
 {
 	for (const Entry& entry : m_entries)
 	{
-		if (entry.crc == crc && StringUtil::compareNoCase(entry.serial, serial))
+		if (entry.crc == crc && StringUtil::CompareNoCase(entry.serial, serial))
 			return &entry;
 	}
 

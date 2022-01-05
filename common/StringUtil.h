@@ -244,10 +244,10 @@ namespace StringUtil
 		return 0;
 	}
 
-	std::string toLower(const std::string_view& str);
-	std::string toUpper(const std::string_view& str);
-	bool compareNoCase(const std::string_view& str1, const std::string_view& str2);
-	std::vector<std::string> splitOnNewLine(const std::string& str);
+	std::string ToLower(const std::string_view& str);
+	std::string ToUpper(const std::string_view& str);
+	bool CompareNoCase(const std::string_view& str1, const std::string_view& str2);
+	std::vector<std::string> SplitOnNewLine(const std::string& str);
 
 #ifdef _WIN32
 	/// Converts the specified UTF-8 string to a wide string.

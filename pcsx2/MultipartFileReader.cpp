@@ -24,12 +24,12 @@
 // to be case-sensitive.
 static bool pxFileExists_WithExt( std::string& filename, const std::string& ext )
 {
-	std::string temp(Path::ReplaceExtension(filename, StringUtil::toLower(ext)));
+	std::string temp(Path::ReplaceExtension(filename, StringUtil::ToLower(ext)));
 	if (FileSystem::FileExists(temp.c_str()))
 		return true;
 
 #if defined(_WIN32) || defined(__DARWIN__)
-	temp = Path::ReplaceExtension(filename, StringUtil::toUpper(ext));
+	temp = Path::ReplaceExtension(filename, StringUtil::ToUpper(ext));
 	if (FileSystem::FileExists(temp.c_str()))
 	{
 		// make sure we open the correct one
@@ -102,7 +102,7 @@ void MultipartFileReader::FindParts()
 	if (!pxFileExists_WithExt(nameparts, extbuf))
 		return;
 
-	DevCon.WriteLn( Color_Blue, "isoFile: multi-part %s detected...", StringUtil::toUpper(curext).c_str() );
+	DevCon.WriteLn( Color_Blue, "isoFile: multi-part %s detected...", StringUtil::ToUpper(curext).c_str() );
 	ConsoleIndentScope indent;
 
 	int bsize = m_parts[0].reader->GetBlockSize();

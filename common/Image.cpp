@@ -56,7 +56,7 @@ static const FormatHandler* GetFormatHandler(const std::string_view& extension)
 {
 	for (const FormatHandler& handler : s_format_handlers)
 	{
-		if (StringUtil::compareNoCase(extension, handler.extension))
+		if (StringUtil::CompareNoCase(extension, handler.extension))
 			return &handler;
 	}
 
