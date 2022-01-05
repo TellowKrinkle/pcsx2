@@ -245,10 +245,17 @@ namespace GL
 			std::string info_log;
 			info_log.resize(info_log_length + 1);
 			glGetProgramInfoLog(m_program_id, info_log_length, &info_log_length, &info_log[0]);
+			info_log.resize(info_log_length);
 
 			if (status == GL_TRUE)
 			{
-				Console.Error("Program linked with warnings:\n%s", info_log.c_str());
+				// Remove AGL's complaints about outputs going unused, we don't really care
+				std::vector<std::string> lines = StringUtil::SplitOnNewLine(info_log);
+				lines.erase(
+					std::remove_if(lines.begin(), lines.end(), [](const std::string& line) { return line.find("not read by fragment shader") != line.npos; }),
+					lines.end());
+				if (!std::all_of(lines.begin(), lines.end(), [](const std::string& line){ return line.empty(); }))
+					Console.Error("Program linked with warnings:\n%s", StringUtil::Join(lines).c_str());
 			}
 			else
 			{
