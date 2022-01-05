@@ -248,6 +248,7 @@ namespace StringUtil
 	std::string ToUpper(const std::string_view& str);
 	bool CompareNoCase(const std::string_view& str1, const std::string_view& str2);
 	std::vector<std::string> SplitOnNewLine(const std::string& str);
+	std::string Join(const std::vector<std::string>& list, std::string_view delim = "\n");
 
 #ifdef _WIN32
 	/// Converts the specified UTF-8 string to a wide string.
