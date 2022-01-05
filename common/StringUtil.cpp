@@ -236,6 +236,19 @@ namespace StringUtil
 		return lines;
 	}
 
+	std::string Join(const std::vector<std::string>& list, std::string_view delim)
+	{
+		if (list.empty())
+			return {};
+		std::string out = list[0];
+		for (std::size_t i = 1; i < list.size(); i++)
+		{
+			out.insert(out.end(), delim.begin(), delim.end());
+			out.insert(out.end(), list[i].begin(), list[i].end());
+		}
+		return out;
+	}
+
 	std::string_view StripWhitespace(const std::string_view& str)
 	{
 		std::string_view::size_type start = 0;
