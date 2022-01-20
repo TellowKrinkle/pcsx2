@@ -1615,7 +1615,7 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 	{
 		enc.SetCB(config.alpha_second_pass.cb_ps, config.alpha_second_pass.ps.atst);
 		sel = PipelineSelectorExtrasMTL(config.blend, rt, config.alpha_second_pass.colormask, config.ds, stencil);
-		SetHWPipelineState(enc, config.vs, config.ps, sel);
+		SetHWPipelineState(enc, config.vs, config.alpha_second_pass.ps, sel);
 		SetDSS(enc, config.alpha_second_pass.depth);
 		SendHWDraw(config, mtlenc, allocation.gpu_buffer, allocation.gpu_offset + vertsize);
 	}
