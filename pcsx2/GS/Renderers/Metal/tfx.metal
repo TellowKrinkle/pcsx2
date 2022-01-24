@@ -425,9 +425,9 @@ struct PSMain
 		}
 
 		if (PS_AEM_FMT == FMT_24)
-			t.a = (PS_AEM || any(bool3(t.rgb))) ? 255.f * cb.ta.x : 0.f;
+			t.a = (!PS_AEM || any(bool3(t.rgb))) ? 255.f * cb.ta.x : 0.f;
 		else if (PS_AEM_FMT == FMT_16)
-			t.a = t.a >= 128.f ? 255.f * cb.ta.y : (PS_AEM || any(bool3(t.rgb))) ? 255.f * cb.ta.x : 0.f;
+			t.a = t.a >= 128.f ? 255.f * cb.ta.y : (!PS_AEM || any(bool3(t.rgb))) ? 255.f * cb.ta.x : 0.f;
 
 		return t;
 	}
@@ -523,9 +523,9 @@ struct PSMain
 		for (int i = 0; i < 4; i++)
 		{
 			if (PS_AEM_FMT == FMT_24)
-				c[i].a = PS_AEM || any(bool3(c[i].rgb)) ? cb.ta.x : 0.f;
+				c[i].a = !PS_AEM || any(bool3(c[i].rgb)) ? cb.ta.x : 0.f;
 			else if (PS_AEM_FMT == FMT_16)
-				c[i].a = c[i].a >= 0.5 ? cb.ta.y : PS_AEM || any(bool3(c[i].rgb)) ? cb.ta.x : 0.f;
+				c[i].a = c[i].a >= 0.5 ? cb.ta.y : !PS_AEM || any(bool3(c[i].rgb)) ? cb.ta.x : 0.f;
 		}
 
 		if (PS_LTF)
