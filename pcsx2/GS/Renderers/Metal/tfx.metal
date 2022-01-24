@@ -699,9 +699,9 @@ struct PSMain
 			Color.rgb = clamp(Color.rgb, 0.f, 255.f);
 
 		if (PS_DFMT == FMT_16)
-			Color.rgb = float3(ushort3(Color.rgb) & 0xF8);
+			Color.rgb = float3(short3(Color.rgb) & 0xF8);
 		else if (PS_COLCLIP && !PS_HDR)
-			Color.rgb = float3(ushort3(Color.rgb) & 0xFF);
+			Color.rgb = float3(short3(Color.rgb) & 0xFF);
 	}
 
 	MainPSOut ps_main()
