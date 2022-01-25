@@ -1615,7 +1615,8 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 	SetTexture(enc, config.tex,     GSMTLTextureIndexTex);
 	SetTexture(enc, config.pal,     GSMTLTextureIndexPalette);
 	SetTexture(enc, config.raw_tex, GSMTLTextureIndexRawTex);
-	SetTexture(enc, config.rt,      GSMTLTextureIndexRenderTarget);
+	if (config.require_one_barrier || config.require_full_barrier)
+		SetTexture(enc, config.rt, GSMTLTextureIndexRenderTarget);
 	SetSampler(enc, config.sampler);
 	if (config.blend.index && config.blend.is_constant)
 		enc.SetBlendColor(config.blend.factor);
