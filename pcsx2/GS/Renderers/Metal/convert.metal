@@ -37,6 +37,21 @@ struct ImGuiShaderData
 	half4  c;
 };
 
+template <typename Format>
+struct DirectReadTextureIn
+{
+	texture2d<Format> tex [[texture(GSMTLTextureIndexNonHW)]];
+	vec<Format, 4> read(float4 pos)
+	{
+		return tex.read(uint2(pos.xy));
+	}
+};
+
+vertex float4 fs_triangle(uint vid [[vertex_id]])
+{
+	return float4(vid & 1 ? 3 : -1, vid & 2 ? 3 : -1, 0, 1);
+}
+
 vertex ConvertShaderData vs_convert(ConvertVSIn in [[stage_in]])
 {
 	ConvertShaderData out;
@@ -92,21 +107,26 @@ fragment ushort ps_convert_rgba8_16bits(ConvertShaderData data [[stage_in]], Con
 	return (i.x & 0x001f) | (i.y & 0x03e0) | (i.z & 0x7c00) | (i.w & 0x8000);
 }
 
-fragment void ps_datm1(ConvertShaderData data [[stage_in]], ConvertPSRes res)
+fragment float4 ps_copy_fs(float4 p [[position]], DirectReadTextureIn<float> tex)
 {
-	if (res.sample(data.t).a < (127.5f / 255.f))
+	return tex.read(p);
+}
+
+fragment void ps_datm1(float4 p [[position]], DirectReadTextureIn<float> tex)
+{
+	if (tex.read(p).a < (127.5f / 255.f))
 		discard_fragment();
 }
 
-fragment void ps_datm0(ConvertShaderData data [[stage_in]], ConvertPSRes res)
+fragment void ps_datm0(float4 p [[position]], DirectReadTextureIn<float> tex)
 {
-	if (res.sample(data.t).a > (127.5f / 255.f))
+	if (tex.read(p).a > (127.5f / 255.f))
 		discard_fragment();
 }
 
-fragment float4 ps_mod256(ConvertShaderData data [[stage_in]], ConvertPSRes res)
+fragment float4 ps_mod256(float4 p [[position]], DirectReadTextureIn<float> tex)
 {
-	float4 c = round(res.sample(data.t) * 255.f);
+	float4 c = round(tex.read(p) * 255.f);
 	return (c - 256.f * floor(c / 256.f)) / 255.f;
 }
 
