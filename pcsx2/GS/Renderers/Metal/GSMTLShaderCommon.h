@@ -29,7 +29,7 @@ struct ConvertShaderData
 
 struct ConvertPSRes
 {
-	texture2d<float> texture [[texture(0)]];
+	texture2d<float> texture [[texture(GSMTLTextureIndexNonHW)]];
 	sampler s [[sampler(0)]];
 	float4 sample(float2 coord)
 	{
@@ -39,7 +39,7 @@ struct ConvertPSRes
 
 struct ConvertPSDepthRes
 {
-	depth2d<float> texture [[texture(0)]];
+	depth2d<float> texture [[texture(GSMTLTextureIndexNonHW)]];
 	sampler s [[sampler(0)]];
 	float4 sample(float2 coord)
 	{

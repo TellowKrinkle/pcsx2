@@ -20,11 +20,14 @@ enum GSMTLBufferIndices
 {
 	GSMTLBufferIndexVertices,
 	GSMTLBufferIndexUniforms,
+	GSMTLBufferIndexHWVertices,
+	GSMTLBufferIndexHWUniforms,
 	GSMTLBufferIndexPrimIDBuffer,
 };
 
 enum GSMTLTextureIndex
 {
+	GSMTLTextureIndexNonHW,
 	GSMTLTextureIndexTex,
 	GSMTLTextureIndexPalette,
 	GSMTLTextureIndexRenderTarget,
