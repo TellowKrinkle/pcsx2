@@ -266,12 +266,10 @@ public:
 		bool has_depth_sel = true;
 		bool has_sampler = false;
 		void SetVertices(id<MTLBuffer> buffer, size_t offset);
-		void SetVertexBytes(void* buffer, size_t size);
 		void SetScissor(const GSVector4i& scissor);
 		void ClearScissor();
 		void SetCB(const GSHWDrawConfig::VSConstantBuffer& cb_vs);
 		void SetCB(const GSHWDrawConfig::PSConstantBuffer& cb_ps);
-		void SetPSCB(const void* bytes, size_t len);
 		void SetBlendColor(u8 blend_color);
 		void SetPipeline(id<MTLRenderPipelineState> pipe);
 		void SetDepth(id<MTLDepthStencilState> dss);

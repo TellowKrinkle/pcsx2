@@ -632,14 +632,14 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 		[m_fn_constants setConstantValue:&upscale2 type:MTLDataTypeUChar2 atIndex:GSMTLConstantIndex_SCALING_FACTOR];
 
 		m_hw_vertex = [MTLVertexDescriptor new];
-		m_hw_vertex.layouts[GSMTLBufferIndexVertices].stride = sizeof(GSVertex);
-		applyAttribute(m_hw_vertex, GSMTLAttributeIndexST, MTLVertexFormatFloat2,           offsetof(GSVertex, ST),      GSMTLBufferIndexVertices);
-		applyAttribute(m_hw_vertex, GSMTLAttributeIndexC,  MTLVertexFormatUChar4,           offsetof(GSVertex, RGBAQ.R), GSMTLBufferIndexVertices);
-		applyAttribute(m_hw_vertex, GSMTLAttributeIndexQ,  MTLVertexFormatFloat,            offsetof(GSVertex, RGBAQ.Q), GSMTLBufferIndexVertices);
-		applyAttribute(m_hw_vertex, GSMTLAttributeIndexXY, MTLVertexFormatUShort2,          offsetof(GSVertex, XYZ.X),   GSMTLBufferIndexVertices);
-		applyAttribute(m_hw_vertex, GSMTLAttributeIndexZ,  MTLVertexFormatUInt,             offsetof(GSVertex, XYZ.Z),   GSMTLBufferIndexVertices);
-		applyAttribute(m_hw_vertex, GSMTLAttributeIndexUV, MTLVertexFormatUShort2,          offsetof(GSVertex, UV),      GSMTLBufferIndexVertices);
-		applyAttribute(m_hw_vertex, GSMTLAttributeIndexF,  MTLVertexFormatUChar4Normalized, offsetof(GSVertex, FOG),     GSMTLBufferIndexVertices);
+		m_hw_vertex.layouts[GSMTLBufferIndexHWVertices].stride = sizeof(GSVertex);
+		applyAttribute(m_hw_vertex, GSMTLAttributeIndexST, MTLVertexFormatFloat2,           offsetof(GSVertex, ST),      GSMTLBufferIndexHWVertices);
+		applyAttribute(m_hw_vertex, GSMTLAttributeIndexC,  MTLVertexFormatUChar4,           offsetof(GSVertex, RGBAQ.R), GSMTLBufferIndexHWVertices);
+		applyAttribute(m_hw_vertex, GSMTLAttributeIndexQ,  MTLVertexFormatFloat,            offsetof(GSVertex, RGBAQ.Q), GSMTLBufferIndexHWVertices);
+		applyAttribute(m_hw_vertex, GSMTLAttributeIndexXY, MTLVertexFormatUShort2,          offsetof(GSVertex, XYZ.X),   GSMTLBufferIndexHWVertices);
+		applyAttribute(m_hw_vertex, GSMTLAttributeIndexZ,  MTLVertexFormatUInt,             offsetof(GSVertex, XYZ.Z),   GSMTLBufferIndexHWVertices);
+		applyAttribute(m_hw_vertex, GSMTLAttributeIndexUV, MTLVertexFormatUShort2,          offsetof(GSVertex, UV),      GSMTLBufferIndexHWVertices);
+		applyAttribute(m_hw_vertex, GSMTLAttributeIndexF,  MTLVertexFormatUChar4Normalized, offsetof(GSVertex, FOG),     GSMTLBufferIndexHWVertices);
 
 		for (auto& desc : m_render_pass_desc)
 		{
@@ -984,10 +984,10 @@ void GSDeviceMTL::DoStretchRect(GSTexture* sTex, const GSVector4& sRect, GSTextu
 
 	[enc->encoder setLabel:@"StretchRect"];
 	enc->SetPipeline(pipeline);
-	SetTexture(*enc, sT, 0);
+	SetTexture(*enc, sT, GSMTLTextureIndexNonHW);
 
 	if (frag_uniform && frag_uniform_len)
-		enc->SetPSCB(frag_uniform, frag_uniform_len);
+		[enc->encoder setFragmentBytes:frag_uniform length:frag_uniform_len atIndex:GSMTLBufferIndexUniforms];
 
 	SetSampler(*enc, linear ? SamplerSelector::Linear() : SamplerSelector::Point());
 
@@ -1011,7 +1011,7 @@ void GSDeviceMTL::DrawStretchRect(const GSVector4& sRect, const GSVector4& dRect
 		{{right, bottom}, {sRect.z, sRect.w}}
 	};
 
-	m_current_render.SetVertexBytes(vertices, sizeof(vertices));
+	[m_current_render.encoder setVertexBytes:vertices length:sizeof(vertices) atIndex:GSMTLBufferIndexVertices];
 
 	[m_current_render.encoder drawPrimitives:MTLPrimitiveTypeTriangleStrip
 	                             vertexStart:0
@@ -1208,18 +1208,12 @@ void GSDeviceMTL::MainRenderEncoder::SetVertices(id<MTLBuffer> buffer, size_t of
 	if (vertex_buffer != (__bridge void*)buffer)
 	{
 		vertex_buffer = (__bridge void*)buffer;
-		[encoder setVertexBuffer:buffer offset:offset atIndex:GSMTLBufferIndexVertices];
+		[encoder setVertexBuffer:buffer offset:offset atIndex:GSMTLBufferIndexHWVertices];
 	}
 	else
 	{
-		[encoder setVertexBufferOffset:offset atIndex:GSMTLBufferIndexVertices];
+		[encoder setVertexBufferOffset:offset atIndex:GSMTLBufferIndexHWVertices];
 	}
-}
-
-void GSDeviceMTL::MainRenderEncoder::SetVertexBytes(void* buffer, size_t size)
-{
-	vertex_buffer = nullptr;
-	[encoder setVertexBytes:buffer length:size atIndex:GSMTLBufferIndexVertices];
 }
 
 void GSDeviceMTL::MainRenderEncoder::SetScissor(const GSVector4i& scissor)
@@ -1257,7 +1251,7 @@ void GSDeviceMTL::MainRenderEncoder::SetCB(const GSHWDrawConfig::VSConstantBuffe
 {
 	if (has_cb_vs && cb_vs == cb)
 		return;
-	[encoder setVertexBytes:&cb length:sizeof(cb) atIndex:GSMTLBufferIndexUniforms];
+	[encoder setVertexBytes:&cb length:sizeof(cb) atIndex:GSMTLBufferIndexHWUniforms];
 	has_cb_vs = true;
 	cb_vs = cb;
 }
@@ -1266,15 +1260,9 @@ void GSDeviceMTL::MainRenderEncoder::SetCB(const GSHWDrawConfig::PSConstantBuffe
 {
 	if (has_cb_ps && cb_ps == cb)
 		return;
-	[encoder setFragmentBytes:&cb length:sizeof(cb) atIndex:GSMTLBufferIndexUniforms];
+	[encoder setFragmentBytes:&cb length:sizeof(cb) atIndex:GSMTLBufferIndexHWUniforms];
 	has_cb_ps = true;
 	cb_ps = cb;
-}
-
-void GSDeviceMTL::MainRenderEncoder::SetPSCB(const void* bytes, size_t len)
-{
-	has_cb_ps = false;
-	[encoder setFragmentBytes:bytes length:len atIndex:GSMTLBufferIndexUniforms];
 }
 
 void GSDeviceMTL::MainRenderEncoder::SetBlendColor(u8 color)
@@ -1359,9 +1347,9 @@ void GSDeviceMTL::SetupDestinationAlpha(GSTexture* rt, GSTexture* ds, const GSVe
 		{{dst.x, -dst.w}, {src.x, src.w}},
 		{{dst.z, -dst.w}, {src.z, src.w}},
 	};
-	SetTexture(enc, rt, 0);
+	SetTexture(enc, rt, GSMTLTextureIndexNonHW);
 	SetSampler(enc, SamplerSelector::Point());
-	enc.SetVertexBytes(vertices, sizeof(vertices));
+	[enc.encoder setVertexBytes:vertices length:sizeof(vertices) atIndex:GSMTLBufferIndexVertices];
 	[enc.encoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
 	g_perfmon.Put(GSPerfMon::DrawCalls, 1);
 	EndScene();
