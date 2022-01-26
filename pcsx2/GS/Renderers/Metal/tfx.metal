@@ -154,7 +154,7 @@ static MainVSOut vs_main_run(thread const MainVSIn& v, constant GSMTLMainVSUnifo
 	return out;
 }
 
-vertex MainVSOut vs_main(MainVSIn v [[stage_in]], constant GSMTLMainVSUniform& cb [[buffer(GSMTLBufferIndexUniforms)]])
+vertex MainVSOut vs_main(MainVSIn v [[stage_in]], constant GSMTLMainVSUniform& cb [[buffer(GSMTLBufferIndexHWUniforms)]])
 {
 	return vs_main_run(v, cb);
 }
@@ -839,7 +839,7 @@ struct PSMain
 
 fragment MainPSOut ps_main(
 	MainVSOut in [[stage_in]],
-	constant GSMTLMainPSUniform& cb [[buffer(GSMTLBufferIndexUniforms)]],
+	constant GSMTLMainPSUniform& cb [[buffer(GSMTLBufferIndexHWUniforms)]],
 	sampler s [[sampler(0)]],
 	texture2d<float> tex       [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_COLOR)]],
 	depth2d<float>   depth     [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_DEPTH)]],
@@ -872,7 +872,7 @@ fragment MainPSOut ps_main(
 [[early_fragment_tests]]
 fragment MainPSOutNoDepth ps_main_eft(
 	MainVSOut in [[stage_in]],
-	constant GSMTLMainPSUniform& cb [[buffer(GSMTLBufferIndexUniforms)]],
+	constant GSMTLMainPSUniform& cb [[buffer(GSMTLBufferIndexHWUniforms)]],
 	sampler s [[sampler(0)]],
 	texture2d<float> tex       [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_COLOR)]],
 	depth2d<float>   depth     [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_DEPTH)]],
