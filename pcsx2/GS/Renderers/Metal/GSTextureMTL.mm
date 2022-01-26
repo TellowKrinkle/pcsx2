@@ -16,6 +16,7 @@
 #include "PrecompiledHeader.h"
 #include "GSTextureMTL.h"
 #include "GSDeviceMTL.h"
+#include "GS/GSPerfMon.h"
 
 #if ! __has_feature(objc_arc)
 	#error "Compile this with -fobjc-arc"
@@ -199,6 +200,7 @@ void* GSTextureMTL::MapWithPitch(const GSVector4i& r, int pitch, int layer)
 	   destinationLevel:layer
 	  destinationOrigin:MTLOriginMake(r.x, r.y, 0)];
 
+	g_perfmon.Put(GSPerfMon::TextureUploads, 1);
 	return map.cpu_buffer;
 }}
 
