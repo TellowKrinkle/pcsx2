@@ -746,9 +746,21 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 
 		// Init pipelines
 		auto vs_convert = LoadShader(@"vs_convert");
+		auto fs_triangle = LoadShader(@"fs_triangle");
 		auto ps_copy = LoadShader(@"ps_copy");
 		auto pdesc = [MTLRenderPipelineDescriptor new];
-		pdesc.colorAttachments[0].pixelFormat = MTLPixelFormatRGBA8Unorm;
+		// FS Triangle Pipelines
+		pdesc.colorAttachments[0].pixelFormat = ConvertPixelFormat(GSTexture::Format::Color);
+		m_hdr_resolve_pipeline = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_mod256"), @"HDR Resolve");
+		pdesc.colorAttachments[0].pixelFormat = ConvertPixelFormat(GSTexture::Format::FloatColor);
+		m_hdr_init_pipeline = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_copy_fs"), @"HDR Init");
+		pdesc.colorAttachments[0].pixelFormat = MTLPixelFormatInvalid;
+		pdesc.stencilAttachmentPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
+		m_datm_pipeline[0] = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_datm0"), @"datm0");
+		m_datm_pipeline[1] = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_datm1"), @"datm1");
+
+		pdesc.stencilAttachmentPixelFormat = MTLPixelFormatInvalid;
+		pdesc.colorAttachments[0].pixelFormat = ConvertPixelFormat(GSTexture::Format::Color);
 		applyAttribute(pdesc.vertexDescriptor, 0, MTLVertexFormatFloat2, offsetof(ConvertShaderVertex, pos),    0);
 		applyAttribute(pdesc.vertexDescriptor, 1, MTLVertexFormatFloat2, offsetof(ConvertShaderVertex, texpos), 0);
 		pdesc.vertexDescriptor.layouts[0].stride = sizeof(ConvertShaderVertex);
@@ -767,6 +779,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 				case ShaderConvert::Count:
 				case ShaderConvert::DATM_0:
 				case ShaderConvert::DATM_1:
+				case ShaderConvert::MOD_256:
 					continue;
 				case ShaderConvert::COPY:
 				case ShaderConvert::SCANLINE:
@@ -794,7 +807,6 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 					pdesc.depthAttachmentPixelFormat = ConvertPixelFormat(GSTexture::Format::DepthStencil);
 					break;
 				case ShaderConvert::RGBA_TO_8I: // Yes really
-				case ShaderConvert::MOD_256:
 				case ShaderConvert::TRANSPARENCY_FILTER:
 				case ShaderConvert::FLOAT32_TO_RGBA8:
 				case ShaderConvert::FLOAT16_TO_RGB5A1:
@@ -835,19 +847,11 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 			m_merge_pipeline[i] = MakePipeline(pdesc, vs_convert, LoadShader(name), name);
 		}
 
-		pdesc.colorAttachments[0].blendingEnabled = NO;
-		pdesc.colorAttachments[0].pixelFormat = MTLPixelFormatInvalid;
-		pdesc.stencilAttachmentPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
-		m_convert_pipeline[static_cast<int>(ShaderConvert::DATM_0)] = MakePipeline(pdesc, vs_convert, LoadShader(@"ps_datm0"), @"datm0");
-		m_convert_pipeline[static_cast<int>(ShaderConvert::DATM_1)] = MakePipeline(pdesc, vs_convert, LoadShader(@"ps_datm1"), @"datm1");
-
 		applyAttribute(pdesc.vertexDescriptor, 0, MTLVertexFormatFloat2,           offsetof(ImDrawVert, pos), 0);
 		applyAttribute(pdesc.vertexDescriptor, 1, MTLVertexFormatFloat2,           offsetof(ImDrawVert, uv),  0);
 		applyAttribute(pdesc.vertexDescriptor, 2, MTLVertexFormatUChar4Normalized, offsetof(ImDrawVert, col), 0);
 		pdesc.vertexDescriptor.layouts[0].stride = sizeof(ImDrawVert);
-		pdesc.colorAttachments[0].blendingEnabled = YES;
 		pdesc.colorAttachments[0].pixelFormat = layer_px_fmt;
-		pdesc.stencilAttachmentPixelFormat = MTLPixelFormatInvalid;
 		m_imgui_pipeline = MakePipeline(pdesc, LoadShader(@"vs_imgui"), LoadShader(@"ps_imgui"), @"imgui");
 		if (!m_texture_swizzle)
 			m_imgui_pipeline_a8 = MakePipeline(pdesc, LoadShader(@"vs_imgui"), LoadShader(@"ps_imgui_a8"), @"imgui_a8");
@@ -1019,6 +1023,16 @@ void GSDeviceMTL::DrawStretchRect(const GSVector4& sRect, const GSVector4& dRect
 	g_perfmon.Put(GSPerfMon::DrawCalls, 1);
 }
 
+void GSDeviceMTL::RenderCopy(GSTexture* sTex, id<MTLRenderPipelineState> pipeline, const GSVector4i& rect)
+{
+	// FS Triangle encoder uses vertex ID alone to make a FS triangle, which we then scissor to the desired rectangle
+	m_current_render.SetScissor(rect);
+	m_current_render.SetPipeline(pipeline);
+	SetTexture(m_current_render, sTex, GSMTLTextureIndexNonHW);
+	[m_current_render.encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+	g_perfmon.Put(GSPerfMon::DrawCalls, 1);
+}
+
 void GSDeviceMTL::StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture* dTex, const GSVector4& dRect, ShaderConvert shader, bool linear)
 { @autoreleasepool {
 	if (!dTex)
@@ -1037,9 +1051,10 @@ void GSDeviceMTL::StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture
 	else
 		pipeline = m_convert_pipeline[static_cast<int>(shader)];
 
-	bool is_opaque = shader != ShaderConvert::DATM_0 && shader != ShaderConvert::DATM_1;
+	if (!pipeline)
+		[NSException raise:@"StretchRect Missing Pipeline" format:@"No pipeline for %d", static_cast<int>(shader)];
 
-	DoStretchRect(sTex, sRect, dTex, dRect, pipeline, linear, is_opaque ? LoadAction::DontCareIfFull : LoadAction::Load, nullptr, 0);
+	DoStretchRect(sTex, sRect, dTex, dRect, pipeline, linear, LoadAction::DontCareIfFull, nullptr, 0);
 }}
 
 void GSDeviceMTL::StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture* dTex, const GSVector4& dRect, bool red, bool green, bool blue, bool alpha)
@@ -1336,22 +1351,7 @@ void GSDeviceMTL::SetupDestinationAlpha(GSTexture* rt, GSTexture* ds, const GSVe
 	[enc.encoder setLabel:@"Destination Alpha Setup"];
 	enc.SetDepth(m_dss_destination_alpha);
 	[enc.encoder setStencilReferenceValue:1];
-	enc.SetPipeline(m_convert_pipeline[static_cast<int>(datm ? ShaderConvert::DATM_1 : ShaderConvert::DATM_0)]);
-	enc.SetScissor(r);
-	const GSVector4 src = GSVector4(r) / GSVector4(ds->GetSize()).xyxy();
-	const GSVector4 dst = src * 2.f - 1.f;
-	ConvertShaderVertex vertices[] =
-	{
-		{{dst.x, -dst.y}, {src.x, src.y}},
-		{{dst.z, -dst.y}, {src.z, src.y}},
-		{{dst.x, -dst.w}, {src.x, src.w}},
-		{{dst.z, -dst.w}, {src.z, src.w}},
-	};
-	SetTexture(enc, rt, GSMTLTextureIndexNonHW);
-	SetSampler(enc, SamplerSelector::Point());
-	[enc.encoder setVertexBytes:vertices length:sizeof(vertices) atIndex:GSMTLBufferIndexVertices];
-	[enc.encoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
-	g_perfmon.Put(GSPerfMon::DrawCalls, 1);
+	RenderCopy(rt, m_datm_pipeline[datm], r);
 	EndScene();
 }
 
@@ -1393,8 +1393,9 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 	{
 		GSVector2i size = config.rt->GetSize();
 		hdr_rt = CreateRenderTarget(size.x, size.y, GSTexture::Format::FloatColor);
-		GSVector4 srect = GSVector4(config.drawarea) / GSVector4(size).xyxy();
-		DoStretchRect(config.rt, srect, hdr_rt, GSVector4(config.drawarea), m_convert_pipeline_copy[1], false, LoadAction::DontCare, nullptr, 0);
+		BeginRenderPass(hdr_rt, MTLLoadActionDontCare, nullptr, MTLLoadActionDontCare);
+		[m_current_render.encoder setLabel:@"HDR Init"];
+		RenderCopy(config.rt, m_hdr_init_pipeline, config.drawarea);
 		rt = hdr_rt;
 		g_perfmon.Put(GSPerfMon::TextureCopies, 1);
 	}
@@ -1450,10 +1451,9 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 
 	if (hdr_rt)
 	{
-		GSVector2i size = config.rt->GetSize();
-		GSVector4 dRect(config.drawarea);
-		const GSVector4 sRect = dRect / GSVector4(size).xyxy();
-		StretchRect(hdr_rt, sRect, config.rt, dRect, ShaderConvert::MOD_256, false);
+		BeginRenderPass(config.rt, MTLLoadActionLoad, nullptr, MTLLoadActionDontCare);
+		[m_current_render.encoder setLabel:@"HDR Resolve"];
+		RenderCopy(hdr_rt, m_hdr_resolve_pipeline, config.drawarea);
 		g_perfmon.Put(GSPerfMon::TextureCopies, 1);
 
 		Recycle(hdr_rt);

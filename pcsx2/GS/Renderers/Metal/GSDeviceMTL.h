@@ -221,6 +221,9 @@ public:
 	id<MTLRenderPipelineState> m_convert_pipeline_copy_mask[1 << 4];
 	id<MTLRenderPipelineState> m_merge_pipeline[2];
 	id<MTLRenderPipelineState> m_interlace_pipeline[4];
+	id<MTLRenderPipelineState> m_datm_pipeline[2];
+	id<MTLRenderPipelineState> m_hdr_init_pipeline;
+	id<MTLRenderPipelineState> m_hdr_resolve_pipeline;
 	id<MTLRenderPipelineState> m_imgui_pipeline;
 	id<MTLRenderPipelineState> m_imgui_pipeline_a8;
 
@@ -330,6 +333,8 @@ public:
 	void CopyRect(GSTexture* sTex, GSTexture* dTex, const GSVector4i& r) override;
 	void DoStretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture* dTex, const GSVector4& dRect, id<MTLRenderPipelineState> pipeline, bool linear, LoadAction load_action, void* frag_uniform, size_t frag_uniform_len);
 	void DrawStretchRect(const GSVector4& sRect, const GSVector4& dRect, const GSVector2i& ds);
+	/// Copy from a position in sTex to the same position in the currently active render encoder using the given fs pipeline and rect
+	void RenderCopy(GSTexture* sTex, id<MTLRenderPipelineState> pipeline, const GSVector4i& rect);
 	void StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture* dTex, const GSVector4& dRect, ShaderConvert shader = ShaderConvert::COPY, bool linear = true) override;
 	void StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture* dTex, const GSVector4& dRect, bool red, bool green, bool blue, bool alpha) override;
 
