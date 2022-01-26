@@ -17,6 +17,7 @@
 #include "GSMetalCPPAccessible.h"
 #include "GSDeviceMTL.h"
 #include "GSTextureMTL.h"
+#include "GS/GSPerfMon.h"
 #include "HostDisplay.h"
 #include <imgui.h>
 
@@ -913,11 +914,13 @@ bool GSDeviceMTL::DownloadTexture(GSTexture* src, const GSVector4i& rect, GSText
 	[cmdbuf waitUntilCompleted];
 
 	out_map.bits = static_cast<u8*>([m_texture_download_buf contents]);
+	g_perfmon.Put(GSPerfMon::Readbacks, 1);
 	return true;
 }}
 
 void GSDeviceMTL::CopyRect(GSTexture* sTex, GSTexture* dTex, const GSVector4i& r)
 { @autoreleasepool {
+	g_perfmon.Put(GSPerfMon::TextureCopies, 1);
 
 	GSTextureMTL* sT = static_cast<GSTextureMTL*>(sTex);
 	GSTextureMTL* dT = static_cast<GSTextureMTL*>(dTex);
@@ -1013,6 +1016,7 @@ void GSDeviceMTL::DrawStretchRect(const GSVector4& sRect, const GSVector4& dRect
 	[m_current_render.encoder drawPrimitives:MTLPrimitiveTypeTriangleStrip
 	                             vertexStart:0
 	                             vertexCount:4];
+	g_perfmon.Put(GSPerfMon::DrawCalls, 1);
 }
 
 void GSDeviceMTL::StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture* dTex, const GSVector4& dRect, ShaderConvert shader, bool linear)
@@ -1359,6 +1363,7 @@ void GSDeviceMTL::SetupDestinationAlpha(GSTexture* rt, GSTexture* ds, const GSVe
 	SetSampler(enc, SamplerSelector::Point());
 	enc.SetVertexBytes(vertices, sizeof(vertices));
 	[enc.encoder drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+	g_perfmon.Put(GSPerfMon::DrawCalls, 1);
 	EndScene();
 }
 
@@ -1403,6 +1408,7 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 		GSVector4 srect = GSVector4(config.drawarea) / GSVector4(size).xyxy();
 		DoStretchRect(config.rt, srect, hdr_rt, GSVector4(config.drawarea), m_convert_pipeline_copy[1], false, LoadAction::DontCare, nullptr, 0);
 		rt = hdr_rt;
+		g_perfmon.Put(GSPerfMon::TextureCopies, 1);
 	}
 
 	FlushClears(config.tex);
@@ -1460,6 +1466,7 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 		GSVector4 dRect(config.drawarea);
 		const GSVector4 sRect = dRect / GSVector4(size).xyxy();
 		StretchRect(hdr_rt, sRect, config.rt, dRect, ShaderConvert::MOD_256, false);
+		g_perfmon.Put(GSPerfMon::TextureCopies, 1);
 
 		Recycle(hdr_rt);
 	}
@@ -1501,6 +1508,7 @@ void GSDeviceMTL::SendHWDraw(GSHWDrawConfig& config, id<MTLRenderCommandEncoder>
 			                 indexType:MTLIndexTypeUInt32
 			               indexBuffer:buffer
 			         indexBufferOffset:off + p * sizeof(*config.indices)];
+			g_perfmon.Put(GSPerfMon::DrawCalls, 1);
 		}
 		[enc popDebugGroup];
 	}
@@ -1515,6 +1523,7 @@ void GSDeviceMTL::SendHWDraw(GSHWDrawConfig& config, id<MTLRenderCommandEncoder>
 			                 indexType:MTLIndexTypeUInt32
 			               indexBuffer:buffer
 			         indexBufferOffset:off + p * sizeof(*config.indices)];
+			g_perfmon.Put(GSPerfMon::DrawCalls, 1);
 		}
 		[enc popDebugGroup];
 	}
@@ -1527,6 +1536,7 @@ void GSDeviceMTL::SendHWDraw(GSHWDrawConfig& config, id<MTLRenderCommandEncoder>
 		                 indexType:MTLIndexTypeUInt32
 		               indexBuffer:buffer
 		         indexBufferOffset:off];
+		g_perfmon.Put(GSPerfMon::DrawCalls, 1);
 	}
 	else
 	{
@@ -1536,6 +1546,7 @@ void GSDeviceMTL::SendHWDraw(GSHWDrawConfig& config, id<MTLRenderCommandEncoder>
 		                 indexType:MTLIndexTypeUInt32
 		               indexBuffer:buffer
 		         indexBufferOffset:off];
+		g_perfmon.Put(GSPerfMon::DrawCalls, 1);
 	}
 }
 
