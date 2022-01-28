@@ -39,6 +39,7 @@ struct GSMTLDevice
 	{
 		bool unified_memory;
 		bool texture_swizzle;
+		bool framebuffer_fetch;
 		MetalVersion shader_version;
 		int max_texsize;
 	};

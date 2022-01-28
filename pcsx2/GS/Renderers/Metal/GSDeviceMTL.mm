@@ -600,6 +600,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 	m_features.geometry_shader = false;
 	m_features.image_load_store = false;
 	m_features.texture_barrier = true;
+	m_features.prefer_rt_read = m_dev.features.framebuffer_fetch;
 
 	try
 	{
@@ -1128,7 +1129,7 @@ void GSDeviceMTL::SetHWPipelineState(MainRenderEncoder& enc, GSHWDrawConfig::VSS
 		setFnConstantB(m_fn_constants, pssel.invalid_tex0,       GSMTLConstantIndex_PS_INVALID_TEX0);
 		setFnConstantI(m_fn_constants, pssel.scanmsk,            GSMTLConstantIndex_PS_SCANMSK);
 		bool early_fragment = pssel.date == 1 || pssel.date == 2;
-		ps = LoadShader(early_fragment ? @"ps_main_eft" : @"ps_main");
+		ps = LoadShader(m_dev.features.framebuffer_fetch ? @"ps_main_fbfetch" : early_fragment ? @"ps_main_eft" : @"ps_main");
 		m_hw_ps.insert(std::make_pair(pssel.key, ps));
 	}
 
@@ -1342,6 +1343,12 @@ static id<MTLTexture> getTexture(GSTexture* tex)
 
 void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 { @autoreleasepool {
+	if (m_dev.features.framebuffer_fetch)
+	{
+		config.require_one_barrier = false;
+		config.require_full_barrier = false;
+		config.drawlist = nullptr;
+	}
 
 	if (config.tex && config.ds == config.tex)
 		EndRenderPass(); // Barrier
