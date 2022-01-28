@@ -19,6 +19,8 @@
 
 #include "GSMTLDeviceInfo.h"
 
+#include "common/Console.h"
+
 #ifdef __APPLE__
 
 static id<MTLLibrary> loadMainLibrary(id<MTLDevice> dev, NSString* name)
@@ -71,7 +73,16 @@ GSMTLDevice::GSMTLDevice(id<MTLDevice> dev)
 		if ([dev supportsFamily:MTLGPUFamilyMac2] || [dev supportsFamily:MTLGPUFamilyApple1])
 			features.texture_swizzle = true;
 
+	if (@available(macOS 11.0, iOS 13.0, *))
+		if ([dev supportsFamily:MTLGPUFamilyApple1])
+			features.framebuffer_fetch = true;
+
 	features.shader_version = detectLibraryVersion(shaders);
+	if (features.framebuffer_fetch && features.shader_version < MetalVersion::Metal23)
+	{
+		Console.Warning("Metal: GPU supports framebuffer fetch but shader lib does not!  Get an updated shader lib for better performance!");
+		features.framebuffer_fetch = false;
+	}
 
 	features.max_texsize = 8192;
 	if ([dev supportsFeatureSet:MTLFeatureSet_macOS_GPUFamily1_v1])
