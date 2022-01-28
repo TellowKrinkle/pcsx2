@@ -701,7 +701,7 @@ void GSRendererNew::EmulateBlending(bool& DATE_PRIMID, bool& DATE_BARRIER)
 			// No overflow, disable colclip.
 			GL_INS("COLCLIP mode DISABLED");
 		}
-		else if (free_colclip)
+		else if (free_colclip || g_gs_device->Features().prefer_rt_read)
 		{
 			// The fastest algo that requires a single pass
 			GL_INS("COLCLIP Free mode ENABLED");
@@ -1308,7 +1308,7 @@ void GSRendererNew::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sour
 		// It is way too complex to emulate texture shuffle with DATE, so use accurate path.
 		// No overlap should be triggered on gl/vk only as they support DATE_BARRIER.
 		const bool no_overlap = (g_gs_device->Features().texture_barrier) && (m_prim_overlap == PRIM_OVERLAP_NO);
-		if (no_overlap || m_texture_shuffle)
+		if (no_overlap || m_texture_shuffle || g_gs_device->Features().prefer_rt_read)
 		{
 			GL_PERF("DATE: Accurate with %s", no_overlap ? "no overlap" : "texture shuffle");
 			if (g_gs_device->Features().texture_barrier)
