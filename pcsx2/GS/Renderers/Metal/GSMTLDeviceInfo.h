@@ -21,14 +21,25 @@
 
 #ifdef __APPLE__
 
+#include "PCSX2Base.h"
+#include "common/EnumOps.h"
 #include <Metal/Metal.h>
 
 struct GSMTLDevice
 {
+	enum class MetalVersion : u8
+	{
+		Metal20, ///< Metal 2.0 (macOS 10.13, iOS 11)
+		Metal21, ///< Metal 2.1 (macOS 10.14, iOS 12)
+		Metal22, ///< Metal 2.2 (macOS 10.15, iOS 13)
+		Metal23, ///< Metal 2.3 (macOS 11, iOS 14)
+	};
+
 	struct Features
 	{
 		bool unified_memory;
 		bool texture_swizzle;
+		MetalVersion shader_version;
 		int max_texsize;
 	};
 
@@ -46,5 +57,9 @@ struct GSMTLDevice
 		shaders = nullptr;
 	}
 };
+
+const char* to_string(GSMTLDevice::MetalVersion ver);
+
+MARK_ENUM_AS_COMPARABLE(GSMTLDevice::MetalVersion);
 
 #endif // __APPLE__
