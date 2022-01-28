@@ -108,7 +108,7 @@ GSDeviceMTL::Map GSDeviceMTL::Allocate(UploadBuffer& buffer, size_t amt)
 		while (newsize < amt)
 			newsize *= 2;
 		MTLResourceOptions options = MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined;
-		buffer.mtlbuffer = [m_dev newBufferWithLength:newsize options:options];
+		buffer.mtlbuffer = [m_dev.dev newBufferWithLength:newsize options:options];
 		pxAssertRel(buffer.mtlbuffer, "Failed to allocate MTLBuffer (out of memory?)");
 		buffer.buffer = buffer.mtlbuffer.contents;
 		buffer.usage.Reset(newsize);
@@ -129,7 +129,7 @@ GSDeviceMTL::Map GSDeviceMTL::Allocate(BufferPair& buffer, size_t amt)
 	size_t base_pos = buffer.usage.Pos();
 	bool needs_new = buffer.usage.PrepareForAllocation(last_draw, amt);
 	bool needs_upload = needs_new || buffer.usage.Pos() == 0;
-	if (!m_unified_memory && needs_upload)
+	if (!m_dev.features.unified_memory && needs_upload)
 	{
 		if (base_pos != buffer.last_upload)
 		{
@@ -149,28 +149,28 @@ GSDeviceMTL::Map GSDeviceMTL::Allocate(BufferPair& buffer, size_t amt)
 		while (newsize < amt)
 			newsize *= 2;
 		MTLResourceOptions options = MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined;
-		buffer.cpubuffer = [m_dev newBufferWithLength:newsize options:options];
+		buffer.cpubuffer = [m_dev.dev newBufferWithLength:newsize options:options];
 		pxAssertRel(buffer.cpubuffer, "Failed to allocate MTLBuffer (out of memory?)");
 		buffer.buffer = buffer.cpubuffer.contents;
 		buffer.usage.Reset(newsize);
-		if (!m_unified_memory)
+		if (!m_dev.features.unified_memory)
 		{
 			options = MTLResourceStorageModePrivate | MTLResourceHazardTrackingModeUntracked;
-			buffer.gpubuffer = [m_dev newBufferWithLength:newsize options:options];
+			buffer.gpubuffer = [m_dev.dev newBufferWithLength:newsize options:options];
 			pxAssertRel(buffer.gpubuffer, "Failed to allocate MTLBuffer (out of memory?)");
 		}
 	}
 
 	size_t pos = buffer.usage.Allocate(m_current_draw, amt);
 	Map ret = {nil, pos, reinterpret_cast<char*>(buffer.buffer) + pos};
-	ret.gpu_buffer = m_unified_memory ? buffer.cpubuffer : buffer.gpubuffer;
+	ret.gpu_buffer = m_dev.features.unified_memory ? buffer.cpubuffer : buffer.gpubuffer;
 	ASSERT(pos <= buffer.usage.Size() && "Previous code should have guaranteed there was enough space");
 	return ret;
 }
 
 void GSDeviceMTL::Sync(BufferPair& buffer)
 {
-	if (m_unified_memory || buffer.usage.Pos() == buffer.last_upload)
+	if (m_dev.features.unified_memory || buffer.usage.Pos() == buffer.last_upload)
 		return;
 
 	id<MTLBlitCommandEncoder> enc = GetVertexUploadEncoder();
@@ -203,7 +203,7 @@ id<MTLBlitCommandEncoder> GSDeviceMTL::GetLateTextureUploadEncoder()
 		m_late_texture_upload_encoder = [GetRenderCmdBuf() blitCommandEncoder];
 		pxAssertRel(m_late_texture_upload_encoder, "Failed to create late texture upload encoder!");
 		[m_late_texture_upload_encoder setLabel:@"Late Texture Upload"];
-		if (!m_unified_memory)
+		if (!m_dev.features.unified_memory)
 			[m_late_texture_upload_encoder waitForFence:m_draw_sync_fence];
 	}
 	return m_late_texture_upload_encoder;
@@ -239,7 +239,7 @@ void GSDeviceMTL::FlushEncoders()
 		return;
 	EndRenderPass();
 	Sync(m_vertex_upload_buf);
-	if (m_unified_memory)
+	if (m_dev.features.unified_memory)
 	{
 		ASSERT(!m_vertex_upload_cmdbuf && "Should never be used!");
 	}
@@ -352,7 +352,7 @@ GSDeviceMTL::MainRenderEncoder& GSDeviceMTL::BeginRenderPass(GSTexture* color, M
 
 	EndRenderPass();
 	m_current_render.encoder = [GetRenderCmdBuf() renderCommandEncoderWithDescriptor:desc];
-	if (!m_unified_memory)
+	if (!m_dev.features.unified_memory)
 		[m_current_render.encoder waitForFence:m_draw_sync_fence
 		                          beforeStages:MTLRenderStageVertex];
 	m_current_render.color_target = color;
@@ -384,8 +384,8 @@ GSTexture* GSDeviceMTL::CreateSurface(GSTexture::Type type, int width, int heigh
 
 	MTLTextureDescriptor* desc = [MTLTextureDescriptor
 		texture2DDescriptorWithPixelFormat:fmt
-		                             width:std::max(1, std::min(width,  m_max_texsize))
-		                            height:std::max(1, std::min(height, m_max_texsize))
+		                             width:std::max(1, std::min(width,  m_dev.features.max_texsize))
+		                            height:std::max(1, std::min(height, m_dev.features.max_texsize))
 		                         mipmapped:levels > 1];
 
 	if (levels > 1)
@@ -404,7 +404,7 @@ GSTexture* GSDeviceMTL::CreateSurface(GSTexture::Type type, int width, int heigh
 			[desc setUsage:MTLTextureUsageShaderRead | MTLTextureUsageRenderTarget];
 	}
 
-	id<MTLTexture> tex = [m_dev newTextureWithDescriptor:desc];
+	id<MTLTexture> tex = [m_dev.dev newTextureWithDescriptor:desc];
 	if (tex)
 	{
 		GSTextureMTL* t = new GSTextureMTL(this, tex, type, format);
@@ -544,7 +544,7 @@ u16 GSDeviceMTL::ConvertBlendEnum(u16 generic)
 id<MTLFunction> GSDeviceMTL::LoadShader(NSString* name)
 {
 	NSError* err = nil;
-	id<MTLFunction> fn = [m_shaders newFunctionWithName:name constantValues:m_fn_constants error:&err];
+	id<MTLFunction> fn = [m_dev.shaders newFunctionWithName:name constantValues:m_fn_constants error:&err];
 	if (unlikely(err))
 	{
 		NSString* msg = [NSString stringWithFormat:@"Failed to load shader %@: %@", name, [err localizedDescription]];
@@ -559,7 +559,7 @@ id<MTLRenderPipelineState> GSDeviceMTL::MakePipeline(MTLRenderPipelineDescriptor
 	[desc setVertexFunction:vertex];
 	[desc setFragmentFunction:fragment];
 	NSError* err;
-	id<MTLRenderPipelineState> res = [m_dev newRenderPipelineStateWithDescriptor:desc error:&err];
+	id<MTLRenderPipelineState> res = [m_dev.dev newRenderPipelineStateWithDescriptor:desc error:&err];
 	if (err)
 		throw std::runtime_error([[err localizedDescription] UTF8String]);
 	return res;
@@ -593,7 +593,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 
 	if (!m_display->HasRenderDevice() || !m_display->HasRenderSurface())
 		return false;
-	m_dev = (__bridge id<MTLDevice>)m_display->GetRenderDevice();
+	m_dev = *static_cast<const GSMTLDevice*>(m_display->GetRenderDevice());
 	m_queue = (__bridge id<MTLCommandQueue>)m_display->GetRenderContext();
 	MTLPixelFormat layer_px_fmt = [(__bridge CAMetalLayer*)m_display->GetRenderSurface() pixelFormat];
 
@@ -601,30 +601,10 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 	m_features.image_load_store = false;
 	m_features.texture_barrier = true;
 
-	if (char* env = getenv("MTL_UNIFIED_MEMORY"))
-		m_unified_memory = env[0] == '1' || env[0] == 'y' || env[0] == 'Y';
-	else if (@available(macOS 10.15, iOS 13.0, *))
-		m_unified_memory = [m_dev hasUnifiedMemory];
-	else
-		m_unified_memory = false;
-
-	m_texture_swizzle = false;
-	if (@available(macOS 10.15, iOS 13.0, *))
-		if ([m_dev supportsFamily:MTLGPUFamilyMac2] || [m_dev supportsFamily:MTLGPUFamilyApple1])
-			m_texture_swizzle = true;
-
-	m_max_texsize = 8192;
-	if ([m_dev supportsFeatureSet:MTLFeatureSet_macOS_GPUFamily1_v1])
-		m_max_texsize = 16384;
-	if (@available(macOS 10.15, iOS 13.0, *))
-		if ([m_dev supportsFamily:MTLGPUFamilyApple3])
-			m_max_texsize = 16384;
-
 	try
 	{
 		// Init metal stuff
-		m_draw_sync_fence = [m_dev newFence];
-		m_shaders = [m_dev newDefaultLibrary];
+		m_draw_sync_fence = [m_dev.dev newFence];
 
 		m_fn_constants = [MTLFunctionConstantValues new];
 		u8 upscale = std::max(1, theApp.GetConfigI("upscale_multiplier"));
@@ -688,7 +668,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 			sdesc.maxAnisotropy = anisotropy && sel.aniso ? anisotropy : 1;
 			sdesc.lodMaxClamp = sel.lodclamp ? 0.25f : FLT_MAX;
 
-			m_sampler_hw[i] = [m_dev newSamplerStateWithDescriptor:sdesc];
+			m_sampler_hw[i] = [m_dev.dev newSamplerStateWithDescriptor:sdesc];
 		}
 
 		// Init depth stencil states
@@ -702,7 +682,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 		stencildesc.writeMask = 1;
 		dssdesc.frontFaceStencil = stencildesc;
 		dssdesc.backFaceStencil = stencildesc;
-		m_dss_destination_alpha = [m_dev newDepthStencilStateWithDescriptor:dssdesc];
+		m_dss_destination_alpha = [m_dev.dev newDepthStencilStateWithDescriptor:dssdesc];
 		stencildesc.stencilCompareFunction = MTLCompareFunctionEqual;
 		for (size_t i = 0; i < std::size(m_dss_hw); i++)
 		{
@@ -731,7 +711,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 				MTLCompareFunctionGreater,
 			};
 			dssdesc.depthCompareFunction = ztst[sel.ztst];
-			m_dss_hw[i] = [m_dev newDepthStencilStateWithDescriptor:dssdesc];
+			m_dss_hw[i] = [m_dev.dev newDepthStencilStateWithDescriptor:dssdesc];
 		}
 
 		// Init HW Vertex Shaders
@@ -853,7 +833,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 		pdesc.vertexDescriptor.layouts[0].stride = sizeof(ImDrawVert);
 		pdesc.colorAttachments[0].pixelFormat = layer_px_fmt;
 		m_imgui_pipeline = MakePipeline(pdesc, LoadShader(@"vs_imgui"), LoadShader(@"ps_imgui"), @"imgui");
-		if (!m_texture_swizzle)
+		if (!m_dev.features.texture_swizzle)
 			m_imgui_pipeline_a8 = MakePipeline(pdesc, LoadShader(@"vs_imgui"), LoadShader(@"ps_imgui_a8"), @"imgui_a8");
 	}
 	catch (std::exception& e)
@@ -896,7 +876,7 @@ bool GSDeviceMTL::DownloadTexture(GSTexture* src, const GSVector4i& rect, GSText
 	out_map.pitch = msrc->PxToBytes(rect.width());
 	size_t size = out_map.pitch * rect.height();
 	if ([m_texture_download_buf length] < size)
-		m_texture_download_buf = [m_dev newBufferWithLength:size options:MTLResourceStorageModeShared];
+		m_texture_download_buf = [m_dev.dev newBufferWithLength:size options:MTLResourceStorageModeShared];
 	pxAssertRel(m_texture_download_buf, "Failed to allocate download buffer (out of memory?)");
 
 	id<MTLCommandBuffer> cmdbuf = GetRenderCmdBuf();
@@ -1604,7 +1584,7 @@ void GSDeviceMTL::RenderImGui(ImDrawData* data)
 			{
 				last_tex = tex;
 				[enc setFragmentTexture:(__bridge id<MTLTexture>)tex atIndex:0];
-				if (!m_texture_swizzle)
+				if (!m_dev.features.texture_swizzle)
 				{
 					bool a8 = [(__bridge id<MTLTexture>)tex pixelFormat] == MTLPixelFormatA8Unorm;
 					if (last_tex_a8 != a8)

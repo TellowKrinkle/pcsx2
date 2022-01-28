@@ -25,6 +25,7 @@
 
 #include "common/HashCombine.h"
 #include "GS/GS.h"
+#include "GSMTLDeviceInfo.h"
 #include "GSMTLSharedHeader.h"
 #include <AppKit/AppKit.h>
 #include <Metal/Metal.h>
@@ -197,17 +198,13 @@ public:
 	};
 
 	// MARK: Configuration
-	bool m_unified_memory;
-	bool m_texture_swizzle;
 	int m_mipmap;
-	int m_max_texsize;
 
 	// MARK: Permanent resources
 	std::shared_ptr<std::pair<std::mutex, GSDeviceMTL*>> m_backref;
-	id<MTLDevice> m_dev;
+	GSMTLDevice m_dev;
 	id<MTLCommandQueue> m_queue;
 	id<MTLFence> m_draw_sync_fence;
-	id<MTLLibrary> m_shaders;
 	MTLFunctionConstantValues* m_fn_constants;
 	MTLVertexDescriptor* m_hw_vertex;
 	std::unique_ptr<GSTextureMTL> m_font;
