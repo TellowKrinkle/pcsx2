@@ -906,6 +906,42 @@ fragment MainPSOutNoDepth ps_main_eft(
 	return out;
 }
 
+#if defined(__METAL_IOS__) || __METAL_VERSION__ >= 230
+
+fragment MainPSOut ps_main_fbfetch(
+	MainVSOut in [[stage_in]],
+	constant GSMTLMainPSUniform& cb [[buffer(GSMTLBufferIndexHWUniforms)]],
+	sampler s [[sampler(0)]],
+	texture2d<float> tex       [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_COLOR)]],
+	depth2d<float>   depth     [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_DEPTH)]],
+	texture2d<float> palette   [[texture(GSMTLTextureIndexPalette),      function_constant(PS_HAS_PALETTE)]],
+	float4 rt [[color(0), raster_order_group(0), function_constant(NEEDS_RT)]])
+{
+	PSMain main(in, cb);
+	main.tex_sampler = s;
+	if (PS_TEX_IS_COLOR)
+		main.tex = tex;
+	else
+		main.tex_depth = depth;
+	if (PS_HAS_PALETTE)
+		main.palette = palette;
+
+	if (NEEDS_RT)
+	{
+		main.current_color = rt;
+		main.current_color_int = uchar4(main.current_color * 255.5f);
+	}
+	else
+	{
+		main.current_color = 0;
+		main.current_color_int = 0;
+	}
+
+	return main.ps_main();
+}
+
+#endif // defined(__METAL_IOS__) || __METAL_VERSION__ >= 230
+
 // MARK: Markers for detecting the Metal version a metallib was compiled against
 
 #if __METAL_VERSION__ >= 210
