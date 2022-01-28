@@ -193,7 +193,7 @@ namespace GL
 		if (m_context == nil)
 			return false;
 
-		if (static_cast<int>(m_wi.options) & static_cast<int>(WindowInfo::Options::MTGLEngine))
+		if (m_wi.options & WindowInfo::Options::MTGLEngine)
 		{
 			CGLError error = CGLEnable([m_context CGLContextObj], kCGLCEMPEngine);
 			if (error == kCGLNoError)
