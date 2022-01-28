@@ -74,10 +74,10 @@ HostDisplay::RenderAPI MetalHostDisplay::GetRenderAPI() const
 	return RenderAPI::Metal;
 }
 
-void* MetalHostDisplay::GetRenderDevice()  const { return (__bridge void*)m_dev; }
+void* MetalHostDisplay::GetRenderDevice()  const { return const_cast<void*>(static_cast<const void*>(&m_dev)); }
 void* MetalHostDisplay::GetRenderContext() const { return (__bridge void*)m_queue; }
 void* MetalHostDisplay::GetRenderSurface() const { return (__bridge void*)m_layer; }
-bool MetalHostDisplay::HasRenderDevice()   const { return static_cast<bool>(m_dev); }
+bool MetalHostDisplay::HasRenderDevice()   const { return m_dev.IsOk(); }
 bool MetalHostDisplay::HasRenderSurface()  const { return static_cast<bool>(m_layer);}
 
 void MetalHostDisplay::AttachSurfaceOnMainThread()
@@ -99,35 +99,35 @@ void MetalHostDisplay::DetachSurfaceOnMainThread()
 bool MetalHostDisplay::CreateRenderDevice(const WindowInfo& wi, std::string_view adapter_name, VsyncMode vsync, bool threaded_presentation, bool debug_device)
 { @autoreleasepool {
 	m_window_info = wi;
-	pxAssertRel(m_dev == nullptr, "Device already created!");
+	pxAssertRel(m_dev.dev == nullptr, "Device already created!");
 	std::string null_terminated_adapter_name(adapter_name);
 	NSString* ns_adapter_name = [NSString stringWithUTF8String:null_terminated_adapter_name.c_str()];
 	for (id<MTLDevice> dev in MTLCopyAllDevices())
 	{
 		if ([[dev name] isEqualToString:ns_adapter_name])
-			m_dev = dev;
+			m_dev = GSMTLDevice(dev);
 	}
-	if (!m_dev)
+	if (!m_dev.dev)
 	{
 		if (adapter_name != "Default Adapter")
 			Console.Warning("Metal: Couldn't find adapter %s, using default", null_terminated_adapter_name.c_str());
-		m_dev = MTLCreateSystemDefaultDevice();
+		m_dev = GSMTLDevice(MTLCreateSystemDefaultDevice());
 	}
-	m_queue = [m_dev newCommandQueue];
+	m_queue = [m_dev.dev newCommandQueue];
 
 	m_pass_desc = [MTLRenderPassDescriptor new];
 	m_pass_desc.colorAttachments[0].loadAction = MTLLoadActionClear;
 	m_pass_desc.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0);
 	m_pass_desc.colorAttachments[0].storeAction = MTLStoreActionStore;
 
-	if (m_dev && m_queue)
+	if (m_dev.IsOk() && m_queue)
 	{
-		Console.WriteLn("Metal: Rendering with %s", [[m_dev name] UTF8String]);
+		Console.WriteLn("Renderer info:\n    %s", GetDriverInfo().c_str());
 		OnMainThread([this]
 		{
 			m_layer = [CAMetalLayer layer];
 			[m_layer setDrawableSize:CGSizeMake(m_window_info.surface_width, m_window_info.surface_height)];
-			[m_layer setDevice:m_dev];
+			[m_layer setDevice:m_dev.dev];
 			AttachSurfaceOnMainThread();
 		});
 		SetVSync(vsync);
@@ -150,7 +150,7 @@ void MetalHostDisplay::DestroyRenderDevice()
 {
 	DestroyRenderSurface();
 	m_queue = nullptr;
-	m_dev = nullptr;
+	m_dev.Reset();
 }
 
 void MetalHostDisplay::DestroyRenderSurface()
@@ -184,8 +184,10 @@ HostDisplay::AdapterAndModeList MetalHostDisplay::GetAdapterAndModeList()
 
 std::string MetalHostDisplay::GetDriverInfo() const
 { @autoreleasepool {
-	// TODO: Feature checks
-	std::string desc([[m_dev description] UTF8String]);
+	std::string desc([[m_dev.dev description] UTF8String]);
+	desc += "\n    Texture Swizzle:  " + std::string(m_dev.features.texture_swizzle ? "Supported" : "Unsupported");
+	desc += "\n    Unified Memory:   " + std::string(m_dev.features.unified_memory  ? "Supported" : "Unsupported");
+	desc += "\n    Max Texture Size: " + std::to_string(m_dev.features.max_texsize);
 	return desc;
 }}
 
@@ -212,7 +214,7 @@ std::unique_ptr<HostDisplayTexture> MetalHostDisplay::CreateTexture(u32 width, u
 		                         mipmapped:false];
 	[desc setUsage:MTLTextureUsageShaderRead];
 	[desc setStorageMode:MTLStorageModePrivate];
-	id<MTLTexture> tex = [m_dev newTextureWithDescriptor:desc];
+	id<MTLTexture> tex = [m_dev.dev newTextureWithDescriptor:desc];
 	if (!tex)
 		return nullptr; // Something broke yay
 	[tex setLabel:@"MetalHostDisplay Texture"];
@@ -226,7 +228,7 @@ void MetalHostDisplay::UpdateTexture(id<MTLTexture> texture, u32 x, u32 y, u32 w
 	id<MTLCommandBuffer> cmdbuf = [m_queue commandBuffer];
 	id<MTLBlitCommandEncoder> enc = [cmdbuf blitCommandEncoder];
 	size_t bytes = data_stride * height;
-	id<MTLBuffer> buf = [m_dev newBufferWithLength:bytes options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined];
+	id<MTLBuffer> buf = [m_dev.dev newBufferWithLength:bytes options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined];
 	memcpy([buf contents], data, bytes);
 	[enc copyFromBuffer:buf
 	       sourceOffset:0
@@ -317,9 +319,9 @@ bool MetalHostDisplay::UpdateImGuiFontTexture()
 	[desc setUsage:MTLTextureUsageShaderRead];
 	[desc setStorageMode:MTLStorageModePrivate];
 	if (@available(macOS 10.15, *))
-		if ([m_dev supportsFamily:MTLGPUFamilyMac2] || [m_dev supportsFamily:MTLGPUFamilyApple1])
+		if (m_dev.features.texture_swizzle)
 			[desc setSwizzle:MTLTextureSwizzleChannelsMake(MTLTextureSwizzleOne, MTLTextureSwizzleOne, MTLTextureSwizzleOne, MTLTextureSwizzleAlpha)];
-	m_font_tex = [m_dev newTextureWithDescriptor:desc];
+	m_font_tex = [m_dev.dev newTextureWithDescriptor:desc];
 	[m_font_tex setLabel:@"ImGui Font"];
 	UpdateTexture(m_font_tex, 0, 0, width, height, data, width);
 	fonts->SetTexID((__bridge void*)m_font_tex);

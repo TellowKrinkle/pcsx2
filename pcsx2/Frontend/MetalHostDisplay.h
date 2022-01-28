@@ -23,6 +23,7 @@
 
 #ifdef __APPLE__
 
+#include "GS/Renderers/Metal/GSMTLDeviceInfo.h"
 #include "GS/Renderers/Metal/MTLDrawableFetcher.h"
 #include <AppKit/AppKit.h>
 #include <Metal/Metal.h>
@@ -32,7 +33,7 @@ class MetalHostDisplay final : public HostDisplay
 {
 	NSView* m_view;
 	CAMetalLayer* m_layer;
-	id<MTLDevice> m_dev;
+	GSMTLDevice m_dev;
 	id<MTLCommandQueue> m_queue;
 	id<MTLTexture> m_font_tex;
 	id<CAMetalDrawable> m_current_drawable;
