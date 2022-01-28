@@ -23,6 +23,7 @@
 
 #ifdef __APPLE__
 
+#include "common/HashCombine.h"
 #include "GS/GS.h"
 #include "GSMTLSharedHeader.h"
 #include <AppKit/AppKit.h>
@@ -102,8 +103,9 @@ struct std::hash<PipelineSelectorMTL>
 {
 	size_t operator()(const PipelineSelectorMTL& sel) const
 	{
-		const char* ptr = reinterpret_cast<const char*>(&sel);
-		return std::hash<std::string_view>()(std::string_view(ptr, sizeof(PipelineSelectorMTL)));
+		size_t h = 0;
+		HashCombine(h, sel.ps.key, sel.extras.key, sel.vs.key);
+		return h;
 	}
 };
 
