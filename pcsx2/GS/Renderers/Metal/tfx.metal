@@ -905,3 +905,15 @@ fragment MainPSOutNoDepth ps_main_eft(
 	out.c1 = ret.c1;
 	return out;
 }
+
+// MARK: Markers for detecting the Metal version a metallib was compiled against
+
+#if __METAL_VERSION__ >= 210
+kernel void metal_version_21() {}
+#endif
+#if __METAL_VERSION__ >= 220
+kernel void metal_version_22() {}
+#endif
+#if __METAL_VERSION__ >= 230
+kernel void metal_version_23() {}
+#endif

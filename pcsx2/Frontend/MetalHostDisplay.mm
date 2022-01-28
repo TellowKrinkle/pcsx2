@@ -186,6 +186,7 @@ std::string MetalHostDisplay::GetDriverInfo() const
 	std::string desc([[m_dev.dev description] UTF8String]);
 	desc += "\n    Texture Swizzle:  " + std::string(m_dev.features.texture_swizzle ? "Supported" : "Unsupported");
 	desc += "\n    Unified Memory:   " + std::string(m_dev.features.unified_memory  ? "Supported" : "Unsupported");
+	desc += "\n    Shader Version:   " + std::string(to_string(m_dev.features.shader_version));
 	desc += "\n    Max Texture Size: " + std::to_string(m_dev.features.max_texsize);
 	return desc;
 }}
