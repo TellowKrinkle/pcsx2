@@ -73,6 +73,7 @@ target_sources(common PRIVATE
 	boost_spsc_queue.hpp
 	Console.h
 	Dependencies.h
+	EnumOps.h
 	EventSource.h
 	Exceptions.h
 	FastJmp.h
