@@ -15,6 +15,7 @@
 
 #pragma once
 #include "Pcsx2Defs.h"
+#include "EnumOps.h"
 
 #ifdef None
 	#undef None
@@ -69,3 +70,5 @@ struct WindowInfo
 	/// Returns the host's refresh rate for the given window, if available.
 	static bool QueryRefreshRateForWindow(const WindowInfo& wi, float* refresh_rate);
 };
+
+MARK_ENUM_AS_FLAGS(WindowInfo::Options);
