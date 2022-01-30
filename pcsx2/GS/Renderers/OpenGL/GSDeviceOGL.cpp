@@ -309,12 +309,20 @@ bool GSDeviceOGL::Create()
 		glGenVertexArrays(1, &m_vertex_array_object);
 		glBindVertexArray(m_vertex_array_object);
 
-		m_vertex_stream_buffer = GL::StreamBuffer::Create(GL_ARRAY_BUFFER, VERTEX_BUFFER_SIZE);
-		m_index_stream_buffer = GL::StreamBuffer::Create(GL_ELEMENT_ARRAY_BUFFER, INDEX_BUFFER_SIZE);
-		m_vertex_uniform_stream_buffer = GL::StreamBuffer::Create(GL_UNIFORM_BUFFER, VERTEX_UNIFORM_BUFFER_SIZE);
-		m_fragment_uniform_stream_buffer = GL::StreamBuffer::Create(GL_UNIFORM_BUFFER, FRAGMENT_UNIFORM_BUFFER_SIZE);
+		if (!GLLoader::gl2)
+		{
+			m_vertex_stream_buffer = GL::StreamBuffer::Create(GL_ARRAY_BUFFER, VERTEX_BUFFER_SIZE);
+			m_index_stream_buffer = GL::StreamBuffer::Create(GL_ELEMENT_ARRAY_BUFFER, INDEX_BUFFER_SIZE);
+			m_vertex_uniform_stream_buffer = GL::StreamBuffer::Create(GL_UNIFORM_BUFFER, VERTEX_UNIFORM_BUFFER_SIZE);
+			m_fragment_uniform_stream_buffer = GL::StreamBuffer::Create(GL_UNIFORM_BUFFER, FRAGMENT_UNIFORM_BUFFER_SIZE);
+		}
+		else
+		{
+			m_vertex_stream_buffer = GL::StreamBuffer::Create(GL_ARRAY_BUFFER, 1024 * 1024);
+			m_index_stream_buffer = GL::StreamBuffer::Create(GL_ELEMENT_ARRAY_BUFFER, 1024 * 1024);
+		}
 		glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &m_uniform_buffer_alignment);
-		if (!m_vertex_stream_buffer || !m_index_stream_buffer || !m_vertex_uniform_stream_buffer || !m_fragment_uniform_stream_buffer)
+		if (!m_vertex_stream_buffer || !m_index_stream_buffer || (!GLLoader::gl2 && (!m_vertex_uniform_stream_buffer || !m_fragment_uniform_stream_buffer)))
 		{
 			Host::ReportErrorAsync("GS", "Failed to create vertex/index/uniform streaming buffers");
 			return false;
@@ -334,11 +342,14 @@ bool GSDeviceOGL::Create()
 
 		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(GSVertexPT1), (const GLvoid*)(0));
 		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GSVertexPT1), (const GLvoid*)(16));
-		glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_FALSE, sizeof(GSVertex), (const GLvoid*)(8));
-		glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(GSVertex), (const GLvoid*)(12));
-		glVertexAttribIPointer(4, 2, GL_UNSIGNED_SHORT, sizeof(GSVertex), (const GLvoid*)(16));
-		glVertexAttribIPointer(5, 1, GL_UNSIGNED_INT, sizeof(GSVertex), (const GLvoid*)(20));
-		glVertexAttribIPointer(6, 2, GL_UNSIGNED_SHORT, sizeof(GSVertex), (const GLvoid*)(24));
+		if (!GLLoader::gl2)
+		{
+			glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_FALSE, sizeof(GSVertex), (const GLvoid*)(8));
+			glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(GSVertex), (const GLvoid*)(12));
+			glVertexAttribIPointer(4, 2, GL_UNSIGNED_SHORT, sizeof(GSVertex), (const GLvoid*)(16));
+			glVertexAttribIPointer(5, 1, GL_UNSIGNED_INT, sizeof(GSVertex), (const GLvoid*)(20));
+			glVertexAttribIPointer(6, 2, GL_UNSIGNED_SHORT, sizeof(GSVertex), (const GLvoid*)(24));
+		}
 		glVertexAttribPointer(7, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(GSVertex), (const GLvoid*)(28));
 	}
 
@@ -771,7 +782,15 @@ void GSDeviceOGL::ClearRenderTarget(GSTexture* t, const GSVector4& c)
 	OMSetFBO(m_fbo);
 	OMAttachRt(T);
 
-	glClearBufferfv(GL_COLOR, 0, c.v);
+	if (GLLoader::gl2)
+	{
+		glClearColor(c.r, c.g, c.b, c.a);
+		glClear(GL_COLOR_BUFFER_BIT);
+	}
+	else
+	{
+		glClearBufferfv(GL_COLOR, 0, c.v);
+	}
 
 	OMSetColorMaskState(OMColorMaskSelector(old_color_mask));
 
@@ -964,7 +983,21 @@ std::string GSDeviceOGL::GetShaderSource(const std::string_view& entry, GLenum t
 
 std::string GSDeviceOGL::GenGlslHeader(const std::string_view& entry, GLenum type, const std::string_view& macro)
 {
-	std::string header = "#version 330 core\n";
+	std::string header;
+	if (GLLoader::gl2)
+	{
+		header = "#version 120\n";
+		header += "#define GL21\n";
+		header += "#define texture texture2D\n";
+		if (type == GL_VERTEX_SHADER)
+			header += "#define out varying\n";
+		else
+			header += "#define in varying\n";
+	}
+	else
+	{
+		header = "#version 330 core\n";
+	}
 
 	if (GLLoader::found_GL_ARB_shading_language_420pack)
 	{
@@ -1123,14 +1156,26 @@ std::string GSDeviceOGL::GetPSSource(const PSSelector& sel)
 	return src;
 }
 
+static void BindAttributes(GL::Program& program)
+{
+	if (!GLLoader::gl2)
+		return;
+	program.BindAttribute(0, "POSITION");
+	program.BindAttribute(1, "TEXCOORD0");
+	program.BindAttribute(7, "COLOR");
+}
+
 bool GSDeviceOGL::GetProgram(GL::Program* out_program, const std::string_view vertex_shader, const std::string_view geometry_shader, const std::string_view fragment_shader)
 {
-	if (!m_shader_cache.GetProgram(out_program, vertex_shader, geometry_shader, fragment_shader))
+	if (!m_shader_cache.GetProgram(out_program, vertex_shader, geometry_shader, fragment_shader, BindAttributes))
 		return false;
 	if (!GLLoader::found_GL_ARB_shading_language_420pack)
 	{
-		out_program->BindUniformBlock("cb20", 1);
-		out_program->BindUniformBlock("cb21", 0);
+		if (!GLLoader::gl2)
+		{
+			out_program->BindUniformBlock("cb20", 1);
+			out_program->BindUniformBlock("cb21", 0);
+		}
 
 		out_program->Bind();
 		out_program->Uniform1i("TextureSampler", 0);
@@ -1695,7 +1740,10 @@ void GSDeviceOGL::OMSetColorMaskState(OMColorMaskSelector sel)
 	{
 		GLState::wrgba = sel.wrgba;
 
-		glColorMaski(0, sel.wr, sel.wg, sel.wb, sel.wa);
+		if (GLLoader::gl2)
+			glColorMask(sel.wr, sel.wg, sel.wb, sel.wa);
+		else
+			glColorMaski(0, sel.wr, sel.wg, sel.wb, sel.wa);
 	}
 }
 

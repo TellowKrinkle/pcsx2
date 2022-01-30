@@ -32,6 +32,7 @@ namespace GLLoader
 {
 	bool check_gl_requirements();
 
+	extern bool gl2;
 	extern bool vendor_id_amd;
 	extern bool vendor_id_nvidia;
 	extern bool vendor_id_intel;

@@ -137,6 +137,7 @@ namespace Emulate_DSA
 
 namespace GLLoader
 {
+	bool gl2 = false;
 	bool vendor_id_amd = false;
 	bool vendor_id_nvidia = false;
 	bool vendor_id_intel = false;
@@ -216,31 +217,51 @@ namespace GLLoader
 
 		GLint major_gl = 0;
 		GLint minor_gl = 0;
-		glGetIntegerv(GL_MAJOR_VERSION, &major_gl);
-		glGetIntegerv(GL_MINOR_VERSION, &minor_gl);
+		sscanf(reinterpret_cast<const char*>(glGetString(GL_VERSION)), "%d.%d", &major_gl, &minor_gl);
 		if ((major_gl < major) || (major_gl == major && minor_gl < minor))
 		{
 			Host::ReportFormattedErrorAsync("GS", "OpenGL %d.%d is not supported. Only OpenGL %d.%d\n was found", major, minor, major_gl, minor_gl);
 			return false;
 		}
+		gl2 = major_gl < 3;
 
 		return true;
 	}
 
 	bool check_gl_supported_extension()
 	{
-		int max_ext = 0;
-		glGetIntegerv(GL_NUM_EXTENSIONS, &max_ext);
-		for (GLint i = 0; i < max_ext; i++)
+		if (gl2)
 		{
-			std::string ext{(const char*)glGetStringi(GL_EXTENSIONS, i)};
-			GLExtension::Set(ext);
-			//fprintf(stderr, "DEBUG ext: %s\n", ext.c_str());
+			const char* str = reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
+			while (const char* end = strchr(str, ' '))
+			{
+				GLExtension::Set(std::string(str, end));
+				str = end + 1;
+			}
+			if (strlen(str))
+				GLExtension::Set(std::string(str));
+		}
+		else
+		{
+			int max_ext = 0;
+			glGetIntegerv(GL_NUM_EXTENSIONS, &max_ext);
+			for (GLint i = 0; i < max_ext; i++)
+			{
+				std::string ext{(const char*)glGetStringi(GL_EXTENSIONS, i)};
+				GLExtension::Set(ext);
+				//fprintf(stderr, "DEBUG ext: %s\n", ext.c_str());
+			}
 		}
 
 		// Mandatory for both renderer
 		bool ok = true;
 		{
+			if (gl2)
+			{
+				// Extensions that are core as of GL3.3
+				ok = ok && mandatory("GL_ARB_vertex_array_object");
+				ok = ok && mandatory("GL_ARB_sampler_objects");
+			}
 			// GL4.1
 			ok = ok && mandatory("GL_ARB_separate_shader_objects");
 			// GL4.2
@@ -305,7 +326,8 @@ namespace GLLoader
 
 	bool check_gl_requirements()
 	{
-		if (!check_gl_version(3, 3))
+		bool version_ok = GSConfig.UseHardwareRenderer() ? check_gl_version(3, 3) : check_gl_version(2, 1);
+		if (!version_ok)
 			return false;
 
 		if (!check_gl_supported_extension())

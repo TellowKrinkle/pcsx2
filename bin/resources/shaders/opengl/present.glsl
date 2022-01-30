@@ -3,9 +3,15 @@
 
 #ifdef VERTEX_SHADER
 
+#ifdef GL21
+attribute vec2 POSITION;
+attribute vec2 TEXCOORD0;
+attribute vec4 COLOR;
+#else
 layout(location = 0) in vec2 POSITION;
 layout(location = 1) in vec2 TEXCOORD0;
 layout(location = 7) in vec4 COLOR;
+#endif
 
 // FIXME set the interpolation (don't know what dx do)
 // flat means that there is no interpolation. The value given to the fragment shader is based on the provoking vertex conventions.
@@ -46,21 +52,27 @@ in vec4 PSin_p;
 in vec2 PSin_t;
 in vec4 PSin_c;
 
+#ifdef GL21
+#define SV_Target0 gl_FragColor
+#else
 layout(location = 0) out vec4 SV_Target0;
+#endif
 
 vec4 sample_c()
 {
 	return texture(TextureSampler, PSin_t);
 }
 
-vec4 ps_crt(uint i)
+vec4 ps_crt(float i)
 {
-	vec4 mask[4] = vec4[4](
+	vec4 mask[3] = vec4[3]
+    (
 		vec4(1, 0, 0, 0),
 		vec4(0, 1, 0, 0),
-		vec4(0, 0, 1, 0),
-		vec4(1, 1, 1, 0));
-	return sample_c() * clamp((mask[i] + 0.5f), 0.0f, 1.0f);
+		vec4(0, 0, 1, 0)
+    );
+    vec4 masksel = i < 0.25 ? mask[0] : i < 0.5 ? mask[1] : mask[2];
+    return sample_c() * clamp((masksel + 0.5f), 0.0f, 1.0f);
 }
 
 #ifdef ps_copy
@@ -71,7 +83,7 @@ void ps_copy()
 #endif
 
 #ifdef ps_filter_scanlines
-vec4 ps_scanlines(uint i)
+vec4 ps_scanlines(float i)
 {
 	vec4 mask[2] =
 	vec4[](
@@ -79,14 +91,13 @@ vec4 ps_scanlines(uint i)
 		vec4(0, 0, 0, 0)
 	);
 
-	return sample_c() * clamp((mask[i] + 0.5f), 0.0f, 1.0f);
+	vec4 masksel = i < 0.5f ? mask[0] : mask[1];
+	return sample_c() * clamp((masksel + 0.5f), 0.0f, 1.0f);
 }
 
 void ps_filter_scanlines() // scanlines
 {
-	highp uvec4 p = uvec4(gl_FragCoord);
-
-	vec4 c = ps_scanlines(p.y % 2u);
+	vec4 c = ps_scanlines(fract(gl_FragCoord.y / 2.0f));
 
 	SV_Target0 = c;
 }
@@ -95,9 +106,9 @@ void ps_filter_scanlines() // scanlines
 #ifdef ps_filter_diagonal
 void ps_filter_diagonal() // diagonal
 {
-	highp uvec4 p = uvec4(gl_FragCoord);
+	vec4 p = floor(gl_FragCoord);
 
-	vec4 c = ps_crt((p.x + (p.y % 3u)) % 3u);
+	vec4 c = ps_crt(fract((p.x + p.y) / 3.0f));
 
 	SV_Target0 = c;
 }
@@ -106,9 +117,10 @@ void ps_filter_diagonal() // diagonal
 #ifdef ps_filter_triangular
 void ps_filter_triangular() // triangular
 {
-	highp uvec4 p = uvec4(gl_FragCoord);
+	float y = fract(floor(gl_FragCoord.y / 2.0f) / 2.0f) * 3.0f;
+	float x = gl_FragCoord.x / 2.0f;
 
-	vec4 c = ps_crt(((p.x + ((p.y >> 1u) & 1u) * 3u) >> 1u) % 3u);
+	vec4 c = ps_crt(fract(floor(x + y) / 3.0f));
 
 	SV_Target0 = c;
 }
@@ -117,12 +129,16 @@ void ps_filter_triangular() // triangular
 #ifdef ps_filter_complex
 void ps_filter_complex()
 {
+#ifdef GL21
+	SV_Target0 = sample_c(); // Unsupported
+#else
     const float PI = 3.14159265359f;
     vec2 texdim = vec2(textureSize(TextureSampler, 0));
     float factor = (0.9f - 0.4f * cos(2.0f * PI * PSin_t.y * texdim.y));
     vec4 c =  factor * texture(TextureSampler, vec2(PSin_t.x, (floor(PSin_t.y * texdim.y) + 0.5f) / texdim.y));
 
 	SV_Target0 = c;
+#endif
 }
 #endif
 

@@ -3,9 +3,15 @@
 
 #ifdef VERTEX_SHADER
 
+#ifdef GL21
+attribute vec2 POSITION;
+attribute vec2 TEXCOORD0;
+attribute vec4 COLOR;
+#else
 layout(location = 0) in vec2 POSITION;
 layout(location = 1) in vec2 TEXCOORD0;
 layout(location = 7) in vec4 COLOR;
+#endif
 
 // FIXME set the interpolation (don't know what dx do)
 // flat means that there is no interpolation. The value given to the fragment shader is based on the provoking vertex conventions.
@@ -36,10 +42,14 @@ in vec2 PSin_t;
 in vec4 PSin_c;
 
 // Give a different name so I remember there is a special case!
+#ifdef GL21
+#define SV_Target0 gl_FragColor
+#else
 #if defined(ps_convert_rgba8_16bits) || defined(ps_convert_float32_32bits)
 layout(location = 0) out uint SV_Target1;
 #else
 layout(location = 0) out vec4 SV_Target0;
+#endif
 #endif
 
 vec4 sample_c()
@@ -65,38 +75,55 @@ void ps_depth_copy()
 // Need to be careful with precision here, it can break games like Spider-Man 3 and Dogs Life
 void ps_convert_rgba8_16bits()
 {
+#ifdef GL21
+    SV_Target0 = vec4(0); // HW renderer unsupported
+#else
     highp uvec4 i = uvec4(sample_c() * vec4(255.5f, 255.5f, 255.5f, 255.5f));
 
     SV_Target1 = ((i.x & 0x00F8u) >> 3) | ((i.y & 0x00F8u) << 2) | ((i.z & 0x00f8u) << 7) | ((i.w & 0x80u) << 8);
+#endif
 }
 #endif
 
 #ifdef ps_convert_float32_32bits
 void ps_convert_float32_32bits()
 {
+#ifdef GL21
+    SV_Target0 = vec4(0); // HW renderer unsupported
+#else
     // Convert a GL_FLOAT32 depth texture into a 32 bits UINT texture
     SV_Target1 = uint(exp2(32.0f) * sample_c().r);
+#endif
 }
 #endif
 
 #ifdef ps_convert_float32_rgba8
 void ps_convert_float32_rgba8()
 {
+#ifdef GL21
+    SV_Target0 = vec4(0); // HW renderer unsupported
+#else
     // Convert a GL_FLOAT32 depth texture into a RGBA color texture
     uint d = uint(sample_c().r * exp2(32.0f));
     SV_Target0 = vec4(uvec4((d & 0xFFu), ((d >> 8) & 0xFFu), ((d >> 16) & 0xFFu), (d >> 24))) / vec4(255.0);
+#endif
 }
 #endif
 
 #ifdef ps_convert_float16_rgb5a1
 void ps_convert_float16_rgb5a1()
 {
+#ifdef GL21
+    SV_Target0 = vec4(0); // HW renderer unsupported
+#else
     // Convert a GL_FLOAT32 (only 16 lsb) depth into a RGB5A1 color texture
     uint d = uint(sample_c().r * exp2(32.0f));
     SV_Target0 = vec4(uvec4((d & 0x1Fu), ((d >> 5) & 0x1Fu), ((d >> 10) & 0x1Fu), (d >> 15) & 0x01u)) / vec4(32.0f, 32.0f, 32.0f, 1.0f);
+#endif
 }
 #endif
 
+#ifndef GL21
 float rgba8_to_depth32(vec4 unorm)
 {
     uvec4 c = uvec4(unorm * vec4(255.5f));
@@ -120,43 +147,64 @@ float rgb5a1_to_depth16(vec4 unorm)
     uvec4 c = uvec4(unorm * vec4(255.5f));
     return float(((c.r & 0xF8u) >> 3) | ((c.g & 0xF8u) << 2) | ((c.b & 0xF8u) << 7) | ((c.a & 0x80u) << 8)) * exp2(-32.0f);
 }
+#endif // GL21
 
 #ifdef ps_convert_rgba8_float32
 void ps_convert_rgba8_float32()
 {
+#ifdef GL21
+    gl_FragDepth = 0; // HW renderer unsupported
+#else
     // Convert an RGBA texture into a float depth texture
     gl_FragDepth = rgba8_to_depth32(sample_c());
+#endif
 }
 #endif
 
 #ifdef ps_convert_rgba8_float24
 void ps_convert_rgba8_float24()
 {
+#ifdef GL21
+    gl_FragDepth = 0; // HW renderer unsupported
+#else
     // Same as above but without the alpha channel (24 bits Z)
 
     // Convert an RGBA texture into a float depth texture
     gl_FragDepth = rgba8_to_depth24(sample_c());
+#endif
 }
 #endif
 
 #ifdef ps_convert_rgba8_float16
 void ps_convert_rgba8_float16()
 {
+#ifdef GL21
+    gl_FragDepth = 0; // HW renderer unsupported
+#else
     // Same as above but without the A/B channels (16 bits Z)
 
     // Convert an RGBA texture into a float depth texture
     gl_FragDepth = rgba8_to_depth16(sample_c());
+#endif
 }
 #endif
 
 #ifdef ps_convert_rgb5a1_float16
 void ps_convert_rgb5a1_float16()
 {
+#ifdef GL21
+    gl_FragDepth = 0; // HW renderer unsupported
+#else
     // Convert an RGB5A1 (saved as RGBA8) color to a 16 bit Z
     gl_FragDepth = rgb5a1_to_depth16(sample_c());
+#endif
 }
 #endif
 
+#ifdef GL21
+#define SAMPLE_RGBA_DEPTH_BILN(CONVERT_FN) \
+    gl_FragDepth = 0; // HW renderer unsupported
+#else
 #define SAMPLE_RGBA_DEPTH_BILN(CONVERT_FN) \
     ivec2 dims = textureSize(TextureSampler, 0); \
     vec2 top_left_f = PSin_t * vec2(dims) - 0.5f; \
@@ -168,6 +216,7 @@ void ps_convert_rgb5a1_float16()
     float depthBL = CONVERT_FN(texelFetch(TextureSampler, coords.xw, 0)); \
     float depthBR = CONVERT_FN(texelFetch(TextureSampler, coords.zw, 0)); \
     gl_FragDepth = mix(mix(depthTL, depthTR, mix_vals.x), mix(depthBL, depthBR, mix_vals.x), mix_vals.y);
+#endif
 
 #ifdef ps_convert_rgba8_float32_biln
 void ps_convert_rgba8_float32_biln()
@@ -208,6 +257,9 @@ void ps_convert_rgb5a1_float16_biln()
 #ifdef ps_convert_rgba_8i
 void ps_convert_rgba_8i()
 {
+#ifdef GL21
+    SV_Target0 = vec4(0); // Unsupported
+#else
     // Convert a RGBA texture into a 8 bits packed texture
     // Input column: 8x2 RGBA pixels
     // 0: 8 RGBA
@@ -239,6 +291,7 @@ void ps_convert_rgba_8i()
     vec2  sel0 = (pos.y & 2u) == 0u ? pixel.rb : pixel.ga;
     float sel1 = (pos.x & 8u) == 0u ? sel0.x : sel0.y;
     SV_Target0 = vec4(sel1);
+#endif
 }
 #endif
 
@@ -284,8 +337,12 @@ void ps_hdr_init()
 #ifdef ps_hdr_resolve
 void ps_hdr_resolve()
 {
+#ifdef GL21 // HW Renderer unsupported
+    SV_Target0 = vec4(0);
+#else
     vec4 value = sample_c();
     SV_Target0 = vec4(vec3(uvec3(value.rgb * 65535.0f) & 255u) / 255.0f, value.a);
+#endif
 }
 #endif
 
@@ -308,35 +365,23 @@ void ps_yuv()
     float Cr = float(0xE0)/255.0f * yuv.y + float(0x80)/255.0f;
     float Cb = float(0xE0)/255.0f * yuv.z + float(0x80)/255.0f;
 
-    switch(EMOD.x) {
-        case 0:
-            o.a = i.a;
-            break;
-        case 1:
-            o.a = Y;
-            break;
-        case 2:
-            o.a = Y/2.0f;
-            break;
-        case 3:
-            o.a = 0.0f;
-            break;
-    }
+    if (EMOD.x == 0)
+        o.a = i.a;
+    else if (EMOD.x == 1)
+        o.a = Y;
+    else if (EMOD.x == 2)
+        o.a = Y/2.0f;
+    else
+        o.a = 0.0f;
 
-    switch(EMOD.y) {
-        case 0:
-            o.rgb = i.rgb;
-            break;
-        case 1:
-            o.rgb = vec3(Y);
-            break;
-        case 2:
-            o.rgb = vec3(Y, Cb, Cr);
-            break;
-        case 3:
-            o.rgb = vec3(i.a);
-            break;
-    }
+    if (EMOD.y == 0)
+        o.rgb = i.rgb;
+    else if (EMOD.y == 1)
+        o.rgb = vec3(Y);
+    else if (EMOD.y == 2)
+        o.rgb = vec3(Y, Cb, Cr);
+    else
+        o.rgb = vec3(i.a);
 
     SV_Target0 = o;
 }

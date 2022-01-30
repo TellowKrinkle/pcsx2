@@ -173,6 +173,7 @@ namespace GL
 			{Profile::Core, 3, 2},
 			{Profile::Core, 3, 1},
 			{Profile::Core, 3, 0},
+			{Profile::NoProfile, 2, 1},
 			{Profile::ES, 3, 2},
 			{Profile::ES, 3, 1},
 			{Profile::ES, 3, 0},

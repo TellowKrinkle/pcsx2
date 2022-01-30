@@ -8,20 +8,29 @@ in vec4 PSin_c;
 
 uniform vec4 ZrH;
 
+#ifdef GL21
+#define const
+#define SV_Target0 gl_FragColor
+#else
 layout(location = 0) out vec4 SV_Target0;
+#endif
 
 
 // Weave shader
 void ps_main0()
 {
+#ifdef GL21
+	if (fract(trunc(gl_FragCoord.y) * 0.5f) != fract(trunc(ZrH.x) * 0.5f))
+		discard;
+#else
 	const int idx   = int(ZrH.x);          // buffer index passed from CPU
 	const int field = idx & 1;             // current field
 	const int vpos  = int(gl_FragCoord.y); // vertical position of destination texture
 
-	if ((vpos & 1) == field)
-		SV_Target0 = texture(TextureSampler, PSin_t);
-	else
+	if ((vpos & 1) != field)
 		discard;
+#endif
+	SV_Target0 = texture(TextureSampler, PSin_t);
 }
 
 
@@ -54,12 +63,20 @@ void ps_main3()
 	// causing the wrong lines to be discarded, so a vertical offset (lofs) is added to the vertical
 	// position of the destination texture to force the proper field alignment
 
+#ifdef GL21
+	const float idx   = ZrH.x;
+	const float bank  = trunc(idx * 0.5f);
+	const float field = fract(idx * 0.5f);
+	const float vres  = trunc(ZrH.z * 0.5f);
+	const float vpos  = trunc(gl_FragCoord.y > vres ? gl_FragCoord.y - vres : gl_FragCoord.y);
+#else
 	const int  idx    = int(ZrH.x);                                // buffer index passed from CPU
 	const int  bank   = idx >> 1;                                  // current bank
 	const int  field  = idx & 1;                                   // current field
 	const int  vres   = int(ZrH.z) >> 1;                           // vertical resolution of source texture
 	const int  lofs   = ((((vres + 1) >> 1) << 1) - vres) & bank;  // line alignment offset for bank 1
 	const int  vpos   = int(gl_FragCoord.y) + lofs;                // vertical position of destination texture
+#endif
 	const vec2 bofs   = vec2(0.0f, 0.5f * bank);                   // vertical offset of the current bank relative to source texture size
 	const vec2 vscale = vec2(1.0f, 2.0f);                          // scaling factor from source to destination texture
 	const vec2 optr   = PSin_t - bofs;                             // used to check if the current destination line is within the current bank
@@ -67,10 +84,14 @@ void ps_main3()
 
 	// if the index of current destination line belongs to the current fiels we update it, otherwise
 	// we leave the old line in the destination buffer
-	if ((optr.y >= 0.0f) && (optr.y < 0.5f) && ((vpos & 1) == field))
-		SV_Target0 = texture(TextureSampler, iptr);
-	else
+#ifdef GL21
+	if (!((optr.y >= 0.0f) && (optr.y < 0.5f) && fract(vpos * 0.5f) == field))
 		discard;
+#else
+	if (!((optr.y >= 0.0f) && (optr.y < 0.5f) && ((vpos & 1) == field)))
+		discard;
+#endif
+	SV_Target0 = texture(TextureSampler, iptr);
 }
 
 
@@ -79,10 +100,17 @@ void ps_main4()
 {
 	// we use the contents of the MAD frame buffer to reconstruct the missing lines from the current field.
 
+#ifdef GL21
+	const float idx          = ZrH.x;
+	const float bank         = trunc(idx * 0.5f);
+	const float field        = fract(idx * 0.5f);
+	const float vpos         = trunc(gl_FragCoord.y);
+#else
 	const int   idx          = int(ZrH.x);                         // buffer index passed from CPU
 	const int   bank         = idx >> 1;                           // current bank
 	const int   field        = idx & 1;                            // current field
 	const int   vpos         = int(gl_FragCoord.y);                // vertical position of destination texture
+#endif
 	const float sensitivity  = ZrH.w;                              // passed from CPU, higher values mean more likely to use weave
 	const vec3  motion_thr   = vec3(1.0, 1.0, 1.0) * sensitivity;  //
 	const vec2  bofs         = vec2(0.0f, 0.5f);                   // position of the bank 1 relative to source texture size
@@ -95,34 +123,39 @@ void ps_main4()
 	vec2 p_t2; // pointer to current pixel (missing or not) from two frames back
 	vec2 p_t3; // pointer to current pixel (missing or not) from three frames back
 
-	switch (idx)
+	if (idx < 2)
 	{
-		case 0:
+		if (idx < 1)
+		{
 			p_t0 = iptr;
 			p_t1 = iptr + bofs;
 			p_t2 = iptr + bofs;
 			p_t3 = iptr;
-			break;
-		case 1:
+		}
+		else
+		{
 			p_t0 = iptr;
 			p_t1 = iptr;
 			p_t2 = iptr + bofs;
 			p_t3 = iptr + bofs;
-			break;
-		case 2:
+		}
+	}
+	else
+	{
+		if (idx < 3)
+		{
 			p_t0 = iptr + bofs;
 			p_t1 = iptr;
 			p_t2 = iptr;
 			p_t3 = iptr + bofs;
-			break;
-		case 3:
+		}
+		else
+		{
 			p_t0 = iptr + bofs;
 			p_t1 = iptr + bofs;
 			p_t2 = iptr;
 			p_t3 = iptr;
-			break;
-		default:
-			break;
+		}
 	}
 
 
@@ -158,7 +191,11 @@ void ps_main4()
 
 	// selecting deinterlacing output
 	
+#ifdef GL21
+	if (fract(vpos * 0.5f) == field)
+#else
 	if ((vpos & 1) == field)
+#endif
 	{
 		// output coordinate present on current field
 		SV_Target0 = texture(TextureSampler, p_t0);

@@ -170,8 +170,10 @@ const char* OpenGLHostDisplay::GetGLSLVersionString() const
 	{
 		if (GLAD_GL_VERSION_3_3)
 			return "#version 330";
-		else
+		else if (GLAD_GL_VERSION_3_0)
 			return "#version 130";
+		else
+			return "#version 120";
 	}
 }
 

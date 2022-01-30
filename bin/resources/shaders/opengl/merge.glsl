@@ -8,7 +8,11 @@ in vec4 PSin_c;
 
 uniform vec4 BGColor;
 
+#ifdef GL21
+#define SV_Target0 gl_FragColor
+#else
 layout(location = 0) out vec4 SV_Target0;
+#endif
 
 void ps_main0()
 {
