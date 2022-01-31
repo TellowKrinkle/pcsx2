@@ -359,5 +359,6 @@ bool i18n_SetLanguage( wxLanguage wxLangId, const wxString& langCode )
 // This method sets the lookup path to search l10n files
 void i18n_SetLanguagePath()
 {
+	Console.WriteLn("Adding locale lookup path %s", WX_STR(PathDefs::GetLangs().ToString()));
 	wxLocale::AddCatalogLookupPathPrefix(PathDefs::GetLangs().ToString());
 }
