@@ -361,4 +361,6 @@ void i18n_SetLanguagePath()
 {
 	Console.WriteLn("Adding locale lookup path %s", WX_STR(PathDefs::GetLangs().ToString()));
 	wxLocale::AddCatalogLookupPathPrefix(PathDefs::GetLangs().ToString());
+	Console.WriteLn("Adding locale lookup path %s", WX_STR(PathDefs::GetLangs().MakeRelativeTo().ToString()));
+	wxLocale::AddCatalogLookupPathPrefix(PathDefs::GetLangs().MakeRelativeTo().ToString());
 }
