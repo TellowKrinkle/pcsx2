@@ -77,6 +77,8 @@ static void i18n_DoPackageCheck( wxLanguage wxLangId, LangPackList& langs, bool&
 	valid_stat = false;
 	if( i18n_IsLegacyLanguageId( wxLangId ) ) return;
 
+	bool log = wxLog::EnableLogging();
+
 	// note: wx preserves the current locale for us, so creating a new locale and deleting
 	// will not affect program status.
 	std::unique_ptr<wxLocale> locale(new wxLocale(wxLangId, 0));
@@ -91,6 +93,8 @@ static void i18n_DoPackageCheck( wxLanguage wxLangId, LangPackList& langs, bool&
 		langs.push_back( LangPackEnumeration( wxLangId ) );
 		valid_stat = true;
 	}
+
+	wxLog::EnableLogging(log);
 }
 
 // Finds all valid PCSX2 language packs, and enumerates them for configuration selection.
