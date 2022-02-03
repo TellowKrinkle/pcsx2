@@ -961,20 +961,20 @@ void GSDeviceMTL::DoStretchRect(GSTexture* sTex, const GSVector4& sRect, GSTextu
 	else
 		enc = &BeginRenderPass(dT, action, nullptr, MTLLoadActionDontCare);
 
-	enc->ClearScissor();
+	MREClearScissor();
 	DepthStencilSelector dsel;
 	dsel.ztst = ZTST_ALWAYS;
 	dsel.zwe = dT->GetFormat() == GSTexture::Format::DepthStencil;
-	SetDSS(*enc, dsel);
+	MRESetDSS(dsel);
 
 	[enc->encoder setLabel:@"StretchRect"];
-	enc->SetPipeline(pipeline);
-	SetTexture(*enc, sT, GSMTLTextureIndexNonHW);
+	MRESetPipeline(pipeline);
+	MRESetTexture(sT, GSMTLTextureIndexNonHW);
 
 	if (frag_uniform && frag_uniform_len)
 		[enc->encoder setFragmentBytes:frag_uniform length:frag_uniform_len atIndex:GSMTLBufferIndexUniforms];
 
-	SetSampler(*enc, linear ? SamplerSelector::Linear() : SamplerSelector::Point());
+	MRESetSampler(linear ? SamplerSelector::Linear() : SamplerSelector::Point());
 
 	DrawStretchRect(sRect, dRect, ds);
 
@@ -1007,9 +1007,9 @@ void GSDeviceMTL::DrawStretchRect(const GSVector4& sRect, const GSVector4& dRect
 void GSDeviceMTL::RenderCopy(GSTexture* sTex, id<MTLRenderPipelineState> pipeline, const GSVector4i& rect)
 {
 	// FS Triangle encoder uses vertex ID alone to make a FS triangle, which we then scissor to the desired rectangle
-	m_current_render.SetScissor(rect);
-	m_current_render.SetPipeline(pipeline);
-	SetTexture(m_current_render, sTex, GSMTLTextureIndexNonHW);
+	MRESetScissor(rect);
+	MRESetPipeline(pipeline);
+	MRESetTexture(sTex, GSMTLTextureIndexNonHW);
 	[m_current_render.encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
 	g_perfmon.Put(GSPerfMon::DrawCalls, 1);
 }
@@ -1057,19 +1057,20 @@ void GSDeviceMTL::FlushClears(GSTexture* tex)
 		static_cast<GSTextureMTL*>(tex)->FlushClears();
 }
 
-// MARK: - MainRenderEncoder setters
+// MARK: - MainRenderEncoder Operations
 
-void GSDeviceMTL::SetHWPipelineState(MainRenderEncoder& enc, GSHWDrawConfig::VSSelector vssel, GSHWDrawConfig::PSSelector pssel, PipelineSelectorExtrasMTL extras)
+void GSDeviceMTL::MRESetHWPipelineState(GSHWDrawConfig::VSSelector vssel, GSHWDrawConfig::PSSelector pssel, GSHWDrawConfig::BlendState blend, GSHWDrawConfig::ColorMaskSelector cms)
 {
+	PipelineSelectorExtrasMTL extras(blend, m_current_render.color_target, cms, m_current_render.depth_target, m_current_render.stencil_target);
 	PipelineSelectorMTL fullsel(vssel, pssel, extras);
-	if (enc.has_pipeline_sel && fullsel == enc.pipeline_sel)
+	if (m_current_render.has.pipeline_sel && fullsel == m_current_render.pipeline_sel)
 		return;
 	auto idx = m_hw_pipeline.find(fullsel);
 	if (idx != m_hw_pipeline.end())
 	{
-		[enc.encoder setRenderPipelineState:idx->second];
-		enc.pipeline_sel = fullsel;
-		enc.has_pipeline_sel = true;
+		[m_current_render.encoder setRenderPipelineState:idx->second];
+		m_current_render.pipeline_sel = fullsel;
+		m_current_render.has.pipeline_sel = true;
 		return;
 	}
 
@@ -1155,25 +1156,30 @@ void GSDeviceMTL::SetHWPipelineState(MainRenderEncoder& enc, GSHWDrawConfig::VSS
 	id<MTLRenderPipelineState> pipeline = MakePipeline(pdesc, vs, ps, [NSString stringWithFormat:@"HW Render %llx", pssel.key]);
 	m_hw_pipeline.insert(std::make_pair(fullsel, pipeline));
 
-	[enc.encoder setRenderPipelineState:pipeline];
+	[m_current_render.encoder setRenderPipelineState:pipeline];
 }
 
-void GSDeviceMTL::SetDSS(MainRenderEncoder& enc, DepthStencilSelector sel)
+void GSDeviceMTL::MRESetDSS(DepthStencilSelector sel)
 {
-	if (enc.has_depth_sel && enc.depth_sel.key == sel.key)
+	if (!m_current_render.depth_target || m_current_render.depth_sel.key == sel.key)
 		return;
-	[enc.encoder setDepthStencilState:m_dss_hw[sel.key]];
-	enc.depth_sel = sel;
-	enc.has_depth_sel = true;
+	[m_current_render.encoder setDepthStencilState:m_dss_hw[sel.key]];
+	m_current_render.depth_sel = sel;
 }
 
-void GSDeviceMTL::SetSampler(MainRenderEncoder& enc, SamplerSelector sel)
+void GSDeviceMTL::MRESetDSS(id<MTLDepthStencilState> dss)
 {
-	if (enc.has_sampler && enc.sampler_sel.key == sel.key)
+	[m_current_render.encoder setDepthStencilState:dss];
+	m_current_render.depth_sel.key = -1;
+}
+
+void GSDeviceMTL::MRESetSampler(SamplerSelector sel)
+{
+	if (m_current_render.has.sampler && m_current_render.sampler_sel.key == sel.key)
 		return;
-	[enc.encoder setFragmentSamplerState:m_sampler_hw[sel.key] atIndex:0];
-	enc.sampler_sel = sel;
-	enc.has_sampler = true;
+	[m_current_render.encoder setFragmentSamplerState:m_sampler_hw[sel.key] atIndex:0];
+	m_current_render.sampler_sel = sel;
+	m_current_render.has.sampler = true;
 }
 
 static void textureBarrier(id<MTLRenderCommandEncoder> enc)
@@ -1187,106 +1193,97 @@ static void textureBarrier(id<MTLRenderCommandEncoder> enc)
 	}
 }
 
-void GSDeviceMTL::SetTexture(MainRenderEncoder& enc, GSTexture* tex, int pos)
+void GSDeviceMTL::MRESetTexture(GSTexture* tex, int pos)
 {
-	if (tex == enc.tex[pos])
+	if (tex == m_current_render.tex[pos])
 		return;
-	enc.tex[pos] = tex;
+	m_current_render.tex[pos] = tex;
 	if (GSTextureMTL* mtex = static_cast<GSTextureMTL*>(tex))
 	{
-		[enc.encoder setFragmentTexture:mtex->GetTexture() atIndex:pos];
+		[m_current_render.encoder setFragmentTexture:mtex->GetTexture() atIndex:pos];
 		mtex->m_last_read = m_current_draw;
 	}
 }
 
-void GSDeviceMTL::MainRenderEncoder::SetVertices(id<MTLBuffer> buffer, size_t offset)
+void GSDeviceMTL::MRESetVertices(id<MTLBuffer> buffer, size_t offset)
 {
-	if (vertex_buffer != (__bridge void*)buffer)
+	if (m_current_render.vertex_buffer != (__bridge void*)buffer)
 	{
-		vertex_buffer = (__bridge void*)buffer;
-		[encoder setVertexBuffer:buffer offset:offset atIndex:GSMTLBufferIndexHWVertices];
+		m_current_render.vertex_buffer = (__bridge void*)buffer;
+		[m_current_render.encoder setVertexBuffer:buffer offset:offset atIndex:GSMTLBufferIndexHWVertices];
 	}
 	else
 	{
-		[encoder setVertexBufferOffset:offset atIndex:GSMTLBufferIndexHWVertices];
+		[m_current_render.encoder setVertexBufferOffset:offset atIndex:GSMTLBufferIndexHWVertices];
 	}
 }
 
-void GSDeviceMTL::MainRenderEncoder::SetScissor(const GSVector4i& scissor)
+void GSDeviceMTL::MRESetScissor(const GSVector4i& scissor)
 {
-	if (has_scissor && (this->scissor == scissor).alltrue())
+	if (m_current_render.has.scissor && (m_current_render.scissor == scissor).alltrue())
 		return;
 	MTLScissorRect r;
 	r.x = scissor.x;
 	r.y = scissor.y;
 	r.width = scissor.width();
 	r.height = scissor.height();
-	[encoder setScissorRect:r];
-	this->scissor = scissor;
-	has_scissor = true;
+	[m_current_render.encoder setScissorRect:r];
+	m_current_render.scissor = scissor;
+	m_current_render.has.scissor = true;
 }
 
-void GSDeviceMTL::MainRenderEncoder::ClearScissor()
+void GSDeviceMTL::MREClearScissor()
 {
-	if (!has_scissor)
+	if (!m_current_render.has.scissor)
 		return;
-	has_scissor = false;
+	m_current_render.has.scissor = false;
 	GSVector4i size = GSVector4i(0);
-	if (color_target)   size = size.max_u32(GSVector4i(color_target  ->GetSize()));
-	if (depth_target)   size = size.max_u32(GSVector4i(depth_target  ->GetSize()));
-	if (stencil_target) size = size.max_u32(GSVector4i(stencil_target->GetSize()));
+	if (m_current_render.color_target)   size = size.max_u32(GSVector4i(m_current_render.color_target  ->GetSize()));
+	if (m_current_render.depth_target)   size = size.max_u32(GSVector4i(m_current_render.depth_target  ->GetSize()));
+	if (m_current_render.stencil_target) size = size.max_u32(GSVector4i(m_current_render.stencil_target->GetSize()));
 	MTLScissorRect r;
 	r.x = 0;
 	r.y = 0;
 	r.width = size.x;
 	r.height = size.y;
-	[encoder setScissorRect:r];
+	[m_current_render.encoder setScissorRect:r];
 }
 
-void GSDeviceMTL::MainRenderEncoder::SetCB(const GSHWDrawConfig::VSConstantBuffer& cb)
+void GSDeviceMTL::MRESetCB(const GSHWDrawConfig::VSConstantBuffer& cb)
 {
-	if (has_cb_vs && cb_vs == cb)
+	if (m_current_render.has.cb_vs && m_current_render.cb_vs == cb)
 		return;
-	[encoder setVertexBytes:&cb length:sizeof(cb) atIndex:GSMTLBufferIndexHWUniforms];
-	has_cb_vs = true;
-	cb_vs = cb;
+	[m_current_render.encoder setVertexBytes:&cb length:sizeof(cb) atIndex:GSMTLBufferIndexHWUniforms];
+	m_current_render.has.cb_vs = true;
+	m_current_render.cb_vs = cb;
 }
 
-void GSDeviceMTL::MainRenderEncoder::SetCB(const GSHWDrawConfig::PSConstantBuffer& cb)
+void GSDeviceMTL::MRESetCB(const GSHWDrawConfig::PSConstantBuffer& cb)
 {
-	if (has_cb_ps && cb_ps == cb)
+	if (m_current_render.has.cb_ps && m_current_render.cb_ps == cb)
 		return;
-	[encoder setFragmentBytes:&cb length:sizeof(cb) atIndex:GSMTLBufferIndexHWUniforms];
-	has_cb_ps = true;
-	cb_ps = cb;
+	[m_current_render.encoder setFragmentBytes:&cb length:sizeof(cb) atIndex:GSMTLBufferIndexHWUniforms];
+	m_current_render.has.cb_ps = true;
+	m_current_render.cb_ps = cb;
 }
 
-void GSDeviceMTL::MainRenderEncoder::SetBlendColor(u8 color)
+void GSDeviceMTL::MRESetBlendColor(u8 color)
 {
-	if (has_blend_color && blend_color == color)
+	if (m_current_render.has.blend_color && m_current_render.blend_color == color)
 		return;
 	float fc = static_cast<float>(color) / 128.f;
-	[encoder setBlendColorRed:fc green:fc blue:fc alpha:fc];
-	has_blend_color = true;
-	blend_color = color;
+	[m_current_render.encoder setBlendColorRed:fc green:fc blue:fc alpha:fc];
+	m_current_render.has.blend_color = true;
+	m_current_render.blend_color = color;
 }
 
-void GSDeviceMTL::MainRenderEncoder::SetPipeline(id<MTLRenderPipelineState> pipe)
+void GSDeviceMTL::MRESetPipeline(id<MTLRenderPipelineState> pipe)
 {
-	if (!has_pipeline_sel && pipeline == (__bridge void*)pipe)
+	if (!m_current_render.has.pipeline_sel && m_current_render.pipeline == (__bridge void*)pipe)
 		return;
-	pipeline = (__bridge void*)pipe;
-	[encoder setRenderPipelineState:pipe];
-	has_pipeline_sel = false;
-}
-
-void GSDeviceMTL::MainRenderEncoder::SetDepth(id<MTLDepthStencilState> dss)
-{
-	if (!has_depth_sel && depth == (__bridge void*)dss)
-		return;
-	depth = (__bridge void*)dss;
-	[encoder setDepthStencilState:dss];
-	has_depth_sel = false;
+	m_current_render.pipeline = (__bridge void*)pipe;
+	[m_current_render.encoder setRenderPipelineState:pipe];
+	m_current_render.has.pipeline_sel = false;
 }
 
 // MARK: - HW Render
@@ -1328,10 +1325,10 @@ void GSDeviceMTL::SetupDestinationAlpha(GSTexture* rt, GSTexture* ds, const GSVe
 	FlushClears(rt);
 	GSTextureMTL* mds = static_cast<GSTextureMTL*>(ds);
 	mds->RequestStencilClear(0);
-	auto& enc = BeginRenderPass(nullptr, MTLLoadActionDontCare, nullptr, MTLLoadActionDontCare, ds, MTLLoadActionLoad);
-	[enc.encoder setLabel:@"Destination Alpha Setup"];
-	enc.SetDepth(m_dss_destination_alpha);
-	[enc.encoder setStencilReferenceValue:1];
+	BeginRenderPass(nullptr, MTLLoadActionDontCare, nullptr, MTLLoadActionDontCare, ds, MTLLoadActionLoad);
+	[m_current_render.encoder setLabel:@"Destination Alpha Setup"];
+	MRESetDSS(m_dss_destination_alpha);
+	[m_current_render.encoder setStencilReferenceValue:1];
 	RenderCopy(rt, m_datm_pipeline[datm], r);
 	EndScene();
 }
@@ -1390,29 +1387,28 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 	FlushClears(config.tex);
 	FlushClears(config.pal);
 
-	auto& enc = BeginRenderPass(rt, MTLLoadActionLoad, config.ds, MTLLoadActionLoad, stencil, MTLLoadActionLoad);
-	id<MTLRenderCommandEncoder> mtlenc = enc.encoder;
+	BeginRenderPass(rt, MTLLoadActionLoad, config.ds, MTLLoadActionLoad, stencil, MTLLoadActionLoad);
+	id<MTLRenderCommandEncoder> mtlenc = m_current_render.encoder;
 	[mtlenc setLabel:@"RenderHW"];
-	enc.SetScissor(config.scissor);
-	SetTexture(enc, config.tex,     GSMTLTextureIndexTex);
-	SetTexture(enc, config.pal,     GSMTLTextureIndexPalette);
+	MRESetScissor(config.scissor);
+	MRESetTexture(config.tex, GSMTLTextureIndexTex);
+	MRESetTexture(config.pal, GSMTLTextureIndexPalette);
 	if (config.require_one_barrier || config.require_full_barrier)
-		SetTexture(enc, config.rt, GSMTLTextureIndexRenderTarget);
-	SetSampler(enc, config.sampler);
+		MRESetTexture(config.rt, GSMTLTextureIndexRenderTarget);
+	MRESetSampler(config.sampler);
 	if (config.blend.index && config.blend.is_constant)
-		enc.SetBlendColor(config.blend.factor);
-	PipelineSelectorExtrasMTL sel(config.blend, rt, config.colormask, config.ds, stencil);
-	SetHWPipelineState(enc, config.vs, config.ps, sel);
-	SetDSS(enc, config.depth);
+		MRESetBlendColor(config.blend.factor);
+	MRESetHWPipelineState(config.vs, config.ps, config.blend, config.colormask);
+	MRESetDSS(config.depth);
 
-	enc.SetCB(config.cb_vs);
-	enc.SetCB(config.cb_ps);
+	MRESetCB(config.cb_vs);
+	MRESetCB(config.cb_ps);
 
 	size_t vertsize = config.nverts * sizeof(*config.verts);
 	size_t idxsize = config.nindices * sizeof(*config.indices);
 	Map allocation = Allocate(m_vertex_upload_buf, vertsize + idxsize);
 
-	enc.SetVertices(allocation.gpu_buffer, allocation.gpu_offset);
+	MRESetVertices(allocation.gpu_buffer, allocation.gpu_offset);
 	memcpy(allocation.cpu_buffer, config.verts, vertsize);
 	memcpy(static_cast<u8*>(allocation.cpu_buffer) + vertsize, config.indices, idxsize);
 
@@ -1428,11 +1424,10 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 		if (config.alpha_second_pass.ps_aref != config.cb_ps.FogColor_AREF.a)
 		{
 			config.cb_ps.FogColor_AREF.a = config.alpha_second_pass.ps_aref;
-			enc.SetCB(config.cb_ps);
+			MRESetCB(config.cb_ps);
 		}
-		sel = PipelineSelectorExtrasMTL(config.blend, rt, config.alpha_second_pass.colormask, config.ds, stencil);
-		SetHWPipelineState(enc, config.vs, config.alpha_second_pass.ps, sel);
-		SetDSS(enc, config.alpha_second_pass.depth);
+		MRESetHWPipelineState(config.vs, config.alpha_second_pass.ps, config.blend, config.alpha_second_pass.colormask);
+		MRESetDSS(config.alpha_second_pass.depth);
 		SendHWDraw(config, mtlenc, allocation.gpu_buffer, allocation.gpu_offset + vertsize);
 	}
 
