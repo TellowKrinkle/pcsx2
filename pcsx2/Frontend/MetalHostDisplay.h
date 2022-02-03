@@ -31,13 +31,13 @@
 
 class MetalHostDisplay final : public HostDisplay
 {
-	NSView* m_view;
-	CAMetalLayer* m_layer;
+	MRCOwned<NSView*> m_view;
+	MRCOwned<CAMetalLayer*> m_layer;
 	GSMTLDevice m_dev;
-	id<MTLCommandQueue> m_queue;
-	id<MTLTexture> m_font_tex;
-	id<CAMetalDrawable> m_current_drawable;
-	MTLRenderPassDescriptor* m_pass_desc;
+	MRCOwned<id<MTLCommandQueue>> m_queue;
+	MRCOwned<id<MTLTexture>> m_font_tex;
+	MRCOwned<id<CAMetalDrawable>> m_current_drawable;
+	MRCOwned<MTLRenderPassDescriptor*> m_pass_desc;
 	MTLDrawableFetcher m_drawable_fetcher;
 	dispatch_semaphore_t m_gpu_work_sema;
 
@@ -46,6 +46,7 @@ class MetalHostDisplay final : public HostDisplay
 
 public:
 	MetalHostDisplay();
+	~MetalHostDisplay();
 	RenderAPI GetRenderAPI() const override;
 	void* GetRenderDevice() const override;
 	void* GetRenderContext() const override;

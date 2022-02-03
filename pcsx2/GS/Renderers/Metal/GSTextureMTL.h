@@ -22,6 +22,7 @@
 #endif
 
 #ifdef __APPLE__
+#include "common/MRCHelpers.h"
 #include <Metal/Metal.h>
 
 class GSDeviceMTL;
@@ -29,7 +30,7 @@ class GSDeviceMTL;
 class GSTextureMTL : public GSTexture
 {
 	GSDeviceMTL* m_dev;
-	id<MTLTexture> m_texture;
+	MRCOwned<id<MTLTexture>> m_texture;
 	int m_int_shift;
 	bool m_has_mipmaps = false;
 
@@ -45,7 +46,7 @@ class GSTextureMTL : public GSTexture
 public:
 	u64 m_last_read = 0;  ///< Last time this texture was read by a draw
 	u64 m_last_write = 0; ///< Last time this texture was written by a draw
-	GSTextureMTL(GSDeviceMTL* dev, id<MTLTexture> texture, Type type, Format format);
+	GSTextureMTL(GSDeviceMTL* dev, MRCOwned<id<MTLTexture>> texture, Type type, Format format);
 	~GSTextureMTL();
 
 	/// For making fake backbuffers

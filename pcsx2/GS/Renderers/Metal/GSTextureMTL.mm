@@ -18,21 +18,17 @@
 #include "GSDeviceMTL.h"
 #include "GS/GSPerfMon.h"
 
-#if ! __has_feature(objc_arc)
-	#error "Compile this with -fobjc-arc"
-#endif
-
 #ifdef __APPLE__
 
-GSTextureMTL::GSTextureMTL(GSDeviceMTL* dev, id<MTLTexture> texture, Type type, Format format)
+GSTextureMTL::GSTextureMTL(GSDeviceMTL* dev, MRCOwned<id<MTLTexture>> texture, Type type, Format format)
 	: m_dev(dev)
-	, m_texture(texture)
+	, m_texture(std::move(texture))
 {
 	m_type = type;
 	m_format = format;
-	m_size.x = m_texture.width;
-	m_size.y = m_texture.height;
-	m_mipmap_levels = m_texture.mipmapLevelCount;
+	m_size.x = [m_texture width];
+	m_size.y = [m_texture height];
+	m_mipmap_levels = [m_texture mipmapLevelCount];
 
 	switch (format)
 	{

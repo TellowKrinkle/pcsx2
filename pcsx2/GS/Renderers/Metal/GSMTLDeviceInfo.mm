@@ -13,10 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if ! __has_feature(objc_arc)
-	#error "Compile this with -fobjc-arc"
-#endif
-
 #include "GSMTLDeviceInfo.h"
 
 #include "common/Console.h"
@@ -29,35 +25,36 @@ static id<MTLLibrary> loadMainLibrary(id<MTLDevice> dev, NSString* name)
 	return path ? [dev newLibraryWithFile:path error:nullptr] : nullptr;
 }
 
-static id<MTLLibrary> loadMainLibrary(id<MTLDevice> dev)
+static MRCOwned<id<MTLLibrary>> loadMainLibrary(id<MTLDevice> dev)
 {
 	if (@available(macOS 11.0, iOS 14.0, *))
 		if (id<MTLLibrary> lib = loadMainLibrary(dev, @"Metal23"))
-			return lib;
+			return MRCTransfer(lib);
 	if (@available(macOS 10.15, iOS 13.0, *))
 		if (id<MTLLibrary> lib = loadMainLibrary(dev, @"Metal22"))
-			return lib;
+			return MRCTransfer(lib);
 	if (@available(macOS 10.14, iOS 12.0, *))
 		if (id<MTLLibrary> lib = loadMainLibrary(dev, @"Metal21"))
-			return lib;
-	return [dev newDefaultLibrary];
+			return MRCTransfer(lib);
+	return MRCTransfer([dev newDefaultLibrary]);
 }
 
 static GSMTLDevice::MetalVersion detectLibraryVersion(id<MTLLibrary> lib)
 {
 	// These functions are defined in tfx.metal to indicate the metal version used to make the metallib
-	if ([lib newFunctionWithName:@"metal_version_23"])
+	if (MRCTransfer([lib newFunctionWithName:@"metal_version_23"]))
 		return GSMTLDevice::MetalVersion::Metal23;
-	if ([lib newFunctionWithName:@"metal_version_22"])
+	if (MRCTransfer([lib newFunctionWithName:@"metal_version_22"]))
 		return GSMTLDevice::MetalVersion::Metal22;
-	if ([lib newFunctionWithName:@"metal_version_21"])
+	if (MRCTransfer([lib newFunctionWithName:@"metal_version_21"]))
 		return GSMTLDevice::MetalVersion::Metal21;
 	return GSMTLDevice::MetalVersion::Metal20;
 }
 
-GSMTLDevice::GSMTLDevice(id<MTLDevice> dev)
-	: dev(dev)
+GSMTLDevice::GSMTLDevice(MRCOwned<id<MTLDevice>> dev)
 {
+	if (!dev)
+		return;
 	shaders = loadMainLibrary(dev);
 
 	memset(&features, 0, sizeof(features));
@@ -92,6 +89,8 @@ GSMTLDevice::GSMTLDevice(id<MTLDevice> dev)
 	if (@available(macOS 10.15, iOS 13.0, *))
 		if ([dev supportsFamily:MTLGPUFamilyApple3])
 			features.max_texsize = 16384;
+
+	this->dev = std::move(dev);
 }
 
 const char* to_string(GSMTLDevice::MetalVersion ver)

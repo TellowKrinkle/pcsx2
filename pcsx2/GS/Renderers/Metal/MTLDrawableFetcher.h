@@ -19,6 +19,7 @@
 #error "This header is for use with Objective-C++ only.
 #endif
 
+#include "common/MRCHelpers.h"
 #include <mutex>
 #include <condition_variable>
 #include <thread>
@@ -34,12 +35,12 @@ class MTLDrawableFetcher
 	std::thread m_thread;
 	std::mutex m_mtx;
 	std::condition_variable m_cv;
-	_Nullable id<CAMetalDrawable> m_drawable;
+	MRCOwned<_Nullable id<CAMetalDrawable>> m_drawable;
 	bool m_running = false;
-	void Run(CAMetalLayer* _Nonnull layer);
+	void Run(const MRCOwned<CAMetalLayer* _Nonnull>& layer);
 
 public:
-	void Start(CAMetalLayer* _Nonnull layer);
+	void Start(MRCOwned<CAMetalLayer* _Nonnull> layer);
 	void Stop();
-	_Nullable id<CAMetalDrawable> GetIfAvailable();
+	MRCOwned<_Nullable id<CAMetalDrawable>> GetIfAvailable();
 };

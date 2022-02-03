@@ -23,6 +23,7 @@
 
 #include "PCSX2Base.h"
 #include "common/EnumOps.h"
+#include "common/MRCHelpers.h"
 #include <Metal/Metal.h>
 
 struct GSMTLDevice
@@ -45,12 +46,12 @@ struct GSMTLDevice
 		int max_texsize;
 	};
 
-	id<MTLDevice> dev;
-	id<MTLLibrary> shaders;
+	MRCOwned<id<MTLDevice>> dev;
+	MRCOwned<id<MTLLibrary>> shaders;
 	Features features;
 
 	GSMTLDevice() = default;
-	explicit GSMTLDevice(id<MTLDevice> dev);
+	explicit GSMTLDevice(MRCOwned<id<MTLDevice>> dev);
 
 	bool IsOk() const { return dev && shaders; }
 	void Reset()

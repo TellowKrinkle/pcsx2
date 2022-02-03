@@ -19,19 +19,15 @@
 #include "GS/Renderers/Metal/GSDeviceMTL.h"
 #include <imgui.h>
 
-#if ! __has_feature(objc_arc)
-	#error "Compile this with -fobjc-arc"
-#endif
-
 #ifdef __APPLE__
 
 class MetalHostDisplayTexture final : public HostDisplayTexture
 {
-	id<MTLTexture> m_tex;
+	MRCOwned<id<MTLTexture>> m_tex;
 	u32 m_width, m_height;
 public:
-	MetalHostDisplayTexture(id<MTLTexture> tex, u32 width, u32 height)
-		: m_tex(tex)
+	MetalHostDisplayTexture(MRCOwned<id<MTLTexture>> tex, u32 width, u32 height)
+		: m_tex(std::move(tex))
 		, m_width(width)
 		, m_height(height)
 	{
@@ -52,10 +48,16 @@ MetalHostDisplay::MetalHostDisplay()
 {
 }
 
+MetalHostDisplay::~MetalHostDisplay()
+{
+	dispatch_release(m_gpu_work_sema);
+}
+
 HostDisplay::AdapterAndModeList GetMetalAdapterAndModeList()
 { @autoreleasepool {
 	HostDisplay::AdapterAndModeList list;
-	for (id<MTLDevice> dev in MTLCopyAllDevices())
+	auto devs = MRCTransfer(MTLCopyAllDevices());
+	for (id<MTLDevice> dev in devs.Get())
 		list.adapter_names.push_back([[dev name] UTF8String]);
 	return list;
 }}
@@ -83,7 +85,7 @@ bool MetalHostDisplay::HasRenderSurface()  const { return static_cast<bool>(m_la
 void MetalHostDisplay::AttachSurfaceOnMainThread()
 {
 	ASSERT([NSThread isMainThread]);
-	m_view = (__bridge NSView*)m_window_info.window_handle;
+	m_view = MRCRetain((__bridge NSView*)m_window_info.window_handle);
 	[m_view setWantsLayer:YES];
 	[m_view setLayer:m_layer];
 }
@@ -99,33 +101,34 @@ void MetalHostDisplay::DetachSurfaceOnMainThread()
 bool MetalHostDisplay::CreateRenderDevice(const WindowInfo& wi, std::string_view adapter_name, bool threaded_presentation, bool debug_device)
 { @autoreleasepool {
 	m_window_info = wi;
-	pxAssertRel(m_dev.dev == nullptr, "Device already created!");
+	pxAssertRel(!m_dev.dev, "Device already created!");
 	std::string null_terminated_adapter_name(adapter_name);
 	NSString* ns_adapter_name = [NSString stringWithUTF8String:null_terminated_adapter_name.c_str()];
-	for (id<MTLDevice> dev in MTLCopyAllDevices())
+	auto devs = MRCTransfer(MTLCopyAllDevices());
+	for (id<MTLDevice> dev in devs.Get())
 	{
 		if ([[dev name] isEqualToString:ns_adapter_name])
-			m_dev = GSMTLDevice(dev);
+			m_dev = GSMTLDevice(MRCRetain(dev));
 	}
 	if (!m_dev.dev)
 	{
 		if (adapter_name != "Default Adapter")
 			Console.Warning("Metal: Couldn't find adapter %s, using default", null_terminated_adapter_name.c_str());
-		m_dev = GSMTLDevice(MTLCreateSystemDefaultDevice());
+		m_dev = GSMTLDevice(MRCTransfer(MTLCreateSystemDefaultDevice()));
 	}
-	m_queue = [m_dev.dev newCommandQueue];
+	m_queue = MRCTransfer([m_dev.dev newCommandQueue]);
 
-	m_pass_desc = [MTLRenderPassDescriptor new];
-	m_pass_desc.colorAttachments[0].loadAction = MTLLoadActionClear;
-	m_pass_desc.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 0);
-	m_pass_desc.colorAttachments[0].storeAction = MTLStoreActionStore;
+	m_pass_desc = MRCTransfer([MTLRenderPassDescriptor new]);
+	[m_pass_desc colorAttachments][0].loadAction = MTLLoadActionClear;
+	[m_pass_desc colorAttachments][0].clearColor = MTLClearColorMake(0, 0, 0, 0);
+	[m_pass_desc colorAttachments][0].storeAction = MTLStoreActionStore;
 
 	if (m_dev.IsOk() && m_queue)
 	{
 		Console.WriteLn("Renderer info:\n    %s", GetDriverInfo().c_str());
 		OnMainThread([this]
 		{
-			m_layer = [CAMetalLayer layer];
+			m_layer = MRCRetain([CAMetalLayer layer]);
 			[m_layer setDrawableSize:CGSizeMake(m_window_info.surface_width, m_window_info.surface_height)];
 			[m_layer setDevice:m_dev.dev];
 			AttachSurfaceOnMainThread();
@@ -214,13 +217,13 @@ std::unique_ptr<HostDisplayTexture> MetalHostDisplay::CreateTexture(u32 width, u
 		                         mipmapped:false];
 	[desc setUsage:MTLTextureUsageShaderRead];
 	[desc setStorageMode:MTLStorageModePrivate];
-	id<MTLTexture> tex = [m_dev.dev newTextureWithDescriptor:desc];
+	MRCOwned<id<MTLTexture>> tex = MRCTransfer([m_dev.dev newTextureWithDescriptor:desc]);
 	if (!tex)
 		return nullptr; // Something broke yay
 	[tex setLabel:@"MetalHostDisplay Texture"];
 	if (data)
 		UpdateTexture(tex, 0, 0, width, height, data, data_stride);
-	return std::make_unique<MetalHostDisplayTexture>(tex, width, height);
+	return std::make_unique<MetalHostDisplayTexture>(std::move(tex), width, height);
 }}
 
 void MetalHostDisplay::UpdateTexture(id<MTLTexture> texture, u32 x, u32 y, u32 width, u32 height, const void* data, u32 data_stride)
@@ -228,7 +231,7 @@ void MetalHostDisplay::UpdateTexture(id<MTLTexture> texture, u32 x, u32 y, u32 w
 	id<MTLCommandBuffer> cmdbuf = [m_queue commandBuffer];
 	id<MTLBlitCommandEncoder> enc = [cmdbuf blitCommandEncoder];
 	size_t bytes = data_stride * height;
-	id<MTLBuffer> buf = [m_dev.dev newBufferWithLength:bytes options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined];
+	MRCOwned<id<MTLBuffer>> buf = MRCTransfer([m_dev.dev newBufferWithLength:bytes options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined]);
 	memcpy([buf contents], data, bytes);
 	[enc copyFromBuffer:buf
 	       sourceOffset:0
@@ -259,7 +262,8 @@ bool MetalHostDisplay::BeginPresent(bool frame_skip)
 	id<MTLCommandBuffer> buf = dev->GetRenderCmdBuf();
 	// TODO: Use synchronous fetch if vsync is enabled
 	dispatch_semaphore_wait(m_gpu_work_sema, DISPATCH_TIME_FOREVER);
-	[buf addCompletedHandler:[sema = m_gpu_work_sema](id<MTLCommandBuffer>){ dispatch_semaphore_signal(sema); }];
+	dispatch_retain(m_gpu_work_sema);
+	[buf addCompletedHandler:[sema = m_gpu_work_sema](id<MTLCommandBuffer>){ dispatch_semaphore_signal(sema); dispatch_release(sema); }];
 	m_current_drawable = m_drawable_fetcher.GetIfAvailable();
 	dev->EndRenderPass();
 	if (!m_current_drawable)
@@ -270,10 +274,10 @@ bool MetalHostDisplay::BeginPresent(bool frame_skip)
 		ImGui::EndFrame();
 		return false;
 	}
-	m_pass_desc.colorAttachments[0].texture = m_current_drawable.texture;
+	[m_pass_desc colorAttachments][0].texture = [m_current_drawable texture];
 	id<MTLRenderCommandEncoder> enc = [buf renderCommandEncoderWithDescriptor:m_pass_desc];
 	[enc setLabel:@"Present"];
-	dev->m_current_render.encoder = enc;
+	dev->m_current_render.encoder = MRCRetain(enc);
 	return true;
 }}
 
@@ -320,7 +324,7 @@ bool MetalHostDisplay::UpdateImGuiFontTexture()
 	if (@available(macOS 10.15, *))
 		if (m_dev.features.texture_swizzle)
 			[desc setSwizzle:MTLTextureSwizzleChannelsMake(MTLTextureSwizzleOne, MTLTextureSwizzleOne, MTLTextureSwizzleOne, MTLTextureSwizzleAlpha)];
-	m_font_tex = [m_dev.dev newTextureWithDescriptor:desc];
+	m_font_tex = MRCTransfer([m_dev.dev newTextureWithDescriptor:desc]);
 	[m_font_tex setLabel:@"ImGui Font"];
 	UpdateTexture(m_font_tex, 0, 0, width, height, data, width);
 	fonts->SetTexID((__bridge void*)m_font_tex);
