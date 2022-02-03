@@ -260,22 +260,15 @@ public:
 		GSHWDrawConfig::VSConstantBuffer cb_vs;
 		GSHWDrawConfig::PSConstantBuffer cb_ps;
 		u8 blend_color;
-		bool has_cb_vs = false;
-		bool has_cb_ps = false;
-		bool has_scissor = false;
-		bool has_blend_color = false;
-		bool has_pipeline_sel = false;
-		bool has_depth_sel = true;
-		bool has_sampler = false;
-		void SetVertices(id<MTLBuffer> buffer, size_t offset);
-		void SetScissor(const GSVector4i& scissor);
-		void ClearScissor();
-		void SetCB(const GSHWDrawConfig::VSConstantBuffer& cb_vs);
-		void SetCB(const GSHWDrawConfig::PSConstantBuffer& cb_ps);
-		void SetBlendColor(u8 blend_color);
-		void SetPipeline(id<MTLRenderPipelineState> pipe);
-		void SetDepth(id<MTLDepthStencilState> dss);
-
+		struct Has
+		{
+			bool cb_vs        : 1;
+			bool cb_ps        : 1;
+			bool scissor      : 1;
+			bool blend_color  : 1;
+			bool pipeline_sel : 1;
+			bool sampler      : 1;
+		} has;
 		MainRenderEncoder(const MainRenderEncoder&) = delete;
 		MainRenderEncoder() = default;
 	} m_current_render;
@@ -338,13 +331,28 @@ public:
 	void StretchRect(GSTexture* sTex, const GSVector4& sRect, GSTexture* dTex, const GSVector4& dRect, bool red, bool green, bool blue, bool alpha) override;
 
 	void FlushClears(GSTexture* tex);
-	void SetHWPipelineState(MainRenderEncoder& enc, GSHWDrawConfig::VSSelector vs, GSHWDrawConfig::PSSelector ps, PipelineSelectorExtrasMTL extras);
-	void SetDSS(MainRenderEncoder& enc, DepthStencilSelector sel);
-	void SetSampler(MainRenderEncoder& enc, SamplerSelector sel);
-	void SetTexture(MainRenderEncoder& enc, GSTexture* tex, int pos);
+
+	// MARK: Main Render Encoder operations
+	void MRESetHWPipelineState(GSHWDrawConfig::VSSelector vs, GSHWDrawConfig::PSSelector ps, GSHWDrawConfig::BlendState blend, GSHWDrawConfig::ColorMaskSelector cms);
+	void MRESetDSS(DepthStencilSelector sel);
+	void MRESetDSS(id<MTLDepthStencilState> dss);
+	void MRESetSampler(SamplerSelector sel);
+	void MRESetTexture(GSTexture* tex, int pos);
+	void MRESetVertices(id<MTLBuffer> buffer, size_t offset);
+	void MRESetScissor(const GSVector4i& scissor);
+	void MREClearScissor();
+	void MRESetCB(const GSHWDrawConfig::VSConstantBuffer& cb_vs);
+	void MRESetCB(const GSHWDrawConfig::PSConstantBuffer& cb_ps);
+	void MRESetBlendColor(u8 blend_color);
+	void MRESetPipeline(id<MTLRenderPipelineState> pipe);
+
+	// MARK: Render HW
+
 	void SetupDestinationAlpha(GSTexture* rt, GSTexture* ds, const GSVector4i& r, bool datm);
 	void RenderHW(GSHWDrawConfig& config) override;
 	void SendHWDraw(GSHWDrawConfig& config, id<MTLRenderCommandEncoder> enc, id<MTLBuffer> buffer, size_t off);
+
+	// MARK: ImGui
 
 	void RenderImGui(ImDrawData* data);
 };
