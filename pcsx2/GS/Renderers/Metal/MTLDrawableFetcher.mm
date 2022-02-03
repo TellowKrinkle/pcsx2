@@ -16,7 +16,7 @@
 #include "MTLDrawableFetcher.h"
 #include "common/PersistentThread.h"
 
-void MTLDrawableFetcher::Run(CAMetalLayer* _Nonnull layer)
+void MTLDrawableFetcher::Run(const MRCOwned<CAMetalLayer* _Nonnull>& layer)
 {
 	Threading::SetNameOfCurrentThread("MTLDrawable Fetch Thread");
 	std::unique_lock<std::mutex> l(m_mtx);
@@ -33,17 +33,17 @@ void MTLDrawableFetcher::Run(CAMetalLayer* _Nonnull layer)
 			l.unlock();
 			id<CAMetalDrawable> drawable = [layer nextDrawable];
 			l.lock();
-			m_drawable = drawable;
+			m_drawable = MRCRetain(drawable);
 		}
 	}
 }
 
-void MTLDrawableFetcher::Start(CAMetalLayer* _Nonnull layer)
+void MTLDrawableFetcher::Start(MRCOwned<CAMetalLayer* _Nonnull> layer)
 {
 	if (m_running)
 		return;
 	m_running = true;
-	m_thread = std::thread([](MTLDrawableFetcher* me, CAMetalLayer* layer){ me->Run(layer); }, this, layer);
+	m_thread = std::thread([](MTLDrawableFetcher* me, const MRCOwned<CAMetalLayer*>& layer){ me->Run(layer); }, this, std::move(layer));
 }
 
 void MTLDrawableFetcher::Stop()
@@ -60,13 +60,13 @@ void MTLDrawableFetcher::Stop()
 	m_drawable = nil;
 }
 
-_Nullable id<CAMetalDrawable> MTLDrawableFetcher::GetIfAvailable()
+MRCOwned<_Nullable id<CAMetalDrawable>> MTLDrawableFetcher::GetIfAvailable()
 {
 	ASSERT(m_running);
-	id<CAMetalDrawable> ret;
+	MRCOwned<id<CAMetalDrawable>> ret;
 	{
 		std::lock_guard<std::mutex> guard(m_mtx);
-		ret = m_drawable;
+		ret = std::move(m_drawable);
 		m_drawable = nil;
 	}
 	if (ret)
