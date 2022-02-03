@@ -1073,12 +1073,12 @@ void GSDeviceMTL::MRESetHWPipelineState(GSHWDrawConfig::VSSelector vssel, GSHWDr
 	PipelineSelectorMTL fullsel(vssel, pssel, extras);
 	if (m_current_render.has.pipeline_sel && fullsel == m_current_render.pipeline_sel)
 		return;
+	m_current_render.pipeline_sel = fullsel;
+	m_current_render.has.pipeline_sel = true;
 	auto idx = m_hw_pipeline.find(fullsel);
 	if (idx != m_hw_pipeline.end())
 	{
 		[m_current_render.encoder setRenderPipelineState:idx->second];
-		m_current_render.pipeline_sel = fullsel;
-		m_current_render.has.pipeline_sel = true;
 		return;
 	}
 
@@ -1287,9 +1287,6 @@ void GSDeviceMTL::MRESetBlendColor(u8 color)
 
 void GSDeviceMTL::MRESetPipeline(id<MTLRenderPipelineState> pipe)
 {
-	if (!m_current_render.has.pipeline_sel && m_current_render.pipeline == (__bridge void*)pipe)
-		return;
-	m_current_render.pipeline = (__bridge void*)pipe;
 	[m_current_render.encoder setRenderPipelineState:pipe];
 	m_current_render.has.pipeline_sel = false;
 }
