@@ -251,8 +251,6 @@ public:
 		GSTexture* stencil_target = nullptr;
 		GSTexture* tex[8] = {};
 		void* vertex_buffer = nullptr;
-		void* pipeline = nullptr;
-		void* depth = nullptr;
 		void* name = nullptr;
 		struct Has
 		{
