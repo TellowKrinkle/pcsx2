@@ -250,17 +250,10 @@ public:
 		GSTexture* depth_target = nullptr;
 		GSTexture* stencil_target = nullptr;
 		GSTexture* tex[8] = {};
-		GSVector4i scissor;
 		void* vertex_buffer = nullptr;
 		void* pipeline = nullptr;
 		void* depth = nullptr;
 		void* name = nullptr;
-		PipelineSelectorMTL pipeline_sel;
-		DepthStencilSelector depth_sel = DepthStencilSelector::NoDepth();
-		SamplerSelector sampler_sel;
-		GSHWDrawConfig::VSConstantBuffer cb_vs;
-		GSHWDrawConfig::PSConstantBuffer cb_ps;
-		u8 blend_color;
 		struct Has
 		{
 			bool cb_vs        : 1;
@@ -270,6 +263,14 @@ public:
 			bool pipeline_sel : 1;
 			bool sampler      : 1;
 		} has;
+		DepthStencilSelector depth_sel = DepthStencilSelector::NoDepth();
+		// Clear line (Things below here are tracked by `has` and don't need to be cleared to reset)
+		SamplerSelector sampler_sel;
+		u8 blend_color;
+		GSVector4i scissor;
+		PipelineSelectorMTL pipeline_sel;
+		GSHWDrawConfig::VSConstantBuffer cb_vs;
+		GSHWDrawConfig::PSConstantBuffer cb_ps;
 		MainRenderEncoder(const MainRenderEncoder&) = delete;
 		MainRenderEncoder() = default;
 	} m_current_render;
