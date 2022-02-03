@@ -282,7 +282,9 @@ void GSDeviceMTL::EndRenderPass()
 	if (m_current_render.encoder)
 	{
 		[m_current_render.encoder endEncoding];
-		m_current_render = MainRenderEncoder();
+		m_current_render.encoder = nil;
+		memset(&m_current_render, 0, offsetof(MainRenderEncoder, depth_sel));
+		m_current_render.depth_sel = DepthStencilSelector::NoDepth();
 	}
 }
 
