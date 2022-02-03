@@ -286,7 +286,7 @@ void GSDeviceMTL::EndRenderPass()
 	}
 }
 
-GSDeviceMTL::MainRenderEncoder& GSDeviceMTL::BeginRenderPass(GSTexture* color, MTLLoadAction color_load, GSTexture* depth, MTLLoadAction depth_load, GSTexture* stencil, MTLLoadAction stencil_load)
+void GSDeviceMTL::BeginRenderPass(NSString* name, GSTexture* color, MTLLoadAction color_load, GSTexture* depth, MTLLoadAction depth_load, GSTexture* stencil, MTLLoadAction stencil_load)
 {
 	GSTextureMTL* mc = static_cast<GSTextureMTL*>(color);
 	GSTextureMTL* md = static_cast<GSTextureMTL*>(depth);
@@ -311,7 +311,14 @@ GSDeviceMTL::MainRenderEncoder& GSDeviceMTL::BeginRenderPass(GSTexture* color, M
 	needs_new |= ms && stencil_load == MTLLoadActionClear;
 
 	if (!needs_new)
-		return m_current_render;
+	{
+		if (m_current_render.name != (__bridge void*)name)
+		{
+			m_current_render.name = (__bridge void*)name;
+			[m_current_render.encoder setLabel:name];
+		}
+		return;
+	}
 
 	if (m_late_texture_upload_encoder)
 	{
@@ -352,6 +359,8 @@ GSDeviceMTL::MainRenderEncoder& GSDeviceMTL::BeginRenderPass(GSTexture* color, M
 
 	EndRenderPass();
 	m_current_render.encoder = [GetRenderCmdBuf() renderCommandEncoderWithDescriptor:desc];
+	m_current_render.name = (__bridge void*)name;
+	[m_current_render.encoder setLabel:name];
 	if (!m_dev.features.unified_memory)
 		[m_current_render.encoder waitForFence:m_draw_sync_fence
 		                          beforeStages:MTLRenderStageVertex];
@@ -359,7 +368,6 @@ GSDeviceMTL::MainRenderEncoder& GSDeviceMTL::BeginRenderPass(GSTexture* color, M
 	m_current_render.depth_target = depth;
 	m_current_render.stencil_target = stencil;
 	pxAssertRel(m_current_render.encoder, "Failed to create render encoder!");
-	return m_current_render;
 }
 
 static constexpr MTLPixelFormat ConvertPixelFormat(GSTexture::Format format)
@@ -955,11 +963,10 @@ void GSDeviceMTL::DoStretchRect(GSTexture* sTex, const GSVector4& sRect, GSTextu
 	bool dontcare = load_action == LoadAction::DontCare || (load_action == LoadAction::DontCareIfFull && covers_target);
 	MTLLoadAction action = dontcare ? MTLLoadActionDontCare : MTLLoadActionLoad;
 
-	MainRenderEncoder* enc;
 	if (dT->GetFormat() == GSTexture::Format::DepthStencil)
-		enc = &BeginRenderPass(nullptr, MTLLoadActionDontCare, dT, action);
+		BeginRenderPass(@"StretchRect", nullptr, MTLLoadActionDontCare, dT, action);
 	else
-		enc = &BeginRenderPass(dT, action, nullptr, MTLLoadActionDontCare);
+		BeginRenderPass(@"StretchRect", dT, action, nullptr, MTLLoadActionDontCare);
 
 	MREClearScissor();
 	DepthStencilSelector dsel;
@@ -967,12 +974,11 @@ void GSDeviceMTL::DoStretchRect(GSTexture* sTex, const GSVector4& sRect, GSTextu
 	dsel.zwe = dT->GetFormat() == GSTexture::Format::DepthStencil;
 	MRESetDSS(dsel);
 
-	[enc->encoder setLabel:@"StretchRect"];
 	MRESetPipeline(pipeline);
 	MRESetTexture(sT, GSMTLTextureIndexNonHW);
 
 	if (frag_uniform && frag_uniform_len)
-		[enc->encoder setFragmentBytes:frag_uniform length:frag_uniform_len atIndex:GSMTLBufferIndexUniforms];
+		[m_current_render.encoder setFragmentBytes:frag_uniform length:frag_uniform_len atIndex:GSMTLBufferIndexUniforms];
 
 	MRESetSampler(linear ? SamplerSelector::Linear() : SamplerSelector::Point());
 
@@ -1325,8 +1331,7 @@ void GSDeviceMTL::SetupDestinationAlpha(GSTexture* rt, GSTexture* ds, const GSVe
 	FlushClears(rt);
 	GSTextureMTL* mds = static_cast<GSTextureMTL*>(ds);
 	mds->RequestStencilClear(0);
-	BeginRenderPass(nullptr, MTLLoadActionDontCare, nullptr, MTLLoadActionDontCare, ds, MTLLoadActionLoad);
-	[m_current_render.encoder setLabel:@"Destination Alpha Setup"];
+	BeginRenderPass(@"Destination Alpha Setup", nullptr, MTLLoadActionDontCare, nullptr, MTLLoadActionDontCare, ds, MTLLoadActionLoad);
 	MRESetDSS(m_dss_destination_alpha);
 	[m_current_render.encoder setStencilReferenceValue:1];
 	RenderCopy(rt, m_datm_pipeline[datm], r);
@@ -1377,8 +1382,7 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 	{
 		GSVector2i size = config.rt->GetSize();
 		hdr_rt = CreateRenderTarget(size.x, size.y, GSTexture::Format::FloatColor);
-		BeginRenderPass(hdr_rt, MTLLoadActionDontCare, nullptr, MTLLoadActionDontCare);
-		[m_current_render.encoder setLabel:@"HDR Init"];
+		BeginRenderPass(@"HDR Init", hdr_rt, MTLLoadActionDontCare, nullptr, MTLLoadActionDontCare);
 		RenderCopy(config.rt, m_hdr_init_pipeline, config.drawarea);
 		rt = hdr_rt;
 		g_perfmon.Put(GSPerfMon::TextureCopies, 1);
@@ -1387,9 +1391,8 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 	FlushClears(config.tex);
 	FlushClears(config.pal);
 
-	BeginRenderPass(rt, MTLLoadActionLoad, config.ds, MTLLoadActionLoad, stencil, MTLLoadActionLoad);
+	BeginRenderPass(@"RenderHW", rt, MTLLoadActionLoad, config.ds, MTLLoadActionLoad, stencil, MTLLoadActionLoad);
 	id<MTLRenderCommandEncoder> mtlenc = m_current_render.encoder;
-	[mtlenc setLabel:@"RenderHW"];
 	MRESetScissor(config.scissor);
 	MRESetTexture(config.tex, GSMTLTextureIndexTex);
 	MRESetTexture(config.pal, GSMTLTextureIndexPalette);
@@ -1433,8 +1436,7 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 
 	if (hdr_rt)
 	{
-		BeginRenderPass(config.rt, MTLLoadActionLoad, nullptr, MTLLoadActionDontCare);
-		[m_current_render.encoder setLabel:@"HDR Resolve"];
+		BeginRenderPass(@"HDR Resolve", config.rt, MTLLoadActionLoad, nullptr, MTLLoadActionDontCare);
 		RenderCopy(hdr_rt, m_hdr_resolve_pipeline, config.drawarea);
 		g_perfmon.Put(GSPerfMon::TextureCopies, 1);
 

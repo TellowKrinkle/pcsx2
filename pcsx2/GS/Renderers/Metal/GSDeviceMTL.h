@@ -254,6 +254,7 @@ public:
 		void* vertex_buffer = nullptr;
 		void* pipeline = nullptr;
 		void* depth = nullptr;
+		void* name = nullptr;
 		PipelineSelectorMTL pipeline_sel;
 		DepthStencilSelector depth_sel = DepthStencilSelector::NoDepth();
 		SamplerSelector sampler_sel;
@@ -300,7 +301,7 @@ public:
 	/// End current render pass without flushing
 	void EndRenderPass();
 	/// Begin a new render pass (may reuse existing)
-	MainRenderEncoder& BeginRenderPass(GSTexture* color, MTLLoadAction color_load, GSTexture* depth, MTLLoadAction depth_load, GSTexture* stencil = nullptr, MTLLoadAction stencil_load = MTLLoadActionDontCare);
+	void BeginRenderPass(NSString* name, GSTexture* color, MTLLoadAction color_load, GSTexture* depth, MTLLoadAction depth_load, GSTexture* stencil = nullptr, MTLLoadAction stencil_load = MTLLoadActionDontCare);
 
 	GSTexture* CreateSurface(GSTexture::Type type, int width, int height, int levels, GSTexture::Format format) override;
 

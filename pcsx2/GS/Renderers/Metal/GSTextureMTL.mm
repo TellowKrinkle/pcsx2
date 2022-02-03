@@ -113,11 +113,10 @@ void GSTextureMTL::FlushClears()
 	if (!m_needs_color_clear && !m_needs_depth_clear && !m_needs_stencil_clear)
 		return;
 
-	auto& enc = m_dev->BeginRenderPass(
+	m_dev->BeginRenderPass(@"Clear",
 		m_needs_color_clear   ? this : nullptr, MTLLoadActionLoad,
 		m_needs_depth_clear   ? this : nullptr, MTLLoadActionLoad,
 		m_needs_stencil_clear ? this : nullptr, MTLLoadActionLoad);
-	[enc.encoder setLabel:@"Clear"];
 }
 
 void* GSTextureMTL::GetNativeHandle() const
@@ -177,10 +176,8 @@ void* GSTextureMTL::MapWithPitch(const GSVector4i& r, int pitch, int layer)
 		if (needs_clear)
 		{
 			m_needs_color_clear = true;
-			auto& enc = m_dev->BeginRenderPass(this, MTLLoadActionLoad, nullptr, MTLLoadActionDontCare);
-			[enc.encoder setLabel:@"Pre-Upload Clear"];
+			m_dev->BeginRenderPass(@"Pre-Upload Clear", this, MTLLoadActionLoad, nullptr, MTLLoadActionDontCare);
 		}
-		m_dev->EndRenderPass();
 		enc = m_dev->GetLateTextureUploadEncoder();
 		map = m_dev->Allocate(m_dev->m_vertex_upload_buf, size);
 	}
