@@ -24,6 +24,7 @@
 #ifdef __APPLE__
 
 #include "common/HashCombine.h"
+#include "common/MRCHelpers.h"
 #include "GS/GS.h"
 #include "GSMTLDeviceInfo.h"
 #include "GSMTLSharedHeader.h"
@@ -164,14 +165,14 @@ public:
 	struct UploadBuffer
 	{
 		UsageTracker usage;
-		id<MTLBuffer> mtlbuffer;
+		MRCOwned<id<MTLBuffer>> mtlbuffer;
 		void* buffer = nullptr;
 	};
 	struct BufferPair
 	{
 		UsageTracker usage;
-		id<MTLBuffer> cpubuffer;
-		id<MTLBuffer> gpubuffer;
+		MRCOwned<id<MTLBuffer>> cpubuffer;
+		MRCOwned<id<MTLBuffer>> gpubuffer;
 		void* buffer = nullptr;
 		size_t last_upload = 0;
 	};
@@ -204,10 +205,10 @@ public:
 	// MARK: Permanent resources
 	std::shared_ptr<std::pair<std::mutex, GSDeviceMTL*>> m_backref;
 	GSMTLDevice m_dev;
-	id<MTLCommandQueue> m_queue;
-	id<MTLFence> m_draw_sync_fence;
-	MTLFunctionConstantValues* m_fn_constants;
-	MTLVertexDescriptor* m_hw_vertex;
+	MRCOwned<id<MTLCommandQueue>> m_queue;
+	MRCOwned<id<MTLFence>> m_draw_sync_fence;
+	MRCOwned<MTLFunctionConstantValues*> m_fn_constants;
+	MRCOwned<MTLVertexDescriptor*> m_hw_vertex;
 	std::unique_ptr<GSTextureMTL> m_font;
 
 	// Draw IDs are used to make sure we're not clobbering things
@@ -215,41 +216,41 @@ public:
 	std::atomic<u64> m_last_finished_draw{0};
 
 	// Functions and Pipeline States
-	id<MTLRenderPipelineState> m_convert_pipeline[static_cast<int>(ShaderConvert::Count)];
-	id<MTLRenderPipelineState> m_present_pipeline[static_cast<int>(ShaderConvert::Count)];
-	id<MTLRenderPipelineState> m_convert_pipeline_copy[2];
-	id<MTLRenderPipelineState> m_convert_pipeline_copy_mask[1 << 4];
-	id<MTLRenderPipelineState> m_merge_pipeline[2];
-	id<MTLRenderPipelineState> m_interlace_pipeline[4];
-	id<MTLRenderPipelineState> m_datm_pipeline[2];
-	id<MTLRenderPipelineState> m_stencil_clear_pipeline;
-	id<MTLRenderPipelineState> m_primid_init_pipeline[2][2];
-	id<MTLRenderPipelineState> m_hdr_init_pipeline;
-	id<MTLRenderPipelineState> m_hdr_resolve_pipeline;
-	id<MTLRenderPipelineState> m_imgui_pipeline;
-	id<MTLRenderPipelineState> m_imgui_pipeline_a8;
+	MRCOwned<id<MTLRenderPipelineState>> m_convert_pipeline[static_cast<int>(ShaderConvert::Count)];
+	MRCOwned<id<MTLRenderPipelineState>> m_present_pipeline[static_cast<int>(ShaderConvert::Count)];
+	MRCOwned<id<MTLRenderPipelineState>> m_convert_pipeline_copy[2];
+	MRCOwned<id<MTLRenderPipelineState>> m_convert_pipeline_copy_mask[1 << 4];
+	MRCOwned<id<MTLRenderPipelineState>> m_merge_pipeline[2];
+	MRCOwned<id<MTLRenderPipelineState>> m_interlace_pipeline[4];
+	MRCOwned<id<MTLRenderPipelineState>> m_datm_pipeline[2];
+	MRCOwned<id<MTLRenderPipelineState>> m_stencil_clear_pipeline;
+	MRCOwned<id<MTLRenderPipelineState>> m_primid_init_pipeline[2][2];
+	MRCOwned<id<MTLRenderPipelineState>> m_hdr_init_pipeline;
+	MRCOwned<id<MTLRenderPipelineState>> m_hdr_resolve_pipeline;
+	MRCOwned<id<MTLRenderPipelineState>> m_imgui_pipeline;
+	MRCOwned<id<MTLRenderPipelineState>> m_imgui_pipeline_a8;
 
-	id<MTLFunction> m_hw_vs[1 << 3];
-	std::unordered_map<u64, id<MTLFunction>> m_hw_ps;
-	std::unordered_map<PipelineSelectorMTL, id<MTLRenderPipelineState>> m_hw_pipeline;
+	MRCOwned<id<MTLFunction>> m_hw_vs[1 << 3];
+	std::unordered_map<u64, MRCOwned<id<MTLFunction>>> m_hw_ps;
+	std::unordered_map<PipelineSelectorMTL, MRCOwned<id<MTLRenderPipelineState>>> m_hw_pipeline;
 
-	MTLRenderPassDescriptor* m_render_pass_desc[8];
+	MRCOwned<MTLRenderPassDescriptor*> m_render_pass_desc[8];
 
-	id<MTLSamplerState> m_sampler_hw[1 << 8];
+	MRCOwned<id<MTLSamplerState>> m_sampler_hw[1 << 8];
 
-	id<MTLDepthStencilState> m_dss_stencil_zero;
-	id<MTLDepthStencilState> m_dss_stencil_write;
-	id<MTLDepthStencilState> m_dss_hw[1 << 5];
+	MRCOwned<id<MTLDepthStencilState>> m_dss_stencil_zero;
+	MRCOwned<id<MTLDepthStencilState>> m_dss_stencil_write;
+	MRCOwned<id<MTLDepthStencilState>> m_dss_hw[1 << 5];
 
-	id<MTLBuffer> m_texture_download_buf;
+	MRCOwned<id<MTLBuffer>> m_texture_download_buf;
 	UploadBuffer m_texture_upload_buf;
 	BufferPair m_vertex_upload_buf;
 
 	// MARK: Ephemeral resources
-	id<MTLCommandBuffer> m_current_render_cmdbuf;
+	MRCOwned<id<MTLCommandBuffer>> m_current_render_cmdbuf;
 	struct MainRenderEncoder
 	{
-		id<MTLRenderCommandEncoder> encoder;
+		MRCOwned<id<MTLRenderCommandEncoder>> encoder;
 		GSTexture* color_target = nullptr;
 		GSTexture* depth_target = nullptr;
 		GSTexture* stencil_target = nullptr;
@@ -276,11 +277,11 @@ public:
 		MainRenderEncoder(const MainRenderEncoder&) = delete;
 		MainRenderEncoder() = default;
 	} m_current_render;
-	id<MTLCommandBuffer> m_texture_upload_cmdbuf;
-	id<MTLBlitCommandEncoder> m_texture_upload_encoder;
-	id<MTLBlitCommandEncoder> m_late_texture_upload_encoder;
-	id<MTLCommandBuffer> m_vertex_upload_cmdbuf;
-	id<MTLBlitCommandEncoder> m_vertex_upload_encoder;
+	MRCOwned<id<MTLCommandBuffer>> m_texture_upload_cmdbuf;
+	MRCOwned<id<MTLBlitCommandEncoder>> m_texture_upload_encoder;
+	MRCOwned<id<MTLBlitCommandEncoder>> m_late_texture_upload_encoder;
+	MRCOwned<id<MTLCommandBuffer>> m_vertex_upload_cmdbuf;
+	MRCOwned<id<MTLBlitCommandEncoder>> m_vertex_upload_encoder;
 
 	GSDeviceMTL();
 	~GSDeviceMTL() override;
@@ -315,8 +316,8 @@ public:
 	void DoExternalFX(GSTexture* sTex, GSTexture* dTex) override;
 	u16 ConvertBlendEnum(u16 generic) override;
 
-	id<MTLFunction> LoadShader(NSString* name);
-	id<MTLRenderPipelineState> MakePipeline(MTLRenderPipelineDescriptor* desc, id<MTLFunction> vertex, id<MTLFunction> fragment, NSString* name);
+	MRCOwned<id<MTLFunction>> LoadShader(NSString* name);
+	MRCOwned<id<MTLRenderPipelineState>> MakePipeline(MTLRenderPipelineDescriptor* desc, id<MTLFunction> vertex, id<MTLFunction> fragment, NSString* name);
 	bool Create(HostDisplay* display) override;
 
 	void ClearRenderTarget(GSTexture* t, const GSVector4& c) override;
