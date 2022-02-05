@@ -608,7 +608,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 	MTLPixelFormat layer_px_fmt = [(__bridge CAMetalLayer*)m_display->GetRenderSurface() pixelFormat];
 
 	m_features.geometry_shader = false;
-	m_features.image_load_store = false;
+	m_features.image_load_store = m_dev.features.primid;
 	m_features.texture_barrier = true;
 	m_features.point_expand = true;
 	m_features.prefer_rt_read = m_dev.features.framebuffer_fetch;
@@ -751,8 +751,15 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 		pdesc.stencilAttachmentPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
 		m_datm_pipeline[0] = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_datm0"), @"datm0");
 		m_datm_pipeline[1] = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_datm1"), @"datm1");
-
+		pdesc.colorAttachments[0].pixelFormat = ConvertPixelFormat(GSTexture::Format::PrimID);
 		pdesc.stencilAttachmentPixelFormat = MTLPixelFormatInvalid;
+		pdesc.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
+		m_primid_init_pipeline[1][0] = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_primid_init_datm0"), @"PrimID DATM0 Clear");
+		m_primid_init_pipeline[1][1] = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_primid_init_datm0"), @"PrimID DATM1 Clear");
+		pdesc.depthAttachmentPixelFormat = MTLPixelFormatInvalid;
+		m_primid_init_pipeline[0][0] = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_primid_init_datm0"), @"PrimID DATM0 Clear");
+		m_primid_init_pipeline[0][1] = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_primid_init_datm0"), @"PrimID DATM1 Clear");
+
 		pdesc.colorAttachments[0].pixelFormat = ConvertPixelFormat(GSTexture::Format::Color);
 		applyAttribute(pdesc.vertexDescriptor, 0, MTLVertexFormatFloat2, offsetof(ConvertShaderVertex, pos),    0);
 		applyAttribute(pdesc.vertexDescriptor, 1, MTLVertexFormatFloat2, offsetof(ConvertShaderVertex, texpos), 0);
@@ -1140,10 +1147,11 @@ void GSDeviceMTL::MRESetHWPipelineState(GSHWDrawConfig::VSSelector vssel, GSHWDr
 		setFnConstantB(m_fn_constants, pssel.point_sampler,      GSMTLConstantIndex_PS_POINT_SAMPLER);
 		setFnConstantB(m_fn_constants, pssel.invalid_tex0,       GSMTLConstantIndex_PS_INVALID_TEX0);
 		setFnConstantI(m_fn_constants, pssel.scanmsk,            GSMTLConstantIndex_PS_SCANMSK);
-		bool early_fragment = pssel.date == 1 || pssel.date == 2;
-		ps = LoadShader(m_dev.features.framebuffer_fetch ? @"ps_main_fbfetch" : early_fragment ? @"ps_main_eft" : @"ps_main");
+		ps = LoadShader(m_dev.features.framebuffer_fetch ? @"ps_main_fbfetch" : @"ps_main");
 		m_hw_ps.insert(std::make_pair(pssel.key, ps));
 	}
+
+	bool primid_tracking_init = pssel.date == 1 || pssel.date == 2;
 
 	MTLRenderPipelineDescriptor* pdesc = [MTLRenderPipelineDescriptor new];
 	pdesc.vertexDescriptor = m_hw_vertex;
@@ -1152,7 +1160,14 @@ void GSDeviceMTL::MRESetHWPipelineState(GSHWDrawConfig::VSSelector vssel, GSHWDr
 	pdesc.depthAttachmentPixelFormat = extras.has_depth ? MTLPixelFormatDepth32Float_Stencil8 : MTLPixelFormatInvalid;
 	pdesc.stencilAttachmentPixelFormat = extras.has_stencil ? MTLPixelFormatDepth32Float_Stencil8 : MTLPixelFormatInvalid;
 	color.writeMask = extras.writemask;
-	if (extras.blend)
+	if (primid_tracking_init)
+	{
+		color.blendingEnabled = YES;
+		color.rgbBlendOperation = MTLBlendOperationMin;
+		color.sourceRGBBlendFactor = MTLBlendFactorOne;
+		color.destinationRGBBlendFactor = MTLBlendFactorOne;
+	}
+	else if (extras.blend)
 	{
 		HWBlend b = GetBlend(extras.blend);
 		if (extras.accumulation_blend)
@@ -1345,6 +1360,17 @@ static id<MTLTexture> getTexture(GSTexture* tex)
 	return tex ? static_cast<GSTextureMTL*>(tex)->GetTexture() : nil;
 }
 
+void GSDeviceMTL::MREInitHWDraw(GSHWDrawConfig& config, const Map& verts)
+{
+	MRESetScissor(config.scissor);
+	MRESetTexture(config.tex, GSMTLTextureIndexTex);
+	MRESetTexture(config.pal, GSMTLTextureIndexPalette);
+	MRESetSampler(config.sampler);
+	MRESetCB(config.cb_vs);
+	MRESetCB(config.cb_ps);
+	MRESetVertices(verts.gpu_buffer, verts.gpu_offset);
+}
+
 void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 { @autoreleasepool {
 	if (m_dev.features.framebuffer_fetch)
@@ -1357,7 +1383,14 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 	if (config.tex && config.ds == config.tex)
 		EndRenderPass(); // Barrier
 
+	size_t vertsize = config.nverts * sizeof(*config.verts);
+	size_t idxsize = config.nindices * sizeof(*config.indices);
+	Map allocation = Allocate(m_vertex_upload_buf, vertsize + idxsize);
+	memcpy(allocation.cpu_buffer, config.verts, vertsize);
+	memcpy(static_cast<u8*>(allocation.cpu_buffer) + vertsize, config.indices, idxsize);
+
 	GSTexture* stencil = nullptr;
+	GSTexture* primid_tex = nullptr;
 	GSTexture* rt = config.rt;
 	switch (config.destination_alpha)
 	{
@@ -1365,8 +1398,25 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 		case GSHWDrawConfig::DestinationAlphaMode::Full:
 			break; // No setup
 		case GSHWDrawConfig::DestinationAlphaMode::PrimIDTracking:
-			ASSERT(0 && "Unsupported");
+		{
+			GSVector2i size = config.rt->GetSize();
+			primid_tex = CreateRenderTarget(size.x, size.y, GSTexture::Format::PrimID);
+			BeginRenderPass(@"PrimID Destination Alpha Init", primid_tex, MTLLoadActionDontCare, config.ds, MTLLoadActionLoad);
+			RenderCopy(config.rt, m_primid_init_pipeline[static_cast<bool>(config.ds)][config.datm], config.drawarea);
+			DepthStencilSelector dsel = config.depth;
+			dsel.zwe = 0;
+			MRESetDSS(dsel);
+			ASSERT(config.ps.date == 1 || config.ps.date == 2);
+			if (config.ps.tex_is_fb)
+				MRESetTexture(config.rt, GSMTLTextureIndexRenderTarget);
+			config.require_one_barrier = false; // Ending render pass is our barrier
+			ASSERT(config.require_full_barrier == false && config.drawlist == nullptr);
+			MRESetHWPipelineState(config.vs, config.ps, {}, {});
+			MREInitHWDraw(config, allocation);
+			SendHWDraw(config, m_current_render.encoder, allocation.gpu_buffer, allocation.gpu_offset + vertsize);
+			config.ps.date = 3;
 			break;
+		}
 		case GSHWDrawConfig::DestinationAlphaMode::StencilOne:
 			ClearStencil(config.ds, 1);
 			stencil = config.ds;
@@ -1375,6 +1425,7 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 		{
 			SetupDestinationAlpha(config.rt, config.ds, config.drawarea, config.datm);
 			stencil = config.ds;
+			break;
 		}
 	}
 
@@ -1400,6 +1451,8 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 	MRESetTexture(config.pal, GSMTLTextureIndexPalette);
 	if (config.require_one_barrier || config.require_full_barrier)
 		MRESetTexture(config.rt, GSMTLTextureIndexRenderTarget);
+	if (primid_tex)
+		MRESetTexture(primid_tex, GSMTLTextureIndexPrimIDs);
 	MRESetSampler(config.sampler);
 	if (config.blend.index && config.blend.is_constant)
 		MRESetBlendColor(config.blend.factor);
@@ -1409,18 +1462,7 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 	MRESetCB(config.cb_vs);
 	MRESetCB(config.cb_ps);
 
-	size_t vertsize = config.nverts * sizeof(*config.verts);
-	size_t idxsize = config.nindices * sizeof(*config.indices);
-	Map allocation = Allocate(m_vertex_upload_buf, vertsize + idxsize);
-
 	MRESetVertices(allocation.gpu_buffer, allocation.gpu_offset);
-	memcpy(allocation.cpu_buffer, config.verts, vertsize);
-	memcpy(static_cast<u8*>(allocation.cpu_buffer) + vertsize, config.indices, idxsize);
-
-	if (config.destination_alpha == GSHWDrawConfig::DestinationAlphaMode::PrimIDTracking)
-	{
-		// TODO: Implement
-	}
 
 	SendHWDraw(config, mtlenc, allocation.gpu_buffer, allocation.gpu_offset + vertsize);
 
@@ -1444,6 +1486,9 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 
 		Recycle(hdr_rt);
 	}
+
+	if (primid_tex)
+		Recycle(primid_tex);
 }}
 
 void GSDeviceMTL::SendHWDraw(GSHWDrawConfig& config, id<MTLRenderCommandEncoder> enc, id<MTLBuffer> buffer, size_t off)

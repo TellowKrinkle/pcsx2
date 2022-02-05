@@ -222,6 +222,7 @@ public:
 	id<MTLRenderPipelineState> m_merge_pipeline[2];
 	id<MTLRenderPipelineState> m_interlace_pipeline[4];
 	id<MTLRenderPipelineState> m_datm_pipeline[2];
+	id<MTLRenderPipelineState> m_primid_init_pipeline[2][2];
 	id<MTLRenderPipelineState> m_hdr_init_pipeline;
 	id<MTLRenderPipelineState> m_hdr_resolve_pipeline;
 	id<MTLRenderPipelineState> m_imgui_pipeline;
@@ -346,6 +347,7 @@ public:
 	void MRESetCB(const GSHWDrawConfig::PSConstantBuffer& cb_ps);
 	void MRESetBlendColor(u8 blend_color);
 	void MRESetPipeline(id<MTLRenderPipelineState> pipe);
+	void MREInitHWDraw(GSHWDrawConfig& config, const Map& verts);
 
 	// MARK: Render HW
 

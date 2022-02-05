@@ -84,6 +84,8 @@ GSMTLDevice::GSMTLDevice(id<MTLDevice> dev)
 		features.framebuffer_fetch = false;
 	}
 
+	features.primid = !features.framebuffer_fetch && features.shader_version >= MetalVersion::Metal22;
+
 	features.max_texsize = 8192;
 	if ([dev supportsFeatureSet:MTLFeatureSet_macOS_GPUFamily1_v1])
 		features.max_texsize = 16384;
