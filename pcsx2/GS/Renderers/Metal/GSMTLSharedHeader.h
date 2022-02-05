@@ -104,6 +104,7 @@ enum GSMTLFnConstants
 	GSMTLConstantIndex_SCALING_FACTOR,
 	GSMTLConstantIndex_FST,
 	GSMTLConstantIndex_IIP,
+	GSMTLConstantIndex_VS_POINT_SIZE,
 	GSMTLConstantIndex_PS_AEM_FMT,
 	GSMTLConstantIndex_PS_PAL_FMT,
 	GSMTLConstantIndex_PS_DFMT,

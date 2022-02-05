@@ -188,8 +188,9 @@ public:
 		{
 			struct
 			{
-				bool iip : 1;
-				bool fst : 1;
+				bool iip        : 1;
+				bool fst        : 1;
+				bool point_size : 1;
 			};
 			u8 key;
 		};
@@ -226,7 +227,7 @@ public:
 	id<MTLRenderPipelineState> m_imgui_pipeline;
 	id<MTLRenderPipelineState> m_imgui_pipeline_a8;
 
-	id<MTLFunction> m_hw_vs[1 << 2];
+	id<MTLFunction> m_hw_vs[1 << 3];
 	std::unordered_map<u64, id<MTLFunction>> m_hw_ps;
 	std::unordered_map<PipelineSelectorMTL, id<MTLRenderPipelineState>> m_hw_pipeline;
 
