@@ -74,7 +74,7 @@ void GSTextureMTL::RequestDepthClear(float depth)
 }
 void GSTextureMTL::RequestStencilClear(int stencil)
 {
-	m_needs_stencil_clear;
+	m_needs_stencil_clear = true;
 	m_clear_stencil = stencil;
 }
 bool GSTextureMTL::GetResetNeedsColorClear(GSVector4& colorOut)
