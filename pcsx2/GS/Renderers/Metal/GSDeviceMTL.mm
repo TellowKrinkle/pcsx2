@@ -699,13 +699,17 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 		stencildesc.depthFailureOperation = MTLStencilOperationKeep;
 		stencildesc.stencilFailureOperation = MTLStencilOperationKeep;
 		stencildesc.depthStencilPassOperation = MTLStencilOperationReplace;
-		stencildesc.readMask = 1;
-		stencildesc.writeMask = 1;
 		dssdesc.frontFaceStencil = stencildesc;
 		dssdesc.backFaceStencil = stencildesc;
-		[dssdesc setLabel:@"Destination Alpha Init"];
-		m_dss_destination_alpha = [m_dev.dev newDepthStencilStateWithDescriptor:dssdesc];
+		[dssdesc setLabel:@"Stencil Write"];
+		m_dss_stencil_write = [m_dev.dev newDepthStencilStateWithDescriptor:dssdesc];
+		dssdesc.frontFaceStencil.depthStencilPassOperation = MTLStencilOperationZero;
+		dssdesc.backFaceStencil.depthStencilPassOperation = MTLStencilOperationZero;
+		[dssdesc setLabel:@"Stencil Zero"];
+		m_dss_stencil_zero = [m_dev.dev newDepthStencilStateWithDescriptor:dssdesc];
 		stencildesc.stencilCompareFunction = MTLCompareFunctionEqual;
+		stencildesc.readMask = 1;
+		stencildesc.writeMask = 1;
 		for (size_t i = 0; i < std::size(m_dss_hw); i++)
 		{
 			GSHWDrawConfig::DepthStencilSelector sel;
@@ -771,6 +775,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 		pdesc.stencilAttachmentPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
 		m_datm_pipeline[0] = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_datm0"), @"datm0");
 		m_datm_pipeline[1] = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_datm1"), @"datm1");
+		m_stencil_clear_pipeline = MakePipeline(pdesc, fs_triangle, nil, @"Stencil Clear");
 		pdesc.colorAttachments[0].pixelFormat = ConvertPixelFormat(GSTexture::Format::PrimID);
 		pdesc.stencilAttachmentPixelFormat = MTLPixelFormatInvalid;
 		pdesc.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float_Stencil8;
@@ -1366,11 +1371,11 @@ void GSDeviceMTL::SetupDestinationAlpha(GSTexture* rt, GSTexture* ds, const GSVe
 {
 	BeginScene();
 	FlushClears(rt);
-	GSTextureMTL* mds = static_cast<GSTextureMTL*>(ds);
-	mds->RequestStencilClear(0);
-	BeginRenderPass(@"Destination Alpha Setup", nullptr, MTLLoadActionDontCare, nullptr, MTLLoadActionDontCare, ds, MTLLoadActionLoad);
-	MRESetDSS(m_dss_destination_alpha);
+	BeginRenderPass(@"Destination Alpha Setup", nullptr, MTLLoadActionDontCare, nullptr, MTLLoadActionDontCare, ds, MTLLoadActionDontCare);
 	[m_current_render.encoder setStencilReferenceValue:1];
+	MRESetDSS(m_dss_stencil_zero);
+	RenderCopy(nullptr, m_stencil_clear_pipeline, r);
+	MRESetDSS(m_dss_stencil_write);
 	RenderCopy(rt, m_datm_pipeline[datm], r);
 	EndScene();
 }
@@ -1438,15 +1443,16 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 			break;
 		}
 		case GSHWDrawConfig::DestinationAlphaMode::StencilOne:
-			ClearStencil(config.ds, 1);
+			BeginRenderPass(@"Destination Alpha Stencil Clear", nullptr, MTLLoadActionDontCare, nullptr, MTLLoadActionDontCare, config.ds, MTLLoadActionDontCare);
+			[m_current_render.encoder setStencilReferenceValue:1];
+			MRESetDSS(m_dss_stencil_write);
+			RenderCopy(nullptr, m_stencil_clear_pipeline, config.drawarea);
 			stencil = config.ds;
 			break;
 		case GSHWDrawConfig::DestinationAlphaMode::Stencil:
-		{
 			SetupDestinationAlpha(config.rt, config.ds, config.drawarea, config.datm);
 			stencil = config.ds;
 			break;
-		}
 	}
 
 	BeginScene();
