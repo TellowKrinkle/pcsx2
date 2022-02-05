@@ -43,7 +43,7 @@ GSTextureMTL::GSTextureMTL(GSDeviceMTL* dev, id<MTLTexture> texture, Type type, 
 			m_int_shift = 1;
 			break;
 		case Format::UInt32:
-		case Format::Int32:
+		case Format::PrimID:
 		case Format::Color:
 			m_int_shift = 2;
 			break;

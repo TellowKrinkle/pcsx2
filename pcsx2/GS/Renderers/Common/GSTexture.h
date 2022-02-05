@@ -46,8 +46,8 @@ public:
 		UNorm8,       ///< A8UNorm texture for paletted textures and the OSD font
 		UInt16,       ///< UInt16 texture for reading back 16-bit depth
 		UInt32,       ///< UInt32 texture for reading back 24 and 32-bit depth
-		Int32,        ///< Int32 texture for date emulation
-		Last = Int32
+		PrimID,       ///< Prim ID tracking texture for date emulation
+		Last = PrimID
 	};
 
 	enum class State : u8
