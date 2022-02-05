@@ -1750,6 +1750,7 @@ if (APPLE)
 			pcsx2_resource(${metallib} ${CMAKE_CURRENT_BINARY_DIR})
 		endfunction()
 		generateMetallib(macos-metal2.0 air64-apple-macos10.13 default)
+		generateMetallib(macos-metal2.2 air64-apple-macos10.15 Metal22)
 		generateMetallib(macos-metal2.3 air64-apple-macos11.0  Metal23)
 	endif()
 

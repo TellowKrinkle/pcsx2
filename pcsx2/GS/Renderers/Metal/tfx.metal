@@ -63,15 +63,25 @@ constant bool PS_POINT_SAMPLER      [[function_constant(GSMTLConstantIndex_PS_PO
 constant bool PS_INVALID_TEX0       [[function_constant(GSMTLConstantIndex_PS_INVALID_TEX0)]];
 constant uint PS_SCANMSK            [[function_constant(GSMTLConstantIndex_PS_SCANMSK)]];
 
-//constant bool PS_PRIM_CHECKING_WRITE = PS_DATE == 1 || PS_DATE == 2;
-//constant bool PS_PRIM_CHECKING_READ = PS_DATE == 3;
+#if defined(__METAL_MACOS__) && __METAL_VERSION__ >= 220
+	#define PRIMID_SUPPORT 1
+#else
+	#define PRIMID_SUPPORT 0
+#endif
+
+constant bool PS_PRIM_CHECKING_INIT = PS_DATE == 1 || PS_DATE == 2;
+constant bool PS_PRIM_CHECKING_READ = PS_DATE == 3;
+#if PRIMID_SUPPORT
+constant bool NEEDS_PRIMID = PS_PRIM_CHECKING_INIT || PS_PRIM_CHECKING_READ;
+#endif
 constant bool PS_TEX_IS_DEPTH = PS_URBAN_CHAOS_HLE || PS_TALES_OF_ABYSS_HLE || PS_DEPTH_FMT == 1 || PS_DEPTH_FMT == 2;
 constant bool PS_TEX_IS_COLOR = !PS_TEX_IS_DEPTH;
 constant bool PS_HAS_PALETTE = PS_PAL_FMT != 0 || (PS_CHANNEL >= 1 && PS_CHANNEL <= 5);
 constant bool NOT_IIP = !IIP;
 constant bool SW_BLEND = (PS_BLEND_A != PS_BLEND_B) || PS_BLEND_D;
 constant bool NEEDS_RT_FOR_BLEND = (((PS_BLEND_A != PS_BLEND_B) && (PS_BLEND_A == 1 || PS_BLEND_B == 1 || PS_BLEND_C == 1)) || PS_BLEND_D == 1);
-constant bool NEEDS_RT = NEEDS_RT_FOR_BLEND || PS_FBMASK || PS_TEX_IS_FB || (PS_DATE & 3) == 1 || (PS_DATE & 3) == 2;
+constant bool NEEDS_RT_EARLY = PS_TEX_IS_FB || PS_DATE >= 5;
+constant bool NEEDS_RT = NEEDS_RT_EARLY || (!PS_PRIM_CHECKING_INIT && (PS_FBMASK || NEEDS_RT_FOR_BLEND));
 
 struct MainVSIn
 {
@@ -182,12 +192,11 @@ struct PSMain
 	texture2d<float> tex;
 	depth2d<float> tex_depth;
 	texture2d<float> palette;
-	device atomic_int* prim_id_tracking;
-	const device int* prim_id_tracking_read;
+	texture2d<float> prim_id_tex;
 	sampler tex_sampler;
 	float4 current_color;
 	uchar4 current_color_int;
-	ushort prim_id;
+	uint prim_id;
 	const thread MainPSIn& in;
 	constant GSMTLMainPSUniform& cb;
 
@@ -759,33 +768,22 @@ struct PSMain
 				discard_fragment();
 		}
 
-		uint prim_id_idx = uint(cb.wh.z) * uint(in.p.y) + uint(in.p.x);
-		if ((PS_DATE & 3) == 1 || (PS_DATE & 3) == 2)
+		if (PS_DATE >= 5)
 		{
 			// 1 => DATM == 0, 2 => DATM == 1
 			uchar rt_a = PS_WRITE_RG ? current_color_int.g : current_color_int.a;
 			bool bad = (PS_DATE & 3) == 1 ? (rt_a & 0x80) : !(rt_a & 0x80);
 
 			if (bad)
-			{
-				if (PS_DATE >= 5)
-				{
-					discard_fragment();
-				}
-				else
-				{
-					atomic_store_explicit(&prim_id_tracking[prim_id_idx], -1, memory_order_relaxed);
-					return out;
-				}
-			}
+				discard_fragment();
 		}
 
 		if (PS_DATE == 3)
 		{
-			int stencil_ceil = prim_id_tracking_read[prim_id_idx];
+			float stencil_ceil = prim_id_tex.read(uint2(in.p.xy)).r;
 			// Note prim_id == stencil_ceil will be the primitive that will update
 			// the bad alpha value so we must keep it.
-			if (prim_id > stencil_ceil)
+			if (float(prim_id) > stencil_ceil)
 				discard_fragment();
 		}
 
@@ -821,15 +819,13 @@ struct PSMain
 		if (PS_DATE == 1)
 		{
 			// DATM == 0, Pixel with alpha equal to 1 will failed (128-255)
-			if (C.a > 127.5f)
-				atomic_fetch_min_explicit(&prim_id_tracking[prim_id_idx], prim_id, memory_order_relaxed);
+			out.c0 = C.a > 127.5f ? float(prim_id) : FLT_MAX;
 			return out;
 		}
 		else if (PS_DATE == 2)
 		{
 			// DATM == 1, Pixel with alpha equal to 0 will failed (0-127)
-			if (C.a < 127.5f)
-				atomic_fetch_min_explicit(&prim_id_tracking[prim_id_idx], prim_id, memory_order_relaxed);
+			out.c0 = C.a < 127.5f ? float(prim_id) : FLT_MAX;
 			return out;
 		}
 
@@ -855,10 +851,14 @@ fragment MainPSOut ps_main(
 	MainPSIn in [[stage_in]],
 	constant GSMTLMainPSUniform& cb [[buffer(GSMTLBufferIndexHWUniforms)]],
 	sampler s [[sampler(0)]],
+#if PRIMID_SUPPORT
+	uint primid [[primitive_id, function_constant(NEEDS_PRIMID)]],
+#endif
 	texture2d<float> tex       [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_COLOR)]],
 	depth2d<float>   depth     [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_DEPTH)]],
 	texture2d<float> palette   [[texture(GSMTLTextureIndexPalette),      function_constant(PS_HAS_PALETTE)]],
-	texture2d<float> rt        [[texture(GSMTLTextureIndexRenderTarget), function_constant(NEEDS_RT)]])
+	texture2d<float> rt        [[texture(GSMTLTextureIndexRenderTarget), function_constant(NEEDS_RT)]],
+	texture2d<float> primidtex [[texture(GSMTLTextureIndexPrimIDs),      function_constant(PS_PRIM_CHECKING_READ)]])
 {
 	PSMain main(in, cb);
 	main.tex_sampler = s;
@@ -868,6 +868,12 @@ fragment MainPSOut ps_main(
 		main.tex_depth = depth;
 	if (PS_HAS_PALETTE)
 		main.palette = palette;
+	if (PS_PRIM_CHECKING_READ)
+		main.prim_id_tex = primidtex;
+#if PRIMID_SUPPORT
+	if (NEEDS_PRIMID)
+		main.prim_id = primid;
+#endif
 
 	if (NEEDS_RT)
 	{
@@ -881,43 +887,6 @@ fragment MainPSOut ps_main(
 	}
 
 	return main.ps_main();
-}
-
-[[early_fragment_tests]]
-fragment MainPSOutNoDepth ps_main_eft(
-	MainPSIn in [[stage_in]],
-	constant GSMTLMainPSUniform& cb [[buffer(GSMTLBufferIndexHWUniforms)]],
-	sampler s [[sampler(0)]],
-	texture2d<float> tex       [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_COLOR)]],
-	depth2d<float>   depth     [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_DEPTH)]],
-	texture2d<float> palette   [[texture(GSMTLTextureIndexPalette),      function_constant(PS_HAS_PALETTE)]],
-	texture2d<float> rt        [[texture(GSMTLTextureIndexRenderTarget), function_constant(NEEDS_RT)]])
-{
-	PSMain main(in, cb);
-	main.tex_sampler = s;
-	if (PS_TEX_IS_COLOR)
-		main.tex = tex;
-	else
-		main.tex_depth = depth;
-	if (PS_HAS_PALETTE)
-		main.palette = palette;
-
-	if (NEEDS_RT)
-	{
-		main.current_color = rt.read(ushort2(in.p.xy));
-		main.current_color_int = uchar4(main.current_color * 255.5f);
-	}
-	else
-	{
-		main.current_color = 0;
-		main.current_color_int = 0;
-	}
-
-	MainPSOut ret = main.ps_main();
-	MainPSOutNoDepth out;
-	out.c0 = ret.c0;
-	out.c1 = ret.c1;
-	return out;
 }
 
 #if defined(__METAL_IOS__) || __METAL_VERSION__ >= 230
