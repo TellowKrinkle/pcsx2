@@ -647,6 +647,8 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 		{
 			GSHWDrawConfig::SamplerSelector sel;
 			sel.key = i;
+			const char* minname = sel.biln ? "Ln" : "Pt";
+			const char* magname = minname;
 			sdesc.minFilter = sel.biln ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
 			sdesc.magFilter = sel.biln ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest;
 			switch (static_cast<GS_MIN_FILTER>(sel.triln))
@@ -656,23 +658,29 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 					sdesc.mipFilter = MTLSamplerMipFilterNotMipmapped;
 					break;
 				case GS_MIN_FILTER::Nearest_Mipmap_Nearest:
+					minname = "PtPt";
 					sdesc.minFilter = MTLSamplerMinMagFilterNearest;
 					sdesc.mipFilter = MTLSamplerMipFilterNearest;
 					break;
 				case GS_MIN_FILTER::Nearest_Mipmap_Linear:
+					minname = "PtLn";
 					sdesc.minFilter = MTLSamplerMinMagFilterNearest;
 					sdesc.mipFilter = MTLSamplerMipFilterLinear;
 					break;
 				case GS_MIN_FILTER::Linear_Mipmap_Nearest:
+					minname = "LnPt";
 					sdesc.minFilter = MTLSamplerMinMagFilterLinear;
 					sdesc.mipFilter = MTLSamplerMipFilterNearest;
 					break;
 				case GS_MIN_FILTER::Linear_Mipmap_Linear:
+					minname = "LnLn";
 					sdesc.minFilter = MTLSamplerMinMagFilterLinear;
 					sdesc.mipFilter = MTLSamplerMipFilterLinear;
 					break;
 			}
 
+			const char* taudesc = sel.tau ? "Repeat" : "Clamp";
+			const char* tavdesc = sel.tav == sel.tau ? "" : sel.tav ? "Repeat" : "Clamp";
 			sdesc.sAddressMode = sel.tau ? MTLSamplerAddressModeRepeat : MTLSamplerAddressModeClampToEdge;
 			sdesc.tAddressMode = sel.tav ? MTLSamplerAddressModeRepeat : MTLSamplerAddressModeClampToEdge;
 			sdesc.rAddressMode = MTLSamplerAddressModeClampToEdge;
@@ -680,6 +688,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 			sdesc.maxAnisotropy = anisotropy && sel.aniso ? anisotropy : 1;
 			sdesc.lodMaxClamp = sel.lodclamp ? 0.25f : FLT_MAX;
 
+			[sdesc setLabel:[NSString stringWithFormat:@"%s%s %s%s", taudesc, tavdesc, magname, minname]];
 			m_sampler_hw[i] = [m_dev.dev newSamplerStateWithDescriptor:sdesc];
 		}
 
@@ -694,6 +703,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 		stencildesc.writeMask = 1;
 		dssdesc.frontFaceStencil = stencildesc;
 		dssdesc.backFaceStencil = stencildesc;
+		[dssdesc setLabel:@"Destination Alpha Init"];
 		m_dss_destination_alpha = [m_dev.dev newDepthStencilStateWithDescriptor:dssdesc];
 		stencildesc.stencilCompareFunction = MTLCompareFunctionEqual;
 		for (size_t i = 0; i < std::size(m_dss_hw); i++)
@@ -722,7 +732,17 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 				MTLCompareFunctionGreaterEqual,
 				MTLCompareFunctionGreater,
 			};
+			static constexpr const char* ztstname[] =
+			{
+				"DepthNever",
+				"DepthAlways",
+				"DepthGEq",
+				"DepthEq",
+			};
+			const char* datedesc = sel.date ? (sel.date_one ? " DATE_ONE" : " DATE") : "";
+			const char* zwedesc = sel.zwe ? " ZWE" : "";
 			dssdesc.depthCompareFunction = ztst[sel.ztst];
+			[dssdesc setLabel:[NSString stringWithFormat:@"%s%s%s", ztstname[sel.ztst], zwedesc, datedesc]];
 			m_dss_hw[i] = [m_dev.dev newDepthStencilStateWithDescriptor:dssdesc];
 		}
 
@@ -1179,7 +1199,7 @@ void GSDeviceMTL::MRESetHWPipelineState(GSHWDrawConfig::VSSelector vssel, GSHWDr
 		color.sourceRGBBlendFactor = static_cast<MTLBlendFactor>(b.src);
 		color.destinationRGBBlendFactor = static_cast<MTLBlendFactor>(b.dst);
 	}
-	id<MTLRenderPipelineState> pipeline = MakePipeline(pdesc, vs, ps, [NSString stringWithFormat:@"HW Render %llx", pssel.key]);
+	id<MTLRenderPipelineState> pipeline = MakePipeline(pdesc, vs, ps, [NSString stringWithFormat:@"HW Render %x.%llx.%x", vssel_mtl.key, pssel.key, extras.key]);
 	m_hw_pipeline.insert(std::make_pair(fullsel, pipeline));
 
 	[m_current_render.encoder setRenderPipelineState:pipeline];
