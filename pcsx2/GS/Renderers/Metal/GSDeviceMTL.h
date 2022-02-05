@@ -222,6 +222,7 @@ public:
 	id<MTLRenderPipelineState> m_merge_pipeline[2];
 	id<MTLRenderPipelineState> m_interlace_pipeline[4];
 	id<MTLRenderPipelineState> m_datm_pipeline[2];
+	id<MTLRenderPipelineState> m_stencil_clear_pipeline;
 	id<MTLRenderPipelineState> m_primid_init_pipeline[2][2];
 	id<MTLRenderPipelineState> m_hdr_init_pipeline;
 	id<MTLRenderPipelineState> m_hdr_resolve_pipeline;
@@ -236,7 +237,8 @@ public:
 
 	id<MTLSamplerState> m_sampler_hw[1 << 8];
 
-	id<MTLDepthStencilState> m_dss_destination_alpha;
+	id<MTLDepthStencilState> m_dss_stencil_zero;
+	id<MTLDepthStencilState> m_dss_stencil_write;
 	id<MTLDepthStencilState> m_dss_hw[1 << 5];
 
 	id<MTLBuffer> m_texture_download_buf;
