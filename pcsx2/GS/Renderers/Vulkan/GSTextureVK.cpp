@@ -132,23 +132,21 @@ std::unique_ptr<GSTextureVK> GSTextureVK::Create(Type type, u32 width, u32 heigh
 
 VkFormat GSTextureVK::LookupNativeFormat(Format format)
 {
-	static constexpr std::array<VkFormat, static_cast<int>(GSTexture::Format::BC7) + 1> s_format_mapping = {{
-		VK_FORMAT_UNDEFINED, // Invalid
-		VK_FORMAT_R8G8B8A8_UNORM, // Color
-		VK_FORMAT_R32G32B32A32_SFLOAT, // FloatColor
-		VK_FORMAT_D32_SFLOAT_S8_UINT, // DepthStencil
-		VK_FORMAT_R8_UNORM, // UNorm8
-		VK_FORMAT_R16_UINT, // UInt16
-		VK_FORMAT_R32_UINT, // UInt32
-		VK_FORMAT_R32_SFLOAT, // Int32
-		VK_FORMAT_BC1_RGBA_UNORM_BLOCK, // BC1
-		VK_FORMAT_BC2_UNORM_BLOCK, // BC2
-		VK_FORMAT_BC3_UNORM_BLOCK, // BC3
-		VK_FORMAT_BC7_UNORM_BLOCK, // BC7
-	}};
-
-
-	return s_format_mapping[static_cast<int>(format)];
+	switch (format)
+	{
+		case GSTexture::Format::Invalid:      return VK_FORMAT_UNDEFINED;
+		case GSTexture::Format::Color:        return VK_FORMAT_R8G8B8A8_UNORM;
+		case GSTexture::Format::FloatColor:   return VK_FORMAT_R32G32B32A32_SFLOAT;
+		case GSTexture::Format::DepthStencil: return VK_FORMAT_D32_SFLOAT_S8_UINT;
+		case GSTexture::Format::UNorm8:       return VK_FORMAT_R8_UNORM;
+		case GSTexture::Format::UInt16:       return VK_FORMAT_R16_UINT;
+		case GSTexture::Format::UInt32:       return VK_FORMAT_R32_UINT;
+		case GSTexture::Format::PrimID:       return VK_FORMAT_R32_SFLOAT;
+		case GSTexture::Format::BC1:          return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+		case GSTexture::Format::BC2:          return VK_FORMAT_BC2_UNORM_BLOCK;
+		case GSTexture::Format::BC3:          return VK_FORMAT_BC3_UNORM_BLOCK;
+		case GSTexture::Format::BC7:          return VK_FORMAT_BC7_UNORM_BLOCK;
+	}
 }
 
 void* GSTextureVK::GetNativeHandle() const { return const_cast<Vulkan::Texture*>(&m_texture); }

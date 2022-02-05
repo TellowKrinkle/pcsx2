@@ -90,27 +90,26 @@ void GSTexture::Swap(GSTexture* tex)
 
 u32 GSTexture::GetCompressedBytesPerBlock() const
 {
-	static constexpr u32 bytes_per_block[] = {
-		1, // Invalid
-		4, // Color/RGBA8
-		16, // FloatColor/RGBA32F
-		32, // DepthStencil
-		1, // UNorm8/R8
-		2, // UInt16/R16UI
-		4, // UInt32/R32UI
-		4, // Int32/R32I
-		8, // BC1 - 16 pixels in 64 bits
-		16, // BC2 - 16 pixels in 128 bits
-		16, // BC3 - 16 pixels in 128 bits
-		16, // BC4 - 16 pixels in 128 bits
-	};
-
-	return bytes_per_block[static_cast<u32>(m_format)];
+	switch (m_format)
+	{
+		case Format::Invalid:      return 1;
+		case Format::Color:        return 4;
+		case Format::FloatColor:   return 16;
+		case Format::DepthStencil: return 32;
+		case Format::UNorm8:       return 1;
+		case Format::UInt16:       return 2;
+		case Format::UInt32:       return 4;
+		case Format::PrimID:       return 4;
+		case Format::BC1:          return 8; // 16 pixels in 64 bits
+		case Format::BC2:          return 16; // 16 pixels in 128 bits
+		case Format::BC3:          return 16; // 16 pixels in 128 bits
+		case Format::BC7:          return 16; // 16 pixels in 128 bits
+	}
 }
 
 u32 GSTexture::GetCompressedBlockSize() const
 {
-	if (m_format >= Format::BC1 && m_format <= Format::BC7)
+	if (IsCompressedFormat())
 		return 4;
 	else
 		return 1;
