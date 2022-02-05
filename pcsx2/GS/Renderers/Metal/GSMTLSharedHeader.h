@@ -22,7 +22,6 @@ enum GSMTLBufferIndices
 	GSMTLBufferIndexUniforms,
 	GSMTLBufferIndexHWVertices,
 	GSMTLBufferIndexHWUniforms,
-	GSMTLBufferIndexPrimIDBuffer,
 };
 
 enum GSMTLTextureIndex
@@ -31,6 +30,7 @@ enum GSMTLTextureIndex
 	GSMTLTextureIndexTex,
 	GSMTLTextureIndexPalette,
 	GSMTLTextureIndexRenderTarget,
+	GSMTLTextureIndexPrimIDs,
 };
 
 struct GSMTLConvertPSUniform

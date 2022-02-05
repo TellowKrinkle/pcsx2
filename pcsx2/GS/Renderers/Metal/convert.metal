@@ -124,6 +124,16 @@ fragment void ps_datm0(float4 p [[position]], DirectReadTextureIn<float> tex)
 		discard_fragment();
 }
 
+fragment float4 ps_primid_init_datm0(float4 p [[position]], DirectReadTextureIn<float> tex)
+{
+	return tex.read(p).a > (127.5f / 255.f) ? -1 : FLT_MAX;
+}
+
+fragment float4 ps_primid_init_datm1(float4 p [[position]], DirectReadTextureIn<float> tex)
+{
+	return tex.read(p).a < (127.5f / 255.f) ? -1 : FLT_MAX;
+}
+
 fragment float4 ps_mod256(float4 p [[position]], DirectReadTextureIn<float> tex)
 {
 	float4 c = round(tex.read(p) * 255.f);
@@ -326,14 +336,6 @@ fragment float4 ps_yuv(ConvertShaderData data [[stage_in]], ConvertPSRes res,
 	}
 
 	return o;
-}
-
-kernel void clear_destination_alpha(
-	uint2 pos [[thread_position_in_grid]],
-	constant uint& width [[buffer(GSMTLBufferIndexUniforms)]],
-	device int* buffer   [[buffer(GSMTLBufferIndexPrimIDBuffer)]])
-{
-	buffer[pos.y * width + pos.x] = INT_MAX;
 }
 
 fragment half4 ps_imgui(ImGuiShaderData data [[stage_in]], texture2d<half> texture [[texture(GSMTLTextureIndexNonHW)]])
