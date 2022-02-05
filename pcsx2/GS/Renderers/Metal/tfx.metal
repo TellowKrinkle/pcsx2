@@ -716,45 +716,48 @@ struct PSMain
 
 	void ps_blend(thread float4& Color, float As)
 	{
-		if (!SW_BLEND)
-			return;
+		if (SW_BLEND)
+		{
 
-		float Ad = PS_DFMT == FMT_24 ? 1.f : trunc(current_color.a * 255.5f) / 128.f;
+			float Ad = PS_DFMT == FMT_24 ? 1.f : trunc(current_color.a * 255.5f) / 128.f;
 
-		float3 Cd = trunc(current_color.rgb * 255.5f);
-		float3 Cs = Color.rgb;
+			float3 Cd = trunc(current_color.rgb * 255.5f);
+			float3 Cs = Color.rgb;
 
-		float3 A = pick(PS_BLEND_A, Cs, Cd, float3(0.f));
-		float3 B = pick(PS_BLEND_B, Cs, Cd, float3(0.f));
-		float  C = pick(PS_BLEND_C, As, Ad, cb.alpha_fix);
-		float3 D = pick(PS_BLEND_D, Cs, Cd, float3(0.f));
+			float3 A = pick(PS_BLEND_A, Cs, Cd, float3(0.f));
+			float3 B = pick(PS_BLEND_B, Cs, Cd, float3(0.f));
+			float  C = pick(PS_BLEND_C, As, Ad, cb.alpha_fix);
+			float3 D = pick(PS_BLEND_D, Cs, Cd, float3(0.f));
 
-		if (PS_ALPHA_CLAMP)
-			C = min(C, 1.f);
+			if (PS_ALPHA_CLAMP)
+				C = min(C, 1.f);
 
-		if (PS_BLEND_A == PS_BLEND_B)
-			Color.rgb = D;
+			if (PS_BLEND_A == PS_BLEND_B)
+				Color.rgb = D;
+			else
+				Color.rgb = trunc((A - B) * C + D);
+
+			if (PS_PABE)
+				Color.rgb = (As >= 1.f) ? Color.rgb : Cs;
+		}
 		else
-			Color.rgb = trunc((A - B) * C + D);
-
-		if (PS_PABE)
-			Color.rgb = (As >= 1.f) ? Color.rgb : Cs;
-
-		// Needed for Cd * (As/Ad/F + 1) blending mdoes
-		if (PS_CLR_HW == 1)
 		{
-			Color.rgb = 255.f;
-		}
-		else if (PS_CLR_HW == 2 || PS_CLR_HW == 3)
-		{
-			float Alpha = PS_CLR_HW == 2 ? cb.alpha_fix : As;
-			Color.rgb = saturate(Alpha - 1.f) * 255.f;
-		}
-		else if (PS_CLR_HW == 4)
-		{
-			// Needed for Cs*Ad, Cs*Ad + Cd, Cd - Cs*Ad
-			// Multiply Color.rgb by (255/128) to compensate for wrong Ad/255 value
-			Color.rgb *= (255.f / 128.f);
+			// Needed for Cd * (As/Ad/F + 1) blending mdoes
+			if (PS_CLR_HW == 1)
+			{
+				Color.rgb = 255.f;
+			}
+			else if (PS_CLR_HW == 2 || PS_CLR_HW == 3)
+			{
+				float Alpha = PS_CLR_HW == 2 ? cb.alpha_fix : As;
+				Color.rgb = saturate(Alpha - 1.f) * 255.f;
+			}
+			else if (PS_CLR_HW == 4)
+			{
+				// Needed for Cs*Ad, Cs*Ad + Cd, Cd - Cs*Ad
+				// Multiply Color.rgb by (255/128) to compensate for wrong Ad/255 value
+				Color.rgb *= (255.f / 128.f);
+			}
 		}
 	}
 
