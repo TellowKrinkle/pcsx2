@@ -21,6 +21,7 @@ constant uint FMT_16 = 2;
 
 constant bool FST                   [[function_constant(GSMTLConstantIndex_FST)]];
 constant bool IIP                   [[function_constant(GSMTLConstantIndex_IIP)]];
+constant bool VS_POINT_SIZE         [[function_constant(GSMTLConstantIndex_VS_POINT_SIZE)]];
 constant uint PS_AEM_FMT            [[function_constant(GSMTLConstantIndex_PS_AEM_FMT)]];
 constant uint PS_PAL_FMT            [[function_constant(GSMTLConstantIndex_PS_PAL_FMT)]];
 constant uint PS_DFMT               [[function_constant(GSMTLConstantIndex_PS_DFMT)]];
@@ -90,6 +91,16 @@ struct MainVSOut
 	float4 ti;
 	float4 c [[function_constant(IIP)]];
 	float4 fc [[flat, function_constant(NOT_IIP)]];
+	float point_size [[point_size, function_constant(VS_POINT_SIZE)]];
+};
+
+struct MainPSIn
+{
+	float4 p [[position]];
+	float4 t;
+	float4 ti;
+	float4 c [[function_constant(IIP)]];
+	float4 fc [[flat, function_constant(NOT_IIP)]];
 };
 
 struct MainPSOut
@@ -151,6 +162,9 @@ static MainVSOut vs_main_run(thread const MainVSIn& v, constant GSMTLMainVSUnifo
 
 	out.t.z = v.f.x; // pack fog with texture
 
+	if (VS_POINT_SIZE)
+		out.point_size = SCALING_FACTOR.x;
+
 	return out;
 }
 
@@ -174,10 +188,10 @@ struct PSMain
 	float4 current_color;
 	uchar4 current_color_int;
 	ushort prim_id;
-	const thread MainVSOut& in;
+	const thread MainPSIn& in;
 	constant GSMTLMainPSUniform& cb;
 
-	PSMain(const thread MainVSOut& in, constant GSMTLMainPSUniform& cb): in(in), cb(cb) {}
+	PSMain(const thread MainPSIn& in, constant GSMTLMainPSUniform& cb): in(in), cb(cb) {}
 
 	template <typename... Args>
 	float4 sample_tex(Args... args)
@@ -838,7 +852,7 @@ struct PSMain
 };
 
 fragment MainPSOut ps_main(
-	MainVSOut in [[stage_in]],
+	MainPSIn in [[stage_in]],
 	constant GSMTLMainPSUniform& cb [[buffer(GSMTLBufferIndexHWUniforms)]],
 	sampler s [[sampler(0)]],
 	texture2d<float> tex       [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_COLOR)]],
@@ -871,7 +885,7 @@ fragment MainPSOut ps_main(
 
 [[early_fragment_tests]]
 fragment MainPSOutNoDepth ps_main_eft(
-	MainVSOut in [[stage_in]],
+	MainPSIn in [[stage_in]],
 	constant GSMTLMainPSUniform& cb [[buffer(GSMTLBufferIndexHWUniforms)]],
 	sampler s [[sampler(0)]],
 	texture2d<float> tex       [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_COLOR)]],
@@ -909,7 +923,7 @@ fragment MainPSOutNoDepth ps_main_eft(
 #if defined(__METAL_IOS__) || __METAL_VERSION__ >= 230
 
 fragment MainPSOut ps_main_fbfetch(
-	MainVSOut in [[stage_in]],
+	MainPSIn in [[stage_in]],
 	constant GSMTLMainPSUniform& cb [[buffer(GSMTLBufferIndexHWUniforms)]],
 	sampler s [[sampler(0)]],
 	texture2d<float> tex       [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_COLOR)]],
