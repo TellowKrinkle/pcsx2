@@ -610,6 +610,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 	m_features.geometry_shader = false;
 	m_features.image_load_store = false;
 	m_features.texture_barrier = true;
+	m_features.point_expand = true;
 	m_features.prefer_rt_read = m_dev.features.framebuffer_fetch;
 
 	try
@@ -730,8 +731,9 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 		{
 			VSSelector sel;
 			sel.key = i;
-			setFnConstantB(m_fn_constants, sel.fst, GSMTLConstantIndex_FST);
-			setFnConstantB(m_fn_constants, sel.iip, GSMTLConstantIndex_IIP);
+			setFnConstantB(m_fn_constants, sel.fst,        GSMTLConstantIndex_FST);
+			setFnConstantB(m_fn_constants, sel.iip,        GSMTLConstantIndex_IIP);
+			setFnConstantB(m_fn_constants, sel.point_size, GSMTLConstantIndex_VS_POINT_SIZE);
 			m_hw_vs[i] = LoadShader(@"vs_main");
 		}
 
@@ -1084,7 +1086,8 @@ void GSDeviceMTL::MRESetHWPipelineState(GSHWDrawConfig::VSSelector vssel, GSHWDr
 
 	VSSelector vssel_mtl;
 	vssel_mtl.fst = vssel.fst;
-	vssel_mtl.iip = pssel.iip;
+	vssel_mtl.iip = vssel.iip;
+	vssel_mtl.point_size = vssel.point_size;
 	id<MTLFunction> vs = m_hw_vs[vssel_mtl.key];
 
 	id<MTLFunction> ps;
