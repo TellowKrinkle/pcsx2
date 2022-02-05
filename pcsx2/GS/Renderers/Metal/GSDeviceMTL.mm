@@ -33,16 +33,6 @@ GSDevice* MakeGSDeviceMTL()
 	return new GSDeviceMTL();
 }
 
-static MTLScissorRect makeScissorRect(NSUInteger x, NSUInteger y, NSUInteger width, NSUInteger height)
-{
-	MTLScissorRect rect;
-	rect.x = x;
-	rect.y = y;
-	rect.width = width;
-	rect.height = height;
-	return rect;
-}
-
 bool GSDeviceMTL::UsageTracker::PrepareForAllocation(u64 last_draw, size_t amt)
 {
 	auto removeme = std::find_if(m_usage.begin(), m_usage.end(), [last_draw](UsageEntry usage){ return usage.drawno > last_draw; });
@@ -1141,7 +1131,6 @@ void GSDeviceMTL::MRESetHWPipelineState(GSHWDrawConfig::VSSelector vssel, GSHWDr
 		setFnConstantB(m_fn_constants, pssel.fog,                GSMTLConstantIndex_PS_FOG);
 		setFnConstantI(m_fn_constants, pssel.date,               GSMTLConstantIndex_PS_DATE);
 		setFnConstantI(m_fn_constants, pssel.atst,               GSMTLConstantIndex_PS_ATST);
-		setFnConstantB(m_fn_constants, pssel.fst,                GSMTLConstantIndex_PS_FST);
 		setFnConstantI(m_fn_constants, pssel.tfx,                GSMTLConstantIndex_PS_TFX);
 		setFnConstantB(m_fn_constants, pssel.tcc,                GSMTLConstantIndex_PS_TCC);
 		setFnConstantI(m_fn_constants, pssel.wms,                GSMTLConstantIndex_PS_WMS);

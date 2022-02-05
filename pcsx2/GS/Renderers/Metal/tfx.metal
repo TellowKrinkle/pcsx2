@@ -31,7 +31,6 @@ constant bool PS_FBA                [[function_constant(GSMTLConstantIndex_PS_FB
 constant bool PS_FOG                [[function_constant(GSMTLConstantIndex_PS_FOG)]];
 constant uint PS_DATE               [[function_constant(GSMTLConstantIndex_PS_DATE)]];
 constant uint PS_ATST               [[function_constant(GSMTLConstantIndex_PS_ATST)]];
-constant bool PS_FST                [[function_constant(GSMTLConstantIndex_PS_FST)]];
 constant uint PS_TFX                [[function_constant(GSMTLConstantIndex_PS_TFX)]];
 constant bool PS_TCC                [[function_constant(GSMTLConstantIndex_PS_TCC)]];
 constant uint PS_WMS                [[function_constant(GSMTLConstantIndex_PS_WMS)]];
@@ -272,7 +271,7 @@ struct PSMain
 			{
 				// wrap negative uv coords to avoid an off by one error that shifted
 				// textures. Fixes Xenosaga's hair issue.
-				if (!PS_FST)
+				if (!FST)
 					uv = fract(uv);
 
 				uv_out = float4((ushort4(uv * tex_size) & ushort4(cb.uv_msk_fix.xyxy)) | ushort4(cb.uv_msk_fix.zwzw)) / tex_size;
@@ -286,7 +285,7 @@ struct PSMain
 			}
 			else if (PS_WMS == 3)
 			{
-				if (!PS_FST)
+				if (!FST)
 					uv.xz = fract(uv.xz);
 
 				uv_out.xz = float2((ushort2(uv.xz * tex_size.xx) & ushort2(cb.uv_msk_fix.xx)) | ushort2(cb.uv_msk_fix.zz)) / tex_size.xx;
@@ -298,7 +297,7 @@ struct PSMain
 			}
 			else if (PS_WMT == 3)
 			{
-				if (!PS_FST)
+				if (!FST)
 					uv.yw = fract(uv.yw);
 
 				uv_out.yw = float2((ushort2(uv.yw * tex_size.yy) & ushort2(cb.uv_msk_fix.yy)) | ushort2(cb.uv_msk_fix.ww)) / tex_size.yy;
@@ -525,7 +524,7 @@ struct PSMain
 			{
 				uv = st.xyxy + cb.half_texel;
 				dd = fract(uv.xy * cb.wh.zw);
-				if (!PS_FST)
+				if (!FST)
 				{
 					// Background in Shin Megami Tensei Lucifers
 					// I suspect that uv isn't a standard number, so fract is outside of the [0;1] range
@@ -625,11 +624,11 @@ struct PSMain
 	float4 ps_color()
 	{
 		float2 st, st_int;
-		if (!PS_FST && PS_INVALID_TEX0)
+		if (!FST && PS_INVALID_TEX0)
 		{
 			st = (in.t.xy * cb.wh.xy) / (in.t.w * cb.wh.zw);
 		}
-		else if (!PS_FST)
+		else if (!FST)
 		{
 			st = in.t.xy / in.t.w;
 			st_int = in.ti.zw / in.t.w;
