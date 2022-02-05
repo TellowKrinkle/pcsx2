@@ -710,9 +710,9 @@ struct PSMain
 		if (!SW_BLEND)
 			return;
 
-		float Ad = PS_DFMT == FMT_24 ? 1.f : (current_color.a * 255.f + 0.1f) / 128.f;
+		float Ad = PS_DFMT == FMT_24 ? 1.f : trunc(current_color.a * 255.5f) / 128.f;
 
-		float3 Cd = current_color.rgb * 255.f + 0.1f;
+		float3 Cd = trunc(current_color.rgb * 255.5f);
 		float3 Cs = Color.rgb;
 
 		float3 A = pick(PS_BLEND_A, Cs, Cd, float3(0.f));
