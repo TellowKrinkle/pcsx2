@@ -601,6 +601,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 	m_features.image_load_store = m_dev.features.primid;
 	m_features.texture_barrier = true;
 	m_features.point_expand = true;
+	m_features.prefer_new_textures = true;
 	m_features.prefer_rt_read = m_dev.features.framebuffer_fetch;
 
 	try
