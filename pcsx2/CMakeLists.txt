@@ -1726,7 +1726,7 @@ if (APPLE)
 			set(flags
 				-ffast-math
 				$<$<NOT:$<CONFIG:Release,MinSizeRel>>:-gline-tables-only>
-				$<$<NOT:$<CONFIG:Release,MinSizeRel>>:-M0>
+				$<$<NOT:$<CONFIG:Release,MinSizeRel>>:-MO>
 			)
 			foreach(shader IN LISTS pcsx2GSMetalShaders)
 				set(shaderOut ${CMAKE_CURRENT_BINARY_DIR}/${outputName}/${shader}.air)
