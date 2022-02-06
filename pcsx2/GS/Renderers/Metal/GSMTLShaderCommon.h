@@ -41,7 +41,7 @@ struct ConvertPSDepthRes
 {
 	depth2d<float> texture [[texture(GSMTLTextureIndexNonHW)]];
 	sampler s [[sampler(0)]];
-	float4 sample(float2 coord)
+	float sample(float2 coord)
 	{
 		return texture.sample(s, coord);
 	}

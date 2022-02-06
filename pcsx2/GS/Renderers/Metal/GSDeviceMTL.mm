@@ -814,6 +814,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 					pdesc.colorAttachments[0].pixelFormat = ConvertPixelFormat(GSTexture::Format::UInt16);
 					pdesc.depthAttachmentPixelFormat = MTLPixelFormatInvalid;
 					break;
+				case ShaderConvert::DEPTH_COPY:
 				case ShaderConvert::RGBA8_TO_FLOAT32:
 				case ShaderConvert::RGBA8_TO_FLOAT24:
 				case ShaderConvert::RGBA8_TO_FLOAT16:
