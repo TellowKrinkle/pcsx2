@@ -78,7 +78,8 @@ constant bool PS_TEX_IS_COLOR = !PS_TEX_IS_DEPTH;
 constant bool PS_HAS_PALETTE = PS_PAL_FMT != 0 || (PS_CHANNEL >= 1 && PS_CHANNEL <= 5);
 constant bool NOT_IIP = !IIP;
 constant bool SW_BLEND = (PS_BLEND_A != PS_BLEND_B) || PS_BLEND_D;
-constant bool NEEDS_RT_FOR_BLEND = (((PS_BLEND_A != PS_BLEND_B) && (PS_BLEND_A == 1 || PS_BLEND_B == 1 || PS_BLEND_C == 1)) || PS_BLEND_D == 1);
+constant bool SW_AD_TO_HW = PS_BLEND_C == 1 && PS_CLR_HW > 3;
+constant bool NEEDS_RT_FOR_BLEND = (((PS_BLEND_A != PS_BLEND_B) && (PS_BLEND_A == 1 || PS_BLEND_B == 1 || PS_BLEND_C == 1)) || PS_BLEND_D == 1 || SW_AD_TO_HW);
 constant bool NEEDS_RT_EARLY = PS_TEX_IS_FB || PS_DATE >= 5;
 constant bool NEEDS_RT = NEEDS_RT_EARLY || (!PS_PRIM_CHECKING_INIT && (PS_FBMASK || NEEDS_RT_FOR_BLEND));
 
@@ -742,16 +743,16 @@ struct PSMain
 		else
 		{
 			// Needed for Cd * (As/Ad/F + 1) blending mdoes
-			if (PS_CLR_HW == 1)
+			if (PS_CLR_HW == 1 || PS_CLR_HW == 5)
 			{
 				Color.rgb = 255.f;
 			}
-			else if (PS_CLR_HW == 2 || PS_CLR_HW == 3)
+			else if (PS_CLR_HW == 2 || PS_CLR_HW == 4)
 			{
-				float Alpha = PS_CLR_HW == 2 ? cb.alpha_fix : As;
+				float Alpha = PS_BLEND_C == 2 ? cb.alpha_fix : As;
 				Color.rgb = saturate(Alpha - 1.f) * 255.f;
 			}
-			else if (PS_CLR_HW == 4)
+			else if (PS_CLR_HW == 3)
 			{
 				// Needed for Cs*Ad, Cs*Ad + Cd, Cd - Cs*Ad
 				// Multiply Color.rgb by (255/128) to compensate for wrong Ad/255 value
@@ -804,7 +805,7 @@ struct PSMain
 		}
 
 		// Must be done before alpha correction
-		float alpha_blend = C.a / 128.0f;
+		float alpha_blend = SW_AD_TO_HW ? (PS_DFMT == FMT_24 ? 1.f : trunc(current_color.a * 255.5f) / 128.f) : (C.a / 128.f);
 
 		if (PS_DFMT == FMT_16)
 		{
