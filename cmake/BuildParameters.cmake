@@ -39,6 +39,11 @@ option(USE_VTUNE "Plug VTUNE to profile GS JIT.")
 #-------------------------------------------------------------------------------
 option(BUILD_REPLAY_LOADERS "Build GS replayer to ease testing (developer option)")
 option(USE_VULKAN "Enable Vulkan GS renderer" ON)
+if (APPLE)
+	option(USE_METAL "Enable Metal GS renderer" ON)
+else()
+	option(USE_METAL "Enable Metal GS renderer" OFF)
+endif()
 
 #-------------------------------------------------------------------------------
 # Path and lib option
@@ -240,6 +245,10 @@ endif()
 
 if(USE_VULKAN)
 	list(APPEND PCSX2_DEFS ENABLE_VULKAN)
+endif()
+
+if (USE_METAL)
+	list(APPEND PCSX2_DEFS ENABLE_METAL)
 endif()
 
 if(X11_API)

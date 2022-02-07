@@ -94,7 +94,7 @@ namespace
 			, inner(new wxBoxSizer(orientation))
 		{
 			wxSizerFlags flags = wxSizerFlags().Expand();
-#ifdef __APPLE__
+#ifdef ENABLE_METAL
 			if (!std::is_same<OuterSizer, wxStaticBoxSizer>::value) // wxMac already adds padding to static box sizers
 #endif
 				flags.Border();
@@ -703,7 +703,7 @@ void Dialog::RendererChange()
 		list = VulkanHostDisplay::StaticGetAdapterAndModeList(nullptr);
 		break;
 #endif
-#ifdef __APPLE__
+#ifdef ENABLE_METAL
 	case GSRendererType::Metal:
 		list = GetMetalAdapterAndModeList();
 		break;
