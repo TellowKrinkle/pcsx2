@@ -333,16 +333,20 @@ bool MetalHostDisplay::UpdateImGuiFontTexture()
 
 bool MetalHostDisplay::GetHostRefreshRate(float* refresh_rate)
 {
-	if (@available(macOS 12.0, *))
+	OnMainThread([this, refresh_rate]
 	{
-		OnMainThread([this, refresh_rate]
+		u32 did = [[[[[m_view window] screen] deviceDescription] valueForKey:@"NSScreenNumber"] unsignedIntValue];
+		if (CGDisplayModeRef mode = CGDisplayCopyDisplayMode(did))
 		{
-			if (@available(macOS 12.0, *)) // Just here to keep the compiler happy
-				*refresh_rate = [[[m_view window] screen] maximumFramesPerSecond];
-		});
-		return true;
-	}
-	return false;
+			*refresh_rate = CGDisplayModeGetRefreshRate(mode);
+			CGDisplayModeRelease(mode);
+		}
+		else
+		{
+			*refresh_rate = 0;
+		}
+	});
+	return *refresh_rate != 0;
 }
 
 #endif // __APPLE__
