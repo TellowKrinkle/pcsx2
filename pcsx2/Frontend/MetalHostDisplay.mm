@@ -123,6 +123,16 @@ bool MetalHostDisplay::CreateRenderDevice(const WindowInfo& wi, std::string_view
 	[m_pass_desc colorAttachments][0].clearColor = MTLClearColorMake(0, 0, 0, 0);
 	[m_pass_desc colorAttachments][0].storeAction = MTLStoreActionStore;
 
+	m_capture_start_frame = 0;
+	if (char* env = getenv("MTL_CAPTURE"))
+	{
+		m_capture_start_frame = atoi(env);
+	}
+	if (m_capture_start_frame)
+	{
+		Console.WriteLn("Metal will capture frame %u", m_capture_start_frame);
+	}
+
 	if (m_dev.IsOk() && m_queue)
 	{
 		Console.WriteLn("Renderer info:\n    %s", GetDriverInfo().c_str());
@@ -252,14 +262,18 @@ void MetalHostDisplay::UpdateTexture(HostDisplayTexture* texture, u32 x, u32 y, 
 	UpdateTexture((__bridge id<MTLTexture>)texture->GetHandle(), x, y, width, height, data, data_stride);
 }}
 
+static bool s_capture_next = false;
+
 bool MetalHostDisplay::BeginPresent(bool frame_skip)
 { @autoreleasepool {
+	GSDeviceMTL* dev = static_cast<GSDeviceMTL*>(g_gs_device.get());
+	if (dev && m_capture_start_frame && dev->FrameNo() == m_capture_start_frame)
+		s_capture_next = true;
 	if (frame_skip || m_window_info.type == WindowInfo::Type::Surfaceless || !g_gs_device)
 	{
 		ImGui::EndFrame();
 		return false;
 	}
-	GSDeviceMTL* dev = static_cast<GSDeviceMTL*>(g_gs_device.get());
 	id<MTLCommandBuffer> buf = dev->GetRenderCmdBuf();
 	// TODO: Use synchronous fetch if vsync is enabled
 	dispatch_semaphore_wait(m_gpu_work_sema, DISPATCH_TIME_FOREVER);
@@ -293,6 +307,54 @@ void MetalHostDisplay::EndPresent()
 		[dev->GetRenderCmdBuf() presentDrawable:m_current_drawable];
 	dev->FlushEncoders();
 	m_current_drawable = nullptr;
+	if (m_capture_start_frame)
+	{
+		if (@available(macOS 10.15, iOS 13, *))
+		{
+			static NSString* const path = @"/tmp/PCSX2MTLCapture.gputrace";
+			static u32 frames;
+			if (frames)
+			{
+				--frames;
+				if (!frames)
+				{
+					[[MTLCaptureManager sharedCaptureManager] stopCapture];
+					Console.WriteLn("Metal Trace Capture to /tmp/PCSX2MTLCapture.gputrace finished");
+					[[NSWorkspace sharedWorkspace] selectFile:path
+					                 inFileViewerRootedAtPath:@"/tmp/"];
+				}
+			}
+			else if (s_capture_next)
+			{
+				s_capture_next = false;
+				MTLCaptureManager* mgr = [MTLCaptureManager sharedCaptureManager];
+				if ([mgr supportsDestination:MTLCaptureDestinationGPUTraceDocument])
+				{
+					MTLCaptureDescriptor* desc = [[MTLCaptureDescriptor new] autorelease];
+					[desc setCaptureObject:m_dev.dev];
+					if ([[NSFileManager defaultManager] fileExistsAtPath:path])
+						[[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+					[desc setOutputURL:[NSURL fileURLWithPath:path]];
+					[desc setDestination:MTLCaptureDestinationGPUTraceDocument];
+					NSError* err = nullptr;
+					[mgr startCaptureWithDescriptor:desc error:&err];
+					if (err)
+					{
+						Console.Error("Metal Trace Capture failed: %s", [[err localizedDescription] UTF8String]);
+					}
+					else
+					{
+						Console.WriteLn("Metal Trace Capture to /tmp/PCSX2MTLCapture.gputrace started");
+						frames = 2;
+					}
+				}
+				else
+				{
+					Console.Error("Metal Trace Capture Failed: MTLCaptureManager doesn't support GPU trace documents! (Did you forget to run with METAL_CAPTURE_ENABLED=1?)");
+				}
+			}
+		}
+	}
 }}
 
 void MetalHostDisplay::SetVSync(VsyncMode mode)

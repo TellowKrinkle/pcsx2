@@ -40,6 +40,7 @@ class MetalHostDisplay final : public HostDisplay
 	MRCOwned<MTLRenderPassDescriptor*> m_pass_desc;
 	MTLDrawableFetcher m_drawable_fetcher;
 	dispatch_semaphore_t m_gpu_work_sema;
+	u32 m_capture_start_frame;
 
 	void AttachSurfaceOnMainThread();
 	void DetachSurfaceOnMainThread();
