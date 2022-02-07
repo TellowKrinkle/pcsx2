@@ -985,7 +985,7 @@ if(WIN32)
 	list(APPEND pcsx2FrontendHeaders
 		Frontend/D3D11HostDisplay.h
 	)
-elseif(APPLE)
+elseif(USE_METAL)
 	list(APPEND pcsx2GSSources
 		GS/Renderers/Metal/GSDeviceMTL.mm
 		GS/Renderers/Metal/GSMTLDeviceInfo.mm
@@ -1706,6 +1706,7 @@ if(GETTEXT_FOUND AND NOT NO_TRANSLATION AND NOT PCSX2_CORE)
 endif()
 
 if (APPLE)
+	if(USE_METAL)
 	find_library(METAL_LIBRARY Metal)
 	target_link_libraries(PCSX2 PRIVATE ${METAL_LIBRARY})
 
@@ -1748,6 +1749,7 @@ if (APPLE)
 		generateMetallib(macos-metal2.2 air64-apple-macos10.15 Metal22)
 		generateMetallib(macos-metal2.3 air64-apple-macos11.0  Metal23)
 	endif()
+	endif(USE_METAL)
 
 	# MacOS defaults to having a maximum protection of the __DATA segment of rw (non-executable)
 	# We have a bunch of page-sized arrays in bss that we use for jit
