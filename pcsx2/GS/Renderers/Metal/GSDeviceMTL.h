@@ -361,6 +361,7 @@ public:
 	// MARK: ImGui
 
 	void RenderImGui(ImDrawData* data);
+	u32 FrameNo() const { return m_frame; }
 };
 
 #endif // __APPLE__
