@@ -16,7 +16,7 @@
 #pragma once
 // Header with all metal stuff available for use with C++ (rather than Objective-C++)
 
-#ifdef __APPLE__
+#ifdef ENABLE_METAL
 
 #include "HostDisplay.h"
 

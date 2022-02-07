@@ -134,7 +134,7 @@ std::unique_ptr<HostDisplay> HostDisplay::CreateDisplayForAPI(RenderAPI api)
 		case RenderAPI::D3D11:
 			return std::make_unique<D3D11HostDisplay>();
 #endif
-#ifdef __APPLE__
+#ifdef ENABLE_METAL
 		case HostDisplay::RenderAPI::Metal:
 			return std::unique_ptr<HostDisplay>(MakeMetalHostDisplay());
 #endif

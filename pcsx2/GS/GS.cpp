@@ -164,7 +164,7 @@ static HostDisplay::RenderAPI GetAPIForRenderer(GSRendererType renderer)
 		case GSRendererType::VK:
 			return HostDisplay::RenderAPI::Vulkan;
 
-#ifdef __APPLE__
+#ifdef ENABLE_METAL
 		case GSRendererType::Metal:
 			return HostDisplay::RenderAPI::Metal;
 #endif
@@ -191,7 +191,7 @@ static bool DoGSOpen(GSRendererType renderer, u8* basemem)
 			g_gs_device = std::make_unique<GSDevice11>();
 			break;
 #endif
-#ifdef __APPLE__
+#ifdef ENABLE_METAL
 		case HostDisplay::RenderAPI::Metal:
 			g_gs_device = std::unique_ptr<GSDevice>(MakeGSDeviceMTL());
 			break;
@@ -1199,7 +1199,7 @@ void GSApp::Init()
 #ifdef _WIN32
 	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::DX11), "Direct3D 11", ""));
 #endif
-#ifdef __APPLE__
+#ifdef ENABLE_METAL
 	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::Metal), "Metal", ""));
 #endif
 	m_gs_renderers.push_back(GSSetting(static_cast<u32>(GSRendererType::OGL), "OpenGL", ""));
