@@ -1393,6 +1393,9 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 		config.drawlist = nullptr;
 	}
 
+	if (config.topology == GSHWDrawConfig::Topology::Point)
+		config.vs.point_size = 1; // M1 requires point size output on *all* points
+
 	if (config.tex && config.ds == config.tex)
 		EndRenderPass(); // Barrier
 
