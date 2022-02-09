@@ -1089,6 +1089,20 @@ void GSDeviceMTL::FlushClears(GSTexture* tex)
 
 // MARK: - MainRenderEncoder Operations
 
+static bool isDualSourceBlend(u32 factor)
+{
+	switch (factor)
+	{
+		case MTLBlendFactorSource1Color:
+		case MTLBlendFactorSource1Alpha:
+		case MTLBlendFactorOneMinusSource1Color:
+		case MTLBlendFactorOneMinusSource1Alpha:
+			return true;
+		default:
+			return false;
+	}
+}
+
 void GSDeviceMTL::MRESetHWPipelineState(GSHWDrawConfig::VSSelector vssel, GSHWDrawConfig::PSSelector pssel, GSHWDrawConfig::BlendState blend, GSHWDrawConfig::ColorMaskSelector cms)
 {
 	PipelineSelectorExtrasMTL extras(blend, m_current_render.color_target, cms, m_current_render.depth_target, m_current_render.stencil_target);
@@ -1104,6 +1118,13 @@ void GSDeviceMTL::MRESetHWPipelineState(GSHWDrawConfig::VSSelector vssel, GSHWDr
 		return;
 	}
 
+	bool primid_tracking_init = pssel.date == 1 || pssel.date == 2;
+	HWBlend b = GetBlend(extras.blend);
+	if (extras.accumulation_blend)
+		b.src = b.dst = MTLBlendFactorOne;
+	if (extras.mixed_hw_sw_blend)
+		b.src = MTLBlendFactorOne;
+
 	VSSelector vssel_mtl;
 	vssel_mtl.fst = vssel.fst;
 	vssel_mtl.iip = vssel.iip;
@@ -1111,7 +1132,19 @@ void GSDeviceMTL::MRESetHWPipelineState(GSHWDrawConfig::VSSelector vssel, GSHWDr
 	id<MTLFunction> vs = m_hw_vs[vssel_mtl.key];
 
 	id<MTLFunction> ps;
-	auto idx2 = m_hw_ps.find(pssel.key);
+	// Note: Stupid Intel bugs reproducible on UHD 630 (but not on Iris Pro 5200)
+	// Stupid Intel bug #1: Outputting to Src1 makes depth randomly not write
+	// Lazy Partial Solution: Only output to Src1 if you actually need it (still broken if Src1 is actually needed but much better than "every game broken yay")
+	// Test GSdump: https://cdn.discordapp.com/attachments/923492653788692480/940228784114790531/gs_20220207135128.gs.xz (Valkyrie Profile)
+	bool dual_source_blend = !primid_tracking_init && (isDualSourceBlend(b.src) || isDualSourceBlend(b.dst));
+	// Stupid Intel bug #2: *Not* outputting to Src1 makes discard stop working
+	// Solution: Output to src1 for destination alpha
+	// Test GSdump: https://github.com/PCSX2/pcsx2/issues/4480
+	dual_source_blend |= pssel.date >= 5;
+	u64 pskey = pssel.key;
+	if (dual_source_blend)
+		pskey = ~pskey; // Didn't feel like finding another open bit
+	auto idx2 = m_hw_ps.find(pskey);
 	if (idx2 != m_hw_ps.end())
 	{
 		ps = idx2->second;
@@ -1159,12 +1192,11 @@ void GSDeviceMTL::MRESetHWPipelineState(GSHWDrawConfig::VSSelector vssel, GSHWDr
 		setFnConstantB(m_fn_constants, pssel.point_sampler,      GSMTLConstantIndex_PS_POINT_SAMPLER);
 		setFnConstantB(m_fn_constants, pssel.invalid_tex0,       GSMTLConstantIndex_PS_INVALID_TEX0);
 		setFnConstantI(m_fn_constants, pssel.scanmsk,            GSMTLConstantIndex_PS_SCANMSK);
+		setFnConstantB(m_fn_constants, dual_source_blend,        GSMTLConstantIndex_PS_DUAL_SOURCE_BLEND);
 		auto newps = LoadShader(m_dev.features.framebuffer_fetch ? @"ps_main_fbfetch" : @"ps_main");
 		ps = newps;
-		m_hw_ps.insert(std::make_pair(pssel.key, std::move(newps)));
+		m_hw_ps.insert(std::make_pair(pskey, std::move(newps)));
 	}
-
-	bool primid_tracking_init = pssel.date == 1 || pssel.date == 2;
 
 	MRCOwned<MTLRenderPipelineDescriptor*> pdesc = MRCTransfer([MTLRenderPipelineDescriptor new]);
 	[pdesc setVertexDescriptor:m_hw_vertex];
@@ -1182,11 +1214,6 @@ void GSDeviceMTL::MRESetHWPipelineState(GSHWDrawConfig::VSSelector vssel, GSHWDr
 	}
 	else if (extras.blend)
 	{
-		HWBlend b = GetBlend(extras.blend);
-		if (extras.accumulation_blend)
-			b.src = b.dst = MTLBlendFactorOne;
-		if (extras.mixed_hw_sw_blend)
-			b.src = MTLBlendFactorOne;
 		color.blendingEnabled = YES;
 		color.rgbBlendOperation = static_cast<MTLBlendOperation>(b.op);
 		color.sourceRGBBlendFactor = static_cast<MTLBlendFactor>(b.src);

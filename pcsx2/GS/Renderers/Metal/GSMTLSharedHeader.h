@@ -144,4 +144,5 @@ enum GSMTLFnConstants
 	GSMTLConstantIndex_PS_POINT_SAMPLER,
 	GSMTLConstantIndex_PS_INVALID_TEX0,
 	GSMTLConstantIndex_PS_SCANMSK,
+	GSMTLConstantIndex_PS_DUAL_SOURCE_BLEND,
 };
