@@ -1444,10 +1444,11 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 		{
 			GSVector2i size = config.rt->GetSize();
 			primid_tex = CreateRenderTarget(size.x, size.y, GSTexture::Format::PrimID);
-			BeginRenderPass(@"PrimID Destination Alpha Init", primid_tex, MTLLoadActionDontCare, config.ds, MTLLoadActionLoad);
-			RenderCopy(config.rt, m_primid_init_pipeline[static_cast<bool>(config.ds)][config.datm], config.drawarea);
 			DepthStencilSelector dsel = config.depth;
 			dsel.zwe = 0;
+			GSTexture* depth = dsel.key == DepthStencilSelector::NoDepth().key ? nullptr : config.ds;
+			BeginRenderPass(@"PrimID Destination Alpha Init", primid_tex, MTLLoadActionDontCare, depth, MTLLoadActionLoad);
+			RenderCopy(config.rt, m_primid_init_pipeline[static_cast<bool>(depth)][config.datm], config.drawarea);
 			MRESetDSS(dsel);
 			ASSERT(config.ps.date == 1 || config.ps.date == 2);
 			if (config.ps.tex_is_fb)
@@ -1487,6 +1488,12 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 
 	FlushClears(config.tex);
 	FlushClears(config.pal);
+
+	// Try to reduce render pass restarts
+	if (!stencil && config.depth.key == DepthStencilSelector::NoDepth().key && (m_current_render.color_target != rt || m_current_render.depth_target != config.ds))
+		config.ds = nullptr;
+	if (!config.ds && m_current_render.color_target == rt && stencil == m_current_render.stencil_target && m_current_render.depth_target != config.tex)
+		config.ds = m_current_render.depth_target;
 
 	BeginRenderPass(@"RenderHW", rt, MTLLoadActionLoad, config.ds, MTLLoadActionLoad, stencil, MTLLoadActionLoad);
 	id<MTLRenderCommandEncoder> mtlenc = m_current_render.encoder;
