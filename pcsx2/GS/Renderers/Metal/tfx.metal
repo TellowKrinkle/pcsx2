@@ -61,6 +61,7 @@ constant bool PS_MANUAL_LOD         [[function_constant(GSMTLConstantIndex_PS_MA
 constant bool PS_POINT_SAMPLER      [[function_constant(GSMTLConstantIndex_PS_POINT_SAMPLER)]];
 constant bool PS_INVALID_TEX0       [[function_constant(GSMTLConstantIndex_PS_INVALID_TEX0)]];
 constant uint PS_SCANMSK            [[function_constant(GSMTLConstantIndex_PS_SCANMSK)]];
+constant bool PS_DUAL_SOURCE_BLEND  [[function_constant(GSMTLConstantIndex_PS_DUAL_SOURCE_BLEND)]];
 
 #if defined(__METAL_MACOS__) && __METAL_VERSION__ >= 220
 	#define PRIMID_SUPPORT 1
@@ -116,14 +117,14 @@ struct MainPSIn
 struct MainPSOut
 {
 	float4 c0 [[color(0), index(0)]];
-	float4 c1 [[color(0), index(1)]];
+	float4 c1 [[color(0), index(1), function_constant(PS_DUAL_SOURCE_BLEND)]];
 	float depth [[depth(less), function_constant(PS_ZCLAMP)]];
 };
 
 struct MainPSOutNoDepth
 {
 	float4 c0 [[color(0), index(0)]];
-	float4 c1 [[color(0), index(1)]];
+	float4 c1 [[color(0), index(1), function_constant(PS_DUAL_SOURCE_BLEND)]];
 };
 
 // MARK: - Vertex functions
@@ -842,7 +843,8 @@ struct PSMain
 		ps_fbmask(C);
 
 		out.c0 = C / 255.f;
-		out.c1 = alpha_blend;
+		if (PS_DUAL_SOURCE_BLEND)
+			out.c1 = alpha_blend;
 		if (PS_ZCLAMP)
 			out.depth = min(in.p.z, cb.max_depth);
 
