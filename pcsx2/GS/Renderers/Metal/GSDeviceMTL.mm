@@ -913,7 +913,7 @@ bool GSDeviceMTL::DownloadTexture(GSTexture* src, const GSVector4i& rect, GSText
 		m_texture_download_buf = MRCTransfer([m_dev.dev newBufferWithLength:size options:MTLResourceStorageModeShared]);
 	pxAssertRel(m_texture_download_buf, "Failed to allocate download buffer (out of memory?)");
 
-	id<MTLCommandBuffer> cmdbuf = GetRenderCmdBuf();
+	MRCOwned<id<MTLCommandBuffer>> cmdbuf = MRCRetain(GetRenderCmdBuf());
 	[cmdbuf pushDebugGroup:@"DownloadTexture"];
 	id<MTLBlitCommandEncoder> encoder = [cmdbuf blitCommandEncoder];
 	[encoder copyFromTexture:msrc->GetTexture()
