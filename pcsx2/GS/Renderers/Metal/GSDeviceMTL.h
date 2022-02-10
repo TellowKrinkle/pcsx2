@@ -283,6 +283,16 @@ public:
 	MRCOwned<id<MTLCommandBuffer>> m_vertex_upload_cmdbuf;
 	MRCOwned<id<MTLBlitCommandEncoder>> m_vertex_upload_encoder;
 
+	struct DebugEntry
+	{
+		enum Op { Push, Insert, Pop } op;
+		MRCOwned<NSString*> str;
+		DebugEntry(Op op, MRCOwned<NSString*> str): op(op), str(std::move(str)) {}
+	};
+
+	std::vector<DebugEntry> m_debug_entries;
+	u32 m_debug_group_level = 0;
+
 	GSDeviceMTL();
 	~GSDeviceMTL() override;
 
@@ -357,6 +367,15 @@ public:
 	void SetupDestinationAlpha(GSTexture* rt, GSTexture* ds, const GSVector4i& r, bool datm);
 	void RenderHW(GSHWDrawConfig& config) override;
 	void SendHWDraw(GSHWDrawConfig& config, id<MTLRenderCommandEncoder> enc, id<MTLBuffer> buffer, size_t off);
+
+	// MARK: Debug
+
+	void PushDebugGroup(const char* fmt, ...) override;
+	void PopDebugGroup() override;
+	void InsertDebugMessage(DebugMessageCategory category, const char* fmt, ...) override;
+	void ProcessDebugEntry(id<MTLCommandEncoder> enc, const DebugEntry& entry);
+	void FlushDebugEntries(id<MTLCommandEncoder> enc);
+	void EndDebugGroup(id<MTLCommandEncoder> enc);
 
 	// MARK: ImGui
 

@@ -267,6 +267,7 @@ void GSDeviceMTL::EndRenderPass()
 {
 	if (m_current_render.encoder)
 	{
+		EndDebugGroup(m_current_render.encoder);
 		[m_current_render.encoder endEncoding];
 		m_current_render.encoder = nil;
 		memset(&m_current_render, 0, offsetof(MainRenderEncoder, depth_sel));
@@ -992,6 +993,7 @@ void GSDeviceMTL::DoStretchRect(GSTexture* sTex, const GSVector4& sRect, GSTextu
 	else
 		BeginRenderPass(@"StretchRect", dT, action, nullptr, MTLLoadActionDontCare);
 
+	FlushDebugEntries(m_current_render.encoder);
 	MREClearScissor();
 	DepthStencilSelector dsel;
 	dsel.ztst = ZTST_ALWAYS;
@@ -1497,6 +1499,7 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 
 	BeginRenderPass(@"RenderHW", rt, MTLLoadActionLoad, config.ds, MTLLoadActionLoad, stencil, MTLLoadActionLoad);
 	id<MTLRenderCommandEncoder> mtlenc = m_current_render.encoder;
+	FlushDebugEntries(mtlenc);
 	MRESetScissor(config.scissor);
 	MRESetTexture(config.tex, GSMTLTextureIndexTex);
 	MRESetTexture(config.pal, GSMTLTextureIndexPalette);
@@ -1618,6 +1621,86 @@ void GSDeviceMTL::SendHWDraw(GSHWDrawConfig& config, id<MTLRenderCommandEncoder>
 		         indexBufferOffset:off];
 		g_perfmon.Put(GSPerfMon::DrawCalls, 1);
 	}
+}
+
+void GSDeviceMTL::PushDebugGroup(const char* fmt, ...)
+{
+#if defined(_DEBUG)
+	va_list va;
+	va_start(va, fmt);
+	MRCOwned<NSString*> nsfmt = MRCTransfer([[NSString alloc] initWithUTF8String:fmt]);
+	m_debug_entries.emplace_back(DebugEntry::Push, MRCTransfer([[NSString alloc] initWithFormat:nsfmt arguments:va]));
+	va_end(va);
+#endif
+}
+
+void GSDeviceMTL::PopDebugGroup()
+{
+#if defined(_DEBUG)
+	m_debug_entries.emplace_back(DebugEntry::Pop, nullptr);
+#endif
+}
+
+void GSDeviceMTL::InsertDebugMessage(DebugMessageCategory category, const char* fmt, ...)
+{
+#if defined(_DEBUG)
+	va_list va;
+	va_start(va, fmt);
+	MRCOwned<NSString*> nsfmt = MRCTransfer([[NSString alloc] initWithUTF8String:fmt]);
+	m_debug_entries.emplace_back(DebugEntry::Insert, MRCTransfer([[NSString alloc] initWithFormat:nsfmt arguments:va]));
+	va_end(va);
+#endif
+}
+
+void GSDeviceMTL::ProcessDebugEntry(id<MTLCommandEncoder> enc, const DebugEntry& entry)
+{
+	switch (entry.op)
+	{
+		case DebugEntry::Push:
+			[enc pushDebugGroup:entry.str];
+			m_debug_group_level++;
+			break;
+		case DebugEntry::Pop:
+			[enc popDebugGroup];
+			if (m_debug_group_level > 0)
+				m_debug_group_level--;
+			break;
+		case DebugEntry::Insert:
+			[enc insertDebugSignpost:entry.str];
+			break;
+	}
+}
+
+void GSDeviceMTL::FlushDebugEntries(id<MTLCommandEncoder> enc)
+{
+#if defined(_DEBUG)
+	if (!m_debug_entries.empty())
+	{
+		for (const DebugEntry& entry : m_debug_entries)
+		{
+			ProcessDebugEntry(enc, entry);
+		}
+		m_debug_entries.clear();
+	}
+#endif
+}
+
+void GSDeviceMTL::EndDebugGroup(id<MTLCommandEncoder> enc)
+{
+#if defined(_DEBUG)
+	if (!m_debug_entries.empty() && m_debug_group_level)
+	{
+		auto begin = m_debug_entries.begin();
+		auto cur = begin;
+		auto end = m_debug_entries.end();
+		while (cur != end && m_debug_group_level)
+		{
+			ProcessDebugEntry(enc, *cur);
+			cur++;
+		}
+		m_debug_entries.erase(begin, cur);
+	}
+#endif
 }
 
 static simd::float2 ToSimd(const ImVec2& vec)
