@@ -930,6 +930,13 @@ fragment MainPSOut ps_main_fbfetch(
 
 #endif // defined(__METAL_IOS__) || __METAL_VERSION__ >= 230
 
+#if PRIMID_SUPPORT
+fragment uint primid_test(uint id [[primitive_id]])
+{
+	return id;
+}
+#endif
+
 // MARK: Markers for detecting the Metal version a metallib was compiled against
 
 #if __METAL_VERSION__ >= 210
