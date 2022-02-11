@@ -448,7 +448,7 @@ void GSRenderer::VSync(u32 field, bool registers_written)
 
 	// snapshot
 
-#ifdef __APPLE__
+#if defined(__APPLE__) && !defined(PCSX2_CORE)
 	// Let people on macOS make GSdumps even though everything else is broken
 	bool newf8 = CGEventSourceKeyState(kCGEventSourceStateHIDSystemState, kVK_F8);
 	if (m_snapshot.empty() && newf8 != m_f8_key && newf8)
