@@ -928,6 +928,11 @@ fragment MainPSOut ps_main_fbfetch(
 	return main.ps_main();
 }
 
+fragment float4 fbfetch_test(float4 in [[color(0), raster_order_group(0)]])
+{
+	return in;
+}
+
 #endif // defined(__METAL_IOS__) || __METAL_VERSION__ >= 230
 
 #if PRIMID_SUPPORT
