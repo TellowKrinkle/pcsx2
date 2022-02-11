@@ -63,6 +63,54 @@ static bool detectPrimIDSupport(id<MTLDevice> dev, id<MTLLibrary> lib)
 	return !err;
 }
 
+static bool detectUndocumentedFBFetch(id<MTLDevice> dev, id<MTLLibrary> lib)
+{
+	// Even though it's nowhere in the feature set tables, some Intel GPUs support fbfetch!
+	// Annoyingly, the Haswell compiler successfully makes a pipeline but actually miscompiles it and doesn't insert any fbfetch instructions
+	// So we actually have to test the thing
+
+	// AMD compiler crashes and gets retried 3 times over multiple seconds trying to compile the pipeline
+	// We know this is only a possibility on Intel anyways
+	if (![[dev name] containsString:@"Intel"])
+		return false;
+	auto pdesc = MRCTransfer([MTLRenderPipelineDescriptor new]);
+	[pdesc setVertexFunction:MRCTransfer([lib newFunctionWithName:@"fs_triangle"])];
+	[pdesc setFragmentFunction:MRCTransfer([lib newFunctionWithName:@"fbfetch_test"])];
+	[[pdesc colorAttachments][0] setPixelFormat:MTLPixelFormatRGBA8Unorm];
+	auto pipe = MRCTransfer([dev newRenderPipelineStateWithDescriptor:pdesc error:nil]);
+	if (!pipe)
+		return false;
+	auto buf = MRCTransfer([dev newBufferWithLength:4 options:MTLResourceStorageModeShared]);
+	auto tdesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:1 height:1 mipmapped:false];
+	[tdesc setUsage:MTLTextureUsageRenderTarget];
+	auto tex = MRCTransfer([dev newTextureWithDescriptor:tdesc]);
+	auto q = MRCTransfer([dev newCommandQueue]);
+	u32 px = 0x11223344;
+	memcpy([buf contents], &px, 4);
+	id<MTLCommandBuffer> cmdbuf = [q commandBuffer];
+	id<MTLBlitCommandEncoder> upload = [cmdbuf blitCommandEncoder];
+	[upload copyFromBuffer:buf sourceOffset:0 sourceBytesPerRow:4 sourceBytesPerImage:4 sourceSize:MTLSizeMake(1, 1, 1) toTexture:tex destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
+	[upload endEncoding];
+	auto rpdesc = MRCTransfer([MTLRenderPassDescriptor new]);
+	auto colordesc = [[rpdesc colorAttachments] objectAtIndexedSubscript: 0];
+	[colordesc setTexture:tex];
+	[colordesc setLoadAction:MTLLoadActionLoad];
+	[colordesc setStoreAction:MTLStoreActionStore];
+	id<MTLRenderCommandEncoder> renc = [cmdbuf renderCommandEncoderWithDescriptor:rpdesc];
+	[renc setRenderPipelineState:pipe];
+	[renc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+	[renc endEncoding];
+	id<MTLBlitCommandEncoder> download = [cmdbuf blitCommandEncoder];
+	[download copyFromTexture:tex sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0) sourceSize:MTLSizeMake(1, 1, 1) toBuffer:buf destinationOffset:0 destinationBytesPerRow:4 destinationBytesPerImage:4];
+	[download endEncoding];
+	[cmdbuf commit];
+	[cmdbuf waitUntilCompleted];
+	u32 outpx;
+	memcpy(&outpx, [buf contents], 4);
+	// fbfetch will preserve contents, but a miscompiled shader will return black
+	return outpx == px;
+}
+
 GSMTLDevice::GSMTLDevice(MRCOwned<id<MTLDevice>> dev)
 {
 	if (!dev)
@@ -92,6 +140,8 @@ GSMTLDevice::GSMTLDevice(MRCOwned<id<MTLDevice>> dev)
 		Console.Warning("Metal: GPU supports framebuffer fetch but shader lib does not!  Get an updated shader lib for better performance!");
 		features.framebuffer_fetch = false;
 	}
+	if (!features.framebuffer_fetch && features.shader_version >= MetalVersion::Metal23 && detectUndocumentedFBFetch(dev, shaders))
+		features.framebuffer_fetch = true;
 
 	features.primid = !features.framebuffer_fetch && features.shader_version >= MetalVersion::Metal22;
 	if (features.primid && !detectPrimIDSupport(dev, shaders))
