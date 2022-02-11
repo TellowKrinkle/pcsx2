@@ -51,6 +51,18 @@ static GSMTLDevice::MetalVersion detectLibraryVersion(id<MTLLibrary> lib)
 	return GSMTLDevice::MetalVersion::Metal20;
 }
 
+static bool detectPrimIDSupport(id<MTLDevice> dev, id<MTLLibrary> lib)
+{
+	// Nvidia Metal driver is missing primid support, yay
+	MRCOwned<MTLRenderPipelineDescriptor*> desc = MRCTransfer([MTLRenderPipelineDescriptor new]);
+	[desc setVertexFunction:MRCTransfer([lib newFunctionWithName:@"fs_triangle"])];
+	[desc setFragmentFunction:MRCTransfer([lib newFunctionWithName:@"primid_test"])];
+	[[desc colorAttachments][0] setPixelFormat:MTLPixelFormatR8Uint];
+	NSError* err;
+	[[dev newRenderPipelineStateWithDescriptor:desc error:&err] release];
+	return !err;
+}
+
 GSMTLDevice::GSMTLDevice(MRCOwned<id<MTLDevice>> dev)
 {
 	if (!dev)
@@ -82,6 +94,8 @@ GSMTLDevice::GSMTLDevice(MRCOwned<id<MTLDevice>> dev)
 	}
 
 	features.primid = !features.framebuffer_fetch && features.shader_version >= MetalVersion::Metal22;
+	if (features.primid && !detectPrimIDSupport(dev, shaders))
+		features.primid = false;
 
 	features.max_texsize = 8192;
 	if ([dev supportsFeatureSet:MTLFeatureSet_macOS_GPUFamily1_v1])
