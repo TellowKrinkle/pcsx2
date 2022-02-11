@@ -545,7 +545,8 @@ MRCOwned<id<MTLFunction>> GSDeviceMTL::LoadShader(NSString* name)
 	if (unlikely(err))
 	{
 		NSString* msg = [NSString stringWithFormat:@"Failed to load shader %@: %@", name, [err localizedDescription]];
-		throw std::runtime_error([msg UTF8String]);
+		Console.Error("%s", [msg UTF8String]);
+		throw GSRecoverableError();
 	}
 	return fn;
 }
@@ -557,8 +558,12 @@ MRCOwned<id<MTLRenderPipelineState>> GSDeviceMTL::MakePipeline(MTLRenderPipeline
 	[desc setFragmentFunction:fragment];
 	NSError* err;
 	MRCOwned<id<MTLRenderPipelineState>> res = MRCTransfer([m_dev.dev newRenderPipelineStateWithDescriptor:desc error:&err]);
-	if (err)
-		throw std::runtime_error([[err localizedDescription] UTF8String]);
+	if (unlikely(err))
+	{
+		NSString* msg = [NSString stringWithFormat:@"Failed to create pipeline %@: %@", name, [err localizedDescription]];
+		Console.Error("%s", [msg UTF8String]);
+		throw GSRecoverableError();
+	}
 	return res;
 }
 
@@ -870,9 +875,8 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 		if (!m_dev.features.texture_swizzle)
 			m_imgui_pipeline_a8 = MakePipeline(pdesc, LoadShader(@"vs_imgui"), LoadShader(@"ps_imgui_a8"), @"imgui_a8");
 	}
-	catch (std::exception& e)
+	catch (GSRecoverableError&)
 	{
-		Console.Error("Metal: Failed to init: %s", e.what());
 		return false;
 	}
 	return true;
