@@ -439,11 +439,11 @@ struct PSMain
 		}
 		else if (PS_DEPTH_FMT == 1)
 		{
-			t = convert_depth32_rgba8(fetch_c(uv).r) * 256.f;
+			t = convert_depth32_rgba8(fetch_c(uv).r);
 		}
 		else if (PS_DEPTH_FMT == 2)
 		{
-			t = convert_depth16_rgba8(fetch_c(uv).r) * float4(8, 8, 8, 128);
+			t = convert_depth16_rgba8(fetch_c(uv).r);
 		}
 		else if (PS_DEPTH_FMT == 3)
 		{

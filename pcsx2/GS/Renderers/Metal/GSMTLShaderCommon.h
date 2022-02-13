@@ -49,17 +49,12 @@ struct ConvertPSDepthRes
 
 static inline float4 convert_depth32_rgba8(float value)
 {
-	constexpr float4 bitSh = float4(0x1p24, 0x1p16, 0x1p8, 0x1p0);
-	constexpr float4 bitMsk = float4(0, 0x1p-8, 0x1p-8, 0x1p-8);
-
-	float4 ret = fract(float4(value) * bitSh);
-	return (ret - ret.xxyz * bitMsk);
+	uint val = uint(value * 0x1p32);
+	return float4(as_type<uchar4>(val));
 }
 
 static inline float4 convert_depth16_rgba8(float value)
 {
-	constexpr float4 bitSh = float4(0x1p32, 0x1p27, 0x1p22, 0x1p17);
-	constexpr uint4 bitMsk = uint4(0x1F, 0x1F, 0x1F, 0x1);
-
-	return float4(uint4(float4(value) * bitSh) & bitMsk);
+	uint val = uint(value * 0x1p32);
+	return float4(uint4(val << 3, val >> 2, val >> 7, val >> 8) & uint4(0xf8, 0xf8, 0xf8, 0x80));
 }
