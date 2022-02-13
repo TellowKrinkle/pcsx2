@@ -40,6 +40,7 @@ class MTLDrawableFetcher
 	void Run(const MRCOwned<CAMetalLayer* _Nonnull>& layer);
 
 public:
+	~MTLDrawableFetcher() { Stop(); }
 	void Start(MRCOwned<CAMetalLayer* _Nonnull> layer);
 	void Stop();
 	MRCOwned<_Nullable id<CAMetalDrawable>> GetIfAvailable();
