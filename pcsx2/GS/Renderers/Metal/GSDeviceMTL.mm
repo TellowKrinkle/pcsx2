@@ -1627,9 +1627,16 @@ void GSDeviceMTL::SendHWDraw(GSHWDrawConfig& config, id<MTLRenderCommandEncoder>
 	}
 }
 
+// tbh I'm not a fan of the current debug groups
+// not much useful information and makes things harder to find
+// good to turn on if you're debugging tc stuff though
+#ifndef MTL_ENABLE_DEBUG
+	#define MTL_ENABLE_DEBUG 0
+#endif
+
 void GSDeviceMTL::PushDebugGroup(const char* fmt, ...)
 {
-#if defined(_DEBUG)
+#if MTL_ENABLE_DEBUG
 	va_list va;
 	va_start(va, fmt);
 	MRCOwned<NSString*> nsfmt = MRCTransfer([[NSString alloc] initWithUTF8String:fmt]);
@@ -1640,14 +1647,14 @@ void GSDeviceMTL::PushDebugGroup(const char* fmt, ...)
 
 void GSDeviceMTL::PopDebugGroup()
 {
-#if defined(_DEBUG)
+#if MTL_ENABLE_DEBUG
 	m_debug_entries.emplace_back(DebugEntry::Pop, nullptr);
 #endif
 }
 
 void GSDeviceMTL::InsertDebugMessage(DebugMessageCategory category, const char* fmt, ...)
 {
-#if defined(_DEBUG)
+#if MTL_ENABLE_DEBUG
 	va_list va;
 	va_start(va, fmt);
 	MRCOwned<NSString*> nsfmt = MRCTransfer([[NSString alloc] initWithUTF8String:fmt]);
@@ -1677,7 +1684,7 @@ void GSDeviceMTL::ProcessDebugEntry(id<MTLCommandEncoder> enc, const DebugEntry&
 
 void GSDeviceMTL::FlushDebugEntries(id<MTLCommandEncoder> enc)
 {
-#if defined(_DEBUG)
+#if MTL_ENABLE_DEBUG
 	if (!m_debug_entries.empty())
 	{
 		for (const DebugEntry& entry : m_debug_entries)
@@ -1691,7 +1698,7 @@ void GSDeviceMTL::FlushDebugEntries(id<MTLCommandEncoder> enc)
 
 void GSDeviceMTL::EndDebugGroup(id<MTLCommandEncoder> enc)
 {
-#if defined(_DEBUG)
+#if MTL_ENABLE_DEBUG
 	if (!m_debug_entries.empty() && m_debug_group_level)
 	{
 		auto begin = m_debug_entries.begin();
