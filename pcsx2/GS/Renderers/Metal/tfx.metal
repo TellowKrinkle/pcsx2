@@ -930,7 +930,7 @@ fragment MainPSOut ps_main_fbfetch(
 
 fragment float4 fbfetch_test(float4 in [[color(0), raster_order_group(0)]])
 {
-	return in;
+	return in * 2;
 }
 
 #endif // defined(__METAL_IOS__) || __METAL_VERSION__ >= 230

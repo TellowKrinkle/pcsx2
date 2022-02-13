@@ -67,6 +67,7 @@ static bool detectUndocumentedFBFetch(id<MTLDevice> dev, id<MTLLibrary> lib)
 {
 	// Even though it's nowhere in the feature set tables, some Intel GPUs support fbfetch!
 	// Annoyingly, the Haswell compiler successfully makes a pipeline but actually miscompiles it and doesn't insert any fbfetch instructions
+	// The Broadwell compiler inserts the Skylake fbfetch instruction, but Broadwell doesn't support that.  It seems to make the shader not do anything
 	// So we actually have to test the thing
 
 	// AMD compiler crashes and gets retried 3 times over multiple seconds trying to compile the pipeline
@@ -107,8 +108,8 @@ static bool detectUndocumentedFBFetch(id<MTLDevice> dev, id<MTLLibrary> lib)
 	[cmdbuf waitUntilCompleted];
 	u32 outpx;
 	memcpy(&outpx, [buf contents], 4);
-	// fbfetch will preserve contents, but a miscompiled shader will return black
-	return outpx == px;
+	// Proper fbfetch will double contents, Haswell will return black, and Broadwell will do nothing
+	return outpx == 0x22446688;
 }
 
 GSMTLDevice::GSMTLDevice(MRCOwned<id<MTLDevice>> dev)
