@@ -604,7 +604,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 	m_features.texture_barrier = true;
 	m_features.point_expand = true;
 	m_features.prefer_new_textures = true;
-	m_features.prefer_rt_read = m_dev.features.framebuffer_fetch;
+	m_features.one_barrier_is_full = m_dev.features.framebuffer_fetch;
 
 	try
 	{
