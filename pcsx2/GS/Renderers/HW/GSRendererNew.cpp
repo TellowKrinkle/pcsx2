@@ -630,6 +630,8 @@ void GSRendererNew::EmulateBlending(bool& DATE_PRIMID, bool& DATE_BARRIER)
 				sw_blending |= impossible_or_free_blend;
 				// Try to do hw blend for clr2 case.
 				sw_blending &= !clr_blend1_2;
+				if (g_gs_device->Features().one_barrier_is_full)
+					sw_blending |= blend_ad_alpha_masked || m_conf.require_one_barrier;
 				// Do not run BLEND MIX if sw blending is already present, it's less accurate
 				blend_mix &= !sw_blending;
 				sw_blending |= blend_mix;
@@ -701,7 +703,7 @@ void GSRendererNew::EmulateBlending(bool& DATE_PRIMID, bool& DATE_BARRIER)
 			// No overflow, disable colclip.
 			GL_INS("COLCLIP mode DISABLED");
 		}
-		else if (free_colclip || g_gs_device->Features().prefer_rt_read)
+		else if (free_colclip || g_gs_device->Features().one_barrier_is_full)
 		{
 			// The fastest algo that requires a single pass
 			GL_INS("COLCLIP Free mode ENABLED");
@@ -1309,7 +1311,7 @@ void GSRendererNew::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sour
 		// the slow but accurate algo
 		const bool fbmask = (m_context->FRAME.FBMSK & 0x80000000);
 		const bool no_overlap = (m_prim_overlap == PRIM_OVERLAP_NO);
-		if (fbmask || no_overlap || m_texture_shuffle || g_gs_device->Features().prefer_rt_read)
+		if (fbmask || no_overlap || m_texture_shuffle || g_gs_device->Features().one_barrier_is_full)
 		{
 			GL_PERF("DATE: Accurate with %s", m_texture_shuffle ? "texture shuffle" : no_overlap ? "no overlap" : "FBMASK");
 			if (g_gs_device->Features().texture_barrier)
