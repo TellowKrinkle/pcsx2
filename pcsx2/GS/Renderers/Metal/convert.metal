@@ -101,10 +101,8 @@ fragment float4 ps_copy(ConvertShaderData data [[stage_in]], ConvertPSRes res)
 fragment ushort ps_convert_rgba8_16bits(ConvertShaderData data [[stage_in]], ConvertPSRes res)
 {
 	float4 c = res.sample(data.t);
-	c.a *= 256.f / 127.f; // hm, 0.5 won't give us 1.0 if we just multiply with 2
-
-	uint4 i = uint4(c * float4(0x001f, 0x03e0, 0x7c00, 0x8000));
-	return (i.x & 0x001f) | (i.y & 0x03e0) | (i.z & 0x7c00) | (i.w & 0x8000);
+	uint4 cu = uint4(c * 255.f + 0.5f);
+	return (cu.x >> 3) | ((cu.y << 2) & 0x03e0) | ((cu.z << 7) & 0x7c00) | ((cu.w << 8) & 0x8000);
 }
 
 fragment float4 ps_copy_fs(float4 p [[position]], DirectReadTextureIn<float> tex)
@@ -188,12 +186,12 @@ fragment uint ps_convert_float32_32bits(ConvertShaderData data [[stage_in]], Con
 
 fragment float4 ps_convert_float32_rgba8(ConvertShaderData data [[stage_in]], ConvertPSDepthRes res)
 {
-	return convert_depth32_rgba8(res.sample(data.t)) * (256.f/255.f);
+	return convert_depth32_rgba8(res.sample(data.t)) / 255.f;
 }
 
 fragment float4 ps_convert_float16_rgb5a1(ConvertShaderData data [[stage_in]], ConvertPSDepthRes res)
 {
-	return convert_depth16_rgba8(res.sample(data.t)) / float4(32, 32, 32, 1);
+	return convert_depth16_rgba8(res.sample(data.t)) / 255.f;
 }
 
 struct DepthOut
@@ -207,33 +205,32 @@ fragment DepthOut ps_depth_copy(ConvertShaderData data [[stage_in]], ConvertPSDe
 	return res.sample(data.t);
 }
 
+static float pack_rgba8_depth(float4 unorm)
+{
+	return float(as_type<uint>(uchar4(unorm * 255.f + 0.5f))) * 0x1p-32f;
+}
+
 fragment DepthOut ps_convert_rgba8_float32(ConvertShaderData data [[stage_in]], ConvertPSRes res)
 {
-	constexpr float4 bitSh = float4(0xFFp-32, 0xFFp-24, 0xFFp-16, 0xFFp-8);
-
-	return dot(res.sample(data.t), bitSh);
+	return pack_rgba8_depth(res.sample(data.t));
 }
 
 fragment DepthOut ps_convert_rgba8_float24(ConvertShaderData data [[stage_in]], ConvertPSRes res)
 {
 	// Same as above but without the alpha channel (24 bits Z)
-	constexpr float3 bitSh = float3(0xFFp-32, 0xFFp-24, 0xFFp-16);
-	return dot(res.sample(data.t).rgb, bitSh);
+	return pack_rgba8_depth(float4(res.sample(data.t).rgb, 0));
 }
 
 fragment DepthOut ps_convert_rgba8_float16(ConvertShaderData data [[stage_in]], ConvertPSRes res)
 {
-	// Same as above but without the A/B channels (16 bits Z)
-	constexpr float2 bitSh = float2(0xFFp-32, 0xFFp-24);
-	return dot(res.sample(data.t).rg, bitSh);
+	return float(as_type<ushort>(uchar2(res.sample(data.t).rg * 255.f + 0.5f))) * 0x1p-32;
 }
 
 fragment DepthOut ps_convert_rgb5a1_float16(ConvertShaderData data [[stage_in]], ConvertPSRes res)
 {
-	constexpr float4 bitSh = float4(0x1p-32, 0x1p-27, 0x1p-22, 0x1p-17);
-	// Trunc color to drop useless lsb
-	float4 color = trunc(res.sample(data.t) * (float4(255) / float4(8, 8, 8, 128)));
-	return dot(color, bitSh);
+	uint4 cu = uint4(res.sample(data.t) * 255.f + 0.5f);
+	uint out = (cu.x >> 3) | ((cu.y << 2) & 0x03e0) | ((cu.z << 7) & 0x7c00) | ((cu.w << 8) & 0x8000);
+	return float(out) * 0x1p-32;
 }
 
 fragment float4 ps_convert_rgba_8i(ConvertShaderData data [[stage_in]], ConvertPSRes res,
