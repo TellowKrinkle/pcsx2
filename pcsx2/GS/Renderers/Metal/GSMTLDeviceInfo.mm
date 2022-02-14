@@ -63,24 +63,37 @@ static bool detectPrimIDSupport(id<MTLDevice> dev, id<MTLLibrary> lib)
 	return !err;
 }
 
-static bool detectUndocumentedFBFetch(id<MTLDevice> dev, id<MTLLibrary> lib)
+namespace
+{
+	enum class DetectionResult
+	{
+		HaswellOrNotIntel, ///< Everything works fine
+		Broadwell,         ///< PrimID broken
+		Skylake,           ///< PrimID broken, FBFetch supported
+	};
+}
+
+static DetectionResult detectIntelGPU(id<MTLDevice> dev, id<MTLLibrary> lib)
 {
 	// Even though it's nowhere in the feature set tables, some Intel GPUs support fbfetch!
 	// Annoyingly, the Haswell compiler successfully makes a pipeline but actually miscompiles it and doesn't insert any fbfetch instructions
 	// The Broadwell compiler inserts the Skylake fbfetch instruction, but Broadwell doesn't support that.  It seems to make the shader not do anything
 	// So we actually have to test the thing
+	// In addition, Broadwell+ has broken primid so we need to disable that.
+	// Conveniently we can use the same test to detect both (except on macOS < 11.  All Broadwell machines support 11, so the answer to that is "upgrade")
+	// See https://github.com/tellowkrinkle/MetalBugReproduction/releases/tag/BrokenPrimID for details
 
 	// AMD compiler crashes and gets retried 3 times over multiple seconds trying to compile the pipeline
 	// We know this is only a possibility on Intel anyways
 	if (![[dev name] containsString:@"Intel"])
-		return false;
+		return DetectionResult::HaswellOrNotIntel;
 	auto pdesc = MRCTransfer([MTLRenderPipelineDescriptor new]);
 	[pdesc setVertexFunction:MRCTransfer([lib newFunctionWithName:@"fs_triangle"])];
 	[pdesc setFragmentFunction:MRCTransfer([lib newFunctionWithName:@"fbfetch_test"])];
 	[[pdesc colorAttachments][0] setPixelFormat:MTLPixelFormatRGBA8Unorm];
 	auto pipe = MRCTransfer([dev newRenderPipelineStateWithDescriptor:pdesc error:nil]);
 	if (!pipe)
-		return false;
+		return DetectionResult::HaswellOrNotIntel;
 	auto buf = MRCTransfer([dev newBufferWithLength:4 options:MTLResourceStorageModeShared]);
 	auto tdesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm width:1 height:1 mipmapped:false];
 	[tdesc setUsage:MTLTextureUsageRenderTarget];
@@ -93,10 +106,9 @@ static bool detectUndocumentedFBFetch(id<MTLDevice> dev, id<MTLLibrary> lib)
 	[upload copyFromBuffer:buf sourceOffset:0 sourceBytesPerRow:4 sourceBytesPerImage:4 sourceSize:MTLSizeMake(1, 1, 1) toTexture:tex destinationSlice:0 destinationLevel:0 destinationOrigin:MTLOriginMake(0, 0, 0)];
 	[upload endEncoding];
 	auto rpdesc = MRCTransfer([MTLRenderPassDescriptor new]);
-	auto colordesc = [[rpdesc colorAttachments] objectAtIndexedSubscript: 0];
-	[colordesc setTexture:tex];
-	[colordesc setLoadAction:MTLLoadActionLoad];
-	[colordesc setStoreAction:MTLStoreActionStore];
+	[[rpdesc colorAttachments][0] setTexture:tex];
+	[[rpdesc colorAttachments][0] setLoadAction:MTLLoadActionLoad];
+	[[rpdesc colorAttachments][0] setStoreAction:MTLStoreActionStore];
 	id<MTLRenderCommandEncoder> renc = [cmdbuf renderCommandEncoderWithDescriptor:rpdesc];
 	[renc setRenderPipelineState:pipe];
 	[renc drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
@@ -109,7 +121,12 @@ static bool detectUndocumentedFBFetch(id<MTLDevice> dev, id<MTLLibrary> lib)
 	u32 outpx;
 	memcpy(&outpx, [buf contents], 4);
 	// Proper fbfetch will double contents, Haswell will return black, and Broadwell will do nothing
-	return outpx == 0x22446688;
+	if (outpx == 0x22446688)
+		return DetectionResult::Skylake;
+	else if (outpx == 0x11223344)
+		return DetectionResult::Broadwell;
+	else
+		return DetectionResult::HaswellOrNotIntel;
 }
 
 GSMTLDevice::GSMTLDevice(MRCOwned<id<MTLDevice>> dev)
@@ -141,12 +158,26 @@ GSMTLDevice::GSMTLDevice(MRCOwned<id<MTLDevice>> dev)
 		Console.Warning("Metal: GPU supports framebuffer fetch but shader lib does not!  Get an updated shader lib for better performance!");
 		features.framebuffer_fetch = false;
 	}
-	if (!features.framebuffer_fetch && features.shader_version >= MetalVersion::Metal23 && detectUndocumentedFBFetch(dev, shaders))
-		features.framebuffer_fetch = true;
 
-	features.primid = !features.framebuffer_fetch && features.shader_version >= MetalVersion::Metal22;
+	features.primid = features.shader_version >= MetalVersion::Metal22;
 	if (features.primid && !detectPrimIDSupport(dev, shaders))
 		features.primid = false;
+
+	if (!features.framebuffer_fetch && features.shader_version >= MetalVersion::Metal23)
+	{
+		switch (detectIntelGPU(dev, shaders))
+		{
+			case DetectionResult::HaswellOrNotIntel:
+				break;
+			case DetectionResult::Broadwell:
+				features.primid = false; // Broken
+				break;
+			case DetectionResult::Skylake:
+				features.primid = false; // Broken
+				features.framebuffer_fetch = true;
+				break;
+		}
+	}
 
 	features.max_texsize = 8192;
 	if ([dev supportsFeatureSet:MTLFeatureSet_macOS_GPUFamily1_v1])
