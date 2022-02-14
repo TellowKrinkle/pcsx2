@@ -1138,10 +1138,8 @@ void GSDeviceMTL::MRESetHWPipelineState(GSHWDrawConfig::VSSelector vssel, GSHWDr
 	id<MTLFunction> vs = m_hw_vs[vssel_mtl.key];
 
 	id<MTLFunction> ps;
-	// Note: Stupid Intel bugs reproducible on UHD 630 (but not on Iris Pro 5200)
-	// Stupid Intel bug #1: Outputting to Src1 makes depth randomly not write
-	// Lazy Partial Solution: Only output to Src1 if you actually need it (still broken if Src1 is actually needed but much better than "every game broken yay")
-	// Test GSdump: https://cdn.discordapp.com/attachments/923492653788692480/940228784114790531/gs_20220207135128.gs.xz (Valkyrie Profile)
+	// Stupid Intel bug #1: Outputting to Src1 without using it makes depth randomly not write (see https://github.com/tellowkrinkle/MetalBugReproduction/releases/tag/BrokenDepthWrite)
+	// Solution: Only output to Src1 if you actually need it
 	bool dual_source_blend = !primid_tracking_init && (isDualSourceBlend(b.src) || isDualSourceBlend(b.dst));
 	// Stupid Intel bug #2: *Not* outputting to Src1 makes discard stop working
 	// Solution: Output to src1 for destination alpha
