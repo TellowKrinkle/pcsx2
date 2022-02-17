@@ -102,6 +102,7 @@ enum GSMTLAttributes
 enum GSMTLFnConstants
 {
 	GSMTLConstantIndex_SCALING_FACTOR,
+	GSMTLConstantIndex_FRAMEBUFFER_FETCH,
 	GSMTLConstantIndex_FST,
 	GSMTLConstantIndex_IIP,
 	GSMTLConstantIndex_VS_POINT_SIZE,
