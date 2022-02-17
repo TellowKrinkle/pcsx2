@@ -615,6 +615,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 		u8 upscale = std::max(1, theApp.GetConfigI("upscale_multiplier"));
 		vector_uchar2 upscale2 = vector2(upscale, upscale);
 		[m_fn_constants setConstantValue:&upscale2 type:MTLDataTypeUChar2 atIndex:GSMTLConstantIndex_SCALING_FACTOR];
+		setFnConstantB(m_fn_constants, m_dev.features.framebuffer_fetch, GSMTLConstantIndex_FRAMEBUFFER_FETCH);
 
 		m_hw_vertex = MRCTransfer([MTLVertexDescriptor new]);
 		[[[m_hw_vertex layouts] objectAtIndexedSubscript:GSMTLBufferIndexHWVertices] setStride:sizeof(GSVertex)];
@@ -1197,7 +1198,7 @@ void GSDeviceMTL::MRESetHWPipelineState(GSHWDrawConfig::VSSelector vssel, GSHWDr
 		setFnConstantB(m_fn_constants, pssel.invalid_tex0,       GSMTLConstantIndex_PS_INVALID_TEX0);
 		setFnConstantI(m_fn_constants, pssel.scanmsk,            GSMTLConstantIndex_PS_SCANMSK);
 		setFnConstantB(m_fn_constants, dual_source_blend,        GSMTLConstantIndex_PS_DUAL_SOURCE_BLEND);
-		auto newps = LoadShader(m_dev.features.framebuffer_fetch ? @"ps_main_fbfetch" : @"ps_main");
+		auto newps = LoadShader(@"ps_main");
 		ps = newps;
 		m_hw_ps.insert(std::make_pair(pskey, std::move(newps)));
 	}

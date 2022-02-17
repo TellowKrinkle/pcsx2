@@ -19,6 +19,7 @@ constant uint FMT_32 = 0;
 constant uint FMT_24 = 1;
 constant uint FMT_16 = 2;
 
+constant bool HAS_FBFETCH           [[function_constant(GSMTLConstantIndex_FRAMEBUFFER_FETCH)]];
 constant bool FST                   [[function_constant(GSMTLConstantIndex_FST)]];
 constant bool IIP                   [[function_constant(GSMTLConstantIndex_IIP)]];
 constant bool VS_POINT_SIZE         [[function_constant(GSMTLConstantIndex_VS_POINT_SIZE)]];
@@ -67,6 +68,12 @@ constant bool PS_DUAL_SOURCE_BLEND  [[function_constant(GSMTLConstantIndex_PS_DU
 	#define PRIMID_SUPPORT 1
 #else
 	#define PRIMID_SUPPORT 0
+#endif
+
+#if defined(__METAL_IOS__) || __METAL_VERSION__ >= 230
+	#define FBFETCH_SUPPORT 1
+#else
+	#define FBFETCH_SUPPORT 0
 #endif
 
 constant bool PS_PRIM_CHECKING_INIT = PS_DATE == 1 || PS_DATE == 2;
@@ -852,6 +859,18 @@ struct PSMain
 	}
 };
 
+#if FBFETCH_SUPPORT
+fragment float4 fbfetch_test(float4 in [[color(0), raster_order_group(0)]])
+{
+	return in * 2;
+}
+
+constant bool NEEDS_RT_TEX = NEEDS_RT && !HAS_FBFETCH;
+constant bool NEEDS_RT_FBF = NEEDS_RT &&  HAS_FBFETCH;
+#else
+constant bool NEEDS_RT_TEX = NEEDS_RT;
+#endif
+
 fragment MainPSOut ps_main(
 	MainPSIn in [[stage_in]],
 	constant GSMTLMainPSUniform& cb [[buffer(GSMTLBufferIndexHWUniforms)]],
@@ -859,10 +878,13 @@ fragment MainPSOut ps_main(
 #if PRIMID_SUPPORT
 	uint primid [[primitive_id, function_constant(NEEDS_PRIMID)]],
 #endif
+#if FBFETCH_SUPPORT
+	float4 rt_fbf [[color(0), raster_order_group(0), function_constant(NEEDS_RT_FBF)]],
+#endif
 	texture2d<float> tex       [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_COLOR)]],
 	depth2d<float>   depth     [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_DEPTH)]],
 	texture2d<float> palette   [[texture(GSMTLTextureIndexPalette),      function_constant(PS_HAS_PALETTE)]],
-	texture2d<float> rt        [[texture(GSMTLTextureIndexRenderTarget), function_constant(NEEDS_RT)]],
+	texture2d<float> rt        [[texture(GSMTLTextureIndexRenderTarget), function_constant(NEEDS_RT_TEX)]],
 	texture2d<float> primidtex [[texture(GSMTLTextureIndexPrimIDs),      function_constant(PS_PRIM_CHECKING_READ)]])
 {
 	PSMain main(in, cb);
@@ -882,7 +904,11 @@ fragment MainPSOut ps_main(
 
 	if (NEEDS_RT)
 	{
-		main.current_color = rt.read(ushort2(in.p.xy));
+#if FBFETCH_SUPPORT
+		main.current_color = HAS_FBFETCH ? rt_fbf : rt.read(uint2(in.p.xy));
+#else
+		main.current_color = rt.read(uint2(in.p.xy));
+#endif
 		main.current_color_int = uchar4(main.current_color * 255.5f);
 	}
 	else
@@ -893,47 +919,6 @@ fragment MainPSOut ps_main(
 
 	return main.ps_main();
 }
-
-#if defined(__METAL_IOS__) || __METAL_VERSION__ >= 230
-
-fragment MainPSOut ps_main_fbfetch(
-	MainPSIn in [[stage_in]],
-	constant GSMTLMainPSUniform& cb [[buffer(GSMTLBufferIndexHWUniforms)]],
-	sampler s [[sampler(0)]],
-	texture2d<float> tex       [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_COLOR)]],
-	depth2d<float>   depth     [[texture(GSMTLTextureIndexTex),          function_constant(PS_TEX_IS_DEPTH)]],
-	texture2d<float> palette   [[texture(GSMTLTextureIndexPalette),      function_constant(PS_HAS_PALETTE)]],
-	float4 rt [[color(0), raster_order_group(0), function_constant(NEEDS_RT)]])
-{
-	PSMain main(in, cb);
-	main.tex_sampler = s;
-	if (PS_TEX_IS_COLOR)
-		main.tex = tex;
-	else
-		main.tex_depth = depth;
-	if (PS_HAS_PALETTE)
-		main.palette = palette;
-
-	if (NEEDS_RT)
-	{
-		main.current_color = rt;
-		main.current_color_int = uchar4(main.current_color * 255.5f);
-	}
-	else
-	{
-		main.current_color = 0;
-		main.current_color_int = 0;
-	}
-
-	return main.ps_main();
-}
-
-fragment float4 fbfetch_test(float4 in [[color(0), raster_order_group(0)]])
-{
-	return in * 2;
-}
-
-#endif // defined(__METAL_IOS__) || __METAL_VERSION__ >= 230
 
 #if PRIMID_SUPPORT
 fragment uint primid_test(uint id [[primitive_id]])
