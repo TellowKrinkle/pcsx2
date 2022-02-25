@@ -3,6 +3,9 @@
 #ifndef FXAA_GLSL_130
     #define FXAA_GLSL_130 0
 #endif
+#ifndef SHADER_MODEL
+    #define SHADER_MODEL 0
+#endif
 
 #define UHQ_FXAA 1          //High Quality Fast Approximate Anti Aliasing. Adapted for GS from Timothy Lottes FXAA 3.11.
 #define FxaaSubpixMax 0.0   //[0.00 to 1.00] Amount of subpixel aliasing removal. 0.00: Edge only antialiasing (no blurring)
@@ -53,6 +56,8 @@ struct PS_OUTPUT
 #define FXAA_GATHER4_ALPHA 0
 
 #elif (FXAA_GLSL_130 == 1)
+#define FXAA_HLSL_5 0
+#define FXAA_HLSL_4 0
 #define FXAA_GATHER4_ALPHA 1
 #endif
 
