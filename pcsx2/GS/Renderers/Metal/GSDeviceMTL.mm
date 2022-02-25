@@ -371,6 +371,10 @@ static constexpr MTLPixelFormat ConvertPixelFormat(GSTexture::Format format)
 		case GSTexture::Format::FloatColor:   return MTLPixelFormatRGBA32Float;
 		case GSTexture::Format::DepthStencil: return MTLPixelFormatDepth32Float_Stencil8;
 		case GSTexture::Format::Invalid:      return MTLPixelFormatInvalid;
+		case GSTexture::Format::BC1:          return MTLPixelFormatBC1_RGBA;
+		case GSTexture::Format::BC2:          return MTLPixelFormatBC2_RGBA;
+		case GSTexture::Format::BC3:          return MTLPixelFormatBC3_RGBA;
+		case GSTexture::Format::BC7:          return MTLPixelFormatBC7_RGBAUnorm;
 	}
 }
 
@@ -912,7 +916,7 @@ bool GSDeviceMTL::DownloadTexture(GSTexture* src, const GSVector4i& rect, GSText
 	ASSERT(src);
 	EndRenderPass();
 	GSTextureMTL* msrc = static_cast<GSTextureMTL*>(src);
-	out_map.pitch = msrc->PxToBytes(rect.width());
+	out_map.pitch = msrc->GetCompressedBytesPerBlock() * rect.width();
 	size_t size = out_map.pitch * rect.height();
 	if ([m_texture_download_buf length] < size)
 		m_texture_download_buf = MRCTransfer([m_dev.dev newBufferWithLength:size options:MTLResourceStorageModeShared]);

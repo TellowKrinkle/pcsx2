@@ -31,7 +31,6 @@ class GSTextureMTL : public GSTexture
 {
 	GSDeviceMTL* m_dev;
 	MRCOwned<id<MTLTexture>> m_texture;
-	int m_int_shift;
 	bool m_has_mipmaps = false;
 
 	// In Metal clears happen as a part of render passes instead of as separate steps, but the GSDevice API has it as a separate step
@@ -76,7 +75,6 @@ public:
 	void Unmap() override;
 	void GenerateMipmap() override;
 	bool Save(const std::string& fn) override;
-	int PxToBytes(int px) { return px << m_int_shift; }
 	id<MTLTexture> GetTexture() { return m_texture; }
 };
 

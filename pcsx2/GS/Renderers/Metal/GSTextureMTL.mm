@@ -29,30 +29,6 @@ GSTextureMTL::GSTextureMTL(GSDeviceMTL* dev, MRCOwned<id<MTLTexture>> texture, T
 	m_size.x = [m_texture width];
 	m_size.y = [m_texture height];
 	m_mipmap_levels = [m_texture mipmapLevelCount];
-
-	switch (format)
-	{
-		case Format::UNorm8:
-			m_int_shift = 0;
-			break;
-		case Format::UInt16:
-			m_int_shift = 1;
-			break;
-		case Format::UInt32:
-		case Format::PrimID:
-		case Format::Color:
-			m_int_shift = 2;
-			break;
-		case Format::DepthStencil:
-			m_int_shift = 3;
-			break;
-		case Format::FloatColor:
-			m_int_shift = 4;
-			break;
-		case Format::Invalid:
-			m_int_shift = 0;
-			ASSERT(0);
-	}
 }
 GSTextureMTL::~GSTextureMTL()
 {
@@ -131,7 +107,7 @@ bool GSTextureMTL::Update(const GSVector4i& r, const void* data, int pitch, int 
 {
 	if (void* buffer = MapWithPitch(r, pitch, layer))
 	{
-		memcpy(buffer, data, pitch * r.height());
+		memcpy(buffer, data, CalcUploadSize(r.height(), pitch));
 		return true;
 	}
 	return false;
@@ -140,7 +116,9 @@ bool GSTextureMTL::Update(const GSVector4i& r, const void* data, int pitch, int 
 bool GSTextureMTL::Map(GSMap& m, const GSVector4i* _r, int layer)
 {
 	GSVector4i r = _r ? *_r : GSVector4i(0, 0, m_size.x, m_size.y);
-	m.pitch = r.width() << m_int_shift;
+	u32 block_size = GetCompressedBlockSize();
+	u32 blocks_wide = (r.width() + block_size - 1) / block_size;
+	m.pitch = blocks_wide * GetCompressedBytesPerBlock();
 	if (void* buffer = MapWithPitch(r, m.pitch, layer))
 	{
 		m.bits = static_cast<u8*>(buffer);
@@ -155,7 +133,7 @@ void* GSTextureMTL::MapWithPitch(const GSVector4i& r, int pitch, int layer)
 		return nullptr;
 	m_has_mipmaps = false;
 
-	size_t size = pitch * r.height();
+	size_t size = CalcUploadSize(r.height(), pitch);
 	GSDeviceMTL::Map map;
 
 	bool needs_clear = false;
