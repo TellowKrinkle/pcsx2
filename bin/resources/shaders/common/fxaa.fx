@@ -3,6 +3,9 @@
 #ifndef FXAA_GLSL_130
     #define FXAA_GLSL_130 0
 #endif
+#ifndef SHADER_MODEL
+    #define SHADER_MODEL 0
+#endif
 #ifndef FXAA_GLSL_VK
     #define FXAA_GLSL_VK 0
 #endif
@@ -64,6 +67,8 @@ static constexpr sampler MAIN_SAMPLER(coord::normalized, address::clamp_to_edge,
 #define FXAA_GATHER4_ALPHA 0
 
 #elif (FXAA_GLSL_130 == 1 || FXAA_GLSL_VK == 1)
+#define FXAA_HLSL_5 0
+#define FXAA_HLSL_4 0
 #define FXAA_GATHER4_ALPHA 1
 
 #elif defined(__METAL_VERSION__)
