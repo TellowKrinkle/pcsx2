@@ -47,9 +47,12 @@ struct DirectReadTextureIn
 	}
 };
 
-vertex float4 fs_triangle(uint vid [[vertex_id]])
+vertex ConvertShaderData fs_triangle(uint vid [[vertex_id]])
 {
-	return float4(vid & 1 ? 3 : -1, vid & 2 ? 3 : -1, 0, 1);
+	ConvertShaderData out;
+	out.p = float4(vid & 1 ? 3 : -1, vid & 2 ? 3 : -1, 0, 1);
+	out.t = float2(vid & 1 ? 2 : 0, vid & 2 ? -1 : 1);
+	return out;
 }
 
 vertex ConvertShaderData vs_convert(ConvertVSIn in [[stage_in]])

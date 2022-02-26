@@ -227,6 +227,7 @@ public:
 	MRCOwned<id<MTLRenderPipelineState>> m_primid_init_pipeline[2][2];
 	MRCOwned<id<MTLRenderPipelineState>> m_hdr_init_pipeline;
 	MRCOwned<id<MTLRenderPipelineState>> m_hdr_resolve_pipeline;
+	MRCOwned<id<MTLRenderPipelineState>> m_fxaa_pipeline;
 	MRCOwned<id<MTLRenderPipelineState>> m_imgui_pipeline;
 	MRCOwned<id<MTLRenderPipelineState>> m_imgui_pipeline_a8;
 

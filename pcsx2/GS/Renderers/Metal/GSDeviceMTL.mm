@@ -502,7 +502,8 @@ void GSDeviceMTL::DoInterlace(GSTexture* sTex, GSTexture* dTex, int shader, bool
 
 void GSDeviceMTL::DoFXAA(GSTexture* sTex, GSTexture* dTex)
 {
-	// TODO: Implement
+	BeginRenderPass(@"FXAA", dTex, MTLLoadActionDontCare, nullptr, MTLLoadActionDontCare);
+	RenderCopy(sTex, m_fxaa_pipeline, GSVector4i(0, 0, dTex->GetSize().x, dTex->GetSize().y));
 }
 
 void GSDeviceMTL::DoShadeBoost(GSTexture* sTex, GSTexture* dTex)
@@ -767,6 +768,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 		// FS Triangle Pipelines
 		pdesc.colorAttachments[0].pixelFormat = ConvertPixelFormat(GSTexture::Format::Color);
 		m_hdr_resolve_pipeline = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_mod256"), @"HDR Resolve");
+		m_fxaa_pipeline = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_fxaa"), @"fxaa");
 		pdesc.colorAttachments[0].pixelFormat = ConvertPixelFormat(GSTexture::Format::FloatColor);
 		m_hdr_init_pipeline = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_copy_fs"), @"HDR Init");
 		pdesc.colorAttachments[0].pixelFormat = MTLPixelFormatInvalid;

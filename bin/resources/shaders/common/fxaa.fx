@@ -1,4 +1,4 @@
-#if defined(SHADER_MODEL) || defined(FXAA_GLSL_130)
+#if defined(SHADER_MODEL) || defined(FXAA_GLSL_130) || defined(__METAL_VERSION__)
 
 #ifndef FXAA_GLSL_130
     #define FXAA_GLSL_130 0
@@ -41,6 +41,8 @@ struct PS_OUTPUT
 	float4 c : SV_Target0;
 };
 
+#elif defined(__METAL_VERSION__)
+static constexpr sampler MAIN_SAMPLER(coord::normalized, address::clamp_to_edge, filter::linear);
 #endif
 
 /*------------------------------------------------------------------------------
@@ -58,6 +60,9 @@ struct PS_OUTPUT
 #elif (FXAA_GLSL_130 == 1)
 #define FXAA_HLSL_5 0
 #define FXAA_HLSL_4 0
+#define FXAA_GATHER4_ALPHA 1
+
+#elif defined(__METAL_VERSION__)
 #define FXAA_GATHER4_ALPHA 1
 #endif
 
@@ -94,6 +99,14 @@ struct FxaaTex { SamplerState smpl; Texture2D tex; };
 #define FxaaTexOffAlpha4(t, p, o) textureGatherOffset(t, p, o, 3)
 #endif
 
+#elif defined(__METAL_VERSION__)
+#define FxaaTex texture2d<float>
+#define FxaaTexTop(t, p) t.sample(MAIN_SAMPLER, p)
+#define FxaaTexOff(t, p, o, r) t.sample(MAIN_SAMPLER, p, o)
+#define FxaaTexAlpha4(t, p) t.gather(MAIN_SAMPLER, p, 0, component::w)
+#define FxaaTexOffAlpha4(t, p, o) t.gather(MAIN_SAMPLER, p, o, component::w)
+#define FxaaDiscard discard_fragment()
+#define FxaaSat(x) saturate(x)
 #endif
 
 #define FxaaEdgeThreshold 0.063
@@ -147,14 +160,8 @@ float3 LinearToRGBGamma(float3 color, float gamma)
 	return color;
 }
 
-float4 PreGammaPass(float4 color, float2 uv0)
+float4 PreGammaPass(float4 color)
 {
-	#if (SHADER_MODEL >= 0x400)
-		color = Texture.Sample(TextureSampler, uv0);
-	#elif (FXAA_GLSL_130 == 1)
-		color = texture(TextureSampler, uv0);
-	#endif
-
 	const float GammaConst = 2.233;
 	color.rgb = RGBGammaToLinear(color.rgb, GammaConst);
 	color.rgb = LinearToRGBGamma(color.rgb, GammaConst);
@@ -479,6 +486,8 @@ float4 FxaaPixelShader(float2 pos, FxaaTex tex, float2 fxaaRcpFrame, float fxaaS
 float4 FxaaPass(float4 FxaaColor, float2 uv0)
 #elif (SHADER_MODEL >= 0x400)
 float4 FxaaPass(float4 FxaaColor : COLOR0, float2 uv0 : TEXCOORD0)
+#elif defined(__METAL_VERSION__)
+float4 FxaaPass(float4 FxaaColor, float2 uv0, texture2d<float> tex)
 #endif
 {
 
@@ -494,6 +503,9 @@ float4 FxaaPass(float4 FxaaColor : COLOR0, float2 uv0 : TEXCOORD0)
 	#elif (FXAA_GLSL_130 == 1)
 	vec2 PixelSize = textureSize(TextureSampler, 0);
 	FxaaColor = FxaaPixelShader(uv0, TextureSampler, 1.0/PixelSize.xy, FxaaSubpixMax, FxaaEdgeThreshold, FxaaEdgeThresholdMin);
+	#elif defined(__METAL_VERSION__)
+	float2 PixelSize = float2(tex.get_width(), tex.get_height());
+	FxaaColor = FxaaPixelShader(uv0, tex, 1.f/PixelSize, FxaaSubpixMax, FxaaEdgeThreshold, FxaaEdgeThresholdMin);
 	#endif
 
 	return FxaaColor;
@@ -507,7 +519,7 @@ float4 FxaaPass(float4 FxaaColor : COLOR0, float2 uv0 : TEXCOORD0)
 void ps_main()
 {
 	vec4 color = texture(TextureSampler, PSin_t);
-	color      = PreGammaPass(color, PSin_t);
+	color      = PreGammaPass(color);
 	color      = FxaaPass(color, PSin_t);
 
 	SV_Target0 = color;
@@ -520,7 +532,7 @@ PS_OUTPUT ps_main(VS_OUTPUT input)
 
 	float4 color = Texture.Sample(TextureSampler, input.t);
 
-	color = PreGammaPass(color, input.t);
+	color = PreGammaPass(color);
 	color = FxaaPass(color, input.t);
 
 	output.c = color;
@@ -528,6 +540,7 @@ PS_OUTPUT ps_main(VS_OUTPUT input)
 	return output;
 }
 
+// Metal main function in in fxaa.metal
 #endif
 
 #endif

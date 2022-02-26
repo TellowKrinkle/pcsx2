@@ -764,6 +764,7 @@ set(pcsx2GSMetalShaders
 	GS/Renderers/Metal/merge.metal
 	GS/Renderers/Metal/interlace.metal
 	GS/Renderers/Metal/tfx.metal
+	GS/Renderers/Metal/fxaa.metal
 )
 
 if(NOT PCSX2_CORE)
