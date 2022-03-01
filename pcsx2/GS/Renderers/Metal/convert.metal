@@ -355,3 +355,24 @@ fragment half4 ps_imgui_a8(ImGuiShaderData data [[stage_in]], texture2d<half> te
 	return data.c * half4(1, 1, 1, texture.sample(s, data.t).a);
 }
 
+fragment float4 ps_shadeboost(float4 p [[position]], DirectReadTextureIn<float> tex, constant float3& cb [[buffer(GSMTLBufferIndexUniforms)]])
+{
+	const float sat = cb.x;
+	const float brt = cb.y;
+	const float con = cb.z;
+	// Increase or decrease these values to adjust r, g and b color channels separately
+	const float AvgLumR = 0.5;
+	const float AvgLumG = 0.5;
+	const float AvgLumB = 0.5;
+
+	const float3 LumCoeff = float3(0.2125, 0.7154, 0.0721);
+
+	float3 AvgLumin = float3(AvgLumR, AvgLumG, AvgLumB);
+	float3 brtColor = tex.read(p).rgb * brt;
+	float dot_intensity = dot(brtColor, LumCoeff);
+	float3 intensity = float3(dot_intensity, dot_intensity, dot_intensity);
+	float3 satColor = mix(intensity, brtColor, sat);
+	float3 conColor = mix(AvgLumin, satColor, con);
+
+	return float4(conColor, 1);
+}

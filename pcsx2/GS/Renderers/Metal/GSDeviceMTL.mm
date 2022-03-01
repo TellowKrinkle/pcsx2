@@ -508,7 +508,11 @@ void GSDeviceMTL::DoFXAA(GSTexture* sTex, GSTexture* dTex)
 
 void GSDeviceMTL::DoShadeBoost(GSTexture* sTex, GSTexture* dTex)
 {
-	// TODO: Implement
+	BeginRenderPass(@"ShadeBoost", dTex, MTLLoadActionDontCare, nullptr, MTLLoadActionDontCare);
+	[m_current_render.encoder setFragmentBytes:&m_shadeboost_constants
+	                                    length:sizeof(m_shadeboost_constants)
+	                                   atIndex:GSMTLBufferIndexUniforms];
+	RenderCopy(sTex, m_shadeboost_pipeline, GSVector4i(0, 0, dTex->GetSize().x, dTex->GetSize().y));
 }
 
 void GSDeviceMTL::DoExternalFX(GSTexture* sTex, GSTexture* dTex)
@@ -610,6 +614,8 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 	m_features.point_expand = true;
 	m_features.prefer_new_textures = true;
 	m_features.one_barrier_is_full = m_dev.features.framebuffer_fetch;
+
+	m_shadeboost_constants = simd::clamp<simd::float3>(simd_make_float3(theApp.GetConfigI("ShadeBoost_Contrast"), theApp.GetConfigI("ShadeBoost_Brightness"), theApp.GetConfigI("ShadeBoost_Saturation")), 0, 100) / 50;
 
 	try
 	{
@@ -769,6 +775,7 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 		pdesc.colorAttachments[0].pixelFormat = ConvertPixelFormat(GSTexture::Format::Color);
 		m_hdr_resolve_pipeline = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_mod256"), @"HDR Resolve");
 		m_fxaa_pipeline = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_fxaa"), @"fxaa");
+		m_shadeboost_pipeline = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_shadeboost"), @"shadeboost");
 		pdesc.colorAttachments[0].pixelFormat = ConvertPixelFormat(GSTexture::Format::FloatColor);
 		m_hdr_init_pipeline = MakePipeline(pdesc, fs_triangle, LoadShader(@"ps_copy_fs"), @"HDR Init");
 		pdesc.colorAttachments[0].pixelFormat = MTLPixelFormatInvalid;

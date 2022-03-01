@@ -200,6 +200,7 @@ public:
 	};
 
 	// MARK: Configuration
+	simd::float3 m_shadeboost_constants;
 	int m_mipmap;
 
 	// MARK: Permanent resources
@@ -228,6 +229,7 @@ public:
 	MRCOwned<id<MTLRenderPipelineState>> m_hdr_init_pipeline;
 	MRCOwned<id<MTLRenderPipelineState>> m_hdr_resolve_pipeline;
 	MRCOwned<id<MTLRenderPipelineState>> m_fxaa_pipeline;
+	MRCOwned<id<MTLRenderPipelineState>> m_shadeboost_pipeline;
 	MRCOwned<id<MTLRenderPipelineState>> m_imgui_pipeline;
 	MRCOwned<id<MTLRenderPipelineState>> m_imgui_pipeline_a8;
 
