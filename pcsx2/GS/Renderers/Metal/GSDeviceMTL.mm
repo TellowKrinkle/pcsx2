@@ -461,21 +461,19 @@ void GSDeviceMTL::DoMerge(GSTexture* sTex[3], GSVector4* sRect, GSTexture* dTex,
 
 	if (sTex[0])
 	{
-		if (PMODE.AMOD == 1)
-		{
-			// TODO: OpenGL says keep the alpha from the 2nd output but then sets something that gets overwritten by every StretchRect call...
-		}
+		int idx = (PMODE.AMOD << 1) | PMODE.MMOD;
+		id<MTLRenderPipelineState> pipeline = m_merge_pipeline[idx];
 
 		// 1st output is enabled. It must be blended
 		if (PMODE.MMOD == 1)
 		{
 			// Blend with a constant alpha
-			DoStretchRect(sTex[0], sRect[0], dTex, dRect[0], m_merge_pipeline[1], true, LoadAction::Load, &cb_c, sizeof(cb_c));
+			DoStretchRect(sTex[0], sRect[0], dTex, dRect[0], pipeline, true, LoadAction::Load, &cb_c, sizeof(cb_c));
 		}
 		else
 		{
 			// Blend with 2 * input alpha
-			DoStretchRect(sTex[0], sRect[0], dTex, dRect[0], m_merge_pipeline[0], true, LoadAction::Load, nullptr, 0);
+			DoStretchRect(sTex[0], sRect[0], dTex, dRect[0], pipeline, true, LoadAction::Load, nullptr, 0);
 		}
 	}
 
@@ -869,16 +867,20 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 			m_convert_pipeline_copy_mask[i] = MakePipeline(pdesc, vs_convert, ps_copy, name);
 		}
 
-		pdesc.colorAttachments[0].writeMask = MTLColorWriteMaskAll;
 		pdesc.colorAttachments[0].blendingEnabled = YES;
 		pdesc.colorAttachments[0].rgbBlendOperation = MTLBlendOperationAdd;
 		pdesc.colorAttachments[0].sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
 		pdesc.colorAttachments[0].destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
 		for (size_t i = 0; i < std::size(m_merge_pipeline); i++)
 		{
-			NSString* name = [NSString stringWithFormat:@"ps_merge%zu", i];
-			m_merge_pipeline[i] = MakePipeline(pdesc, vs_convert, LoadShader(name), name);
+			bool mmod = i & 1;
+			bool amod = i & 2;
+			NSString* name = [NSString stringWithFormat:@"ps_merge%zu", mmod];
+			NSString* pipename = [NSString stringWithFormat:@"Merge%s%s", mmod ? " MMOD" : "", amod ? " AMOD" : ""];
+			pdesc.colorAttachments[0].writeMask = amod ? MTLColorWriteMaskRed | MTLColorWriteMaskGreen | MTLColorWriteMaskBlue : MTLColorWriteMaskAll;
+			m_merge_pipeline[i] = MakePipeline(pdesc, vs_convert, LoadShader(name), pipename);
 		}
+		pdesc.colorAttachments[0].writeMask = MTLColorWriteMaskAll;
 
 		applyAttribute(pdesc.vertexDescriptor, 0, MTLVertexFormatFloat2,           offsetof(ImDrawVert, pos), 0);
 		applyAttribute(pdesc.vertexDescriptor, 1, MTLVertexFormatFloat2,           offsetof(ImDrawVert, uv),  0);
