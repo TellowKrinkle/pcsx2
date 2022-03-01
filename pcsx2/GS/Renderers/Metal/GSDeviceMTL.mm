@@ -1154,13 +1154,9 @@ void GSDeviceMTL::MRESetHWPipelineState(GSHWDrawConfig::VSSelector vssel, GSHWDr
 	id<MTLFunction> vs = m_hw_vs[vssel_mtl.key];
 
 	id<MTLFunction> ps;
-	// Stupid Intel bug #1: Outputting to Src1 without using it makes depth randomly not write (see https://github.com/tellowkrinkle/MetalBugReproduction/releases/tag/BrokenDepthWrite)
+	// Stupid Intel bug: Outputting to Src1 without using it makes depth randomly not write (see https://github.com/tellowkrinkle/MetalBugReproduction/releases/tag/BrokenDepthWrite)
 	// Solution: Only output to Src1 if you actually need it
 	bool dual_source_blend = !primid_tracking_init && (isDualSourceBlend(b.src) || isDualSourceBlend(b.dst));
-	// Stupid Intel bug #2: *Not* outputting to Src1 makes discard stop working
-	// Solution: Output to src1 for destination alpha
-	// Test GSdump: https://github.com/PCSX2/pcsx2/issues/4480
-	dual_source_blend |= pssel.date >= 5;
 	u64 pskey = pssel.key;
 	if (dual_source_blend)
 		pskey = ~pskey; // Didn't feel like finding another open bit

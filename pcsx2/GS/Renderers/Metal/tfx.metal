@@ -203,7 +203,6 @@ struct PSMain
 	texture2d<float> prim_id_tex;
 	sampler tex_sampler;
 	float4 current_color;
-	uchar4 current_color_int;
 	uint prim_id;
 	const thread MainPSIn& in;
 	constant GSMTLMainPSUniform& cb;
@@ -678,7 +677,7 @@ struct PSMain
 	void ps_fbmask(thread float4& C)
 	{
 		if (PS_FBMASK)
-			C = float4((uchar4(C) & ~uchar4(cb.fbmask)) | (current_color_int & uchar4(cb.fbmask)));
+			C = float4((uint4(C) & ~cb.fbmask) | (uint4(current_color * 255.5) & cb.fbmask));
 	}
 
 	void ps_dither(thread float4& C)
@@ -782,8 +781,8 @@ struct PSMain
 		if (PS_DATE >= 5)
 		{
 			// 1 => DATM == 0, 2 => DATM == 1
-			uchar rt_a = PS_WRITE_RG ? current_color_int.g : current_color_int.a;
-			bool bad = (PS_DATE & 3) == 1 ? (rt_a & 0x80) : !(rt_a & 0x80);
+			float rt_a = PS_WRITE_RG ? current_color.g : current_color.a;
+			bool bad = (PS_DATE & 3) == 1 ? (rt_a > 0.5) : (rt_a < 0.5);
 
 			if (bad)
 				discard_fragment();
@@ -909,12 +908,10 @@ fragment MainPSOut ps_main(
 #else
 		main.current_color = rt.read(uint2(in.p.xy));
 #endif
-		main.current_color_int = uchar4(main.current_color * 255.5f);
 	}
 	else
 	{
 		main.current_color = 0;
-		main.current_color_int = 0;
 	}
 
 	return main.ps_main();
