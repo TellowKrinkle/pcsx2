@@ -305,9 +305,9 @@ void MetalHostDisplay::EndPresent()
 	ImGui::Render();
 	dev->RenderImGui(ImGui::GetDrawData());
 	dev->EndRenderPass();
-	if (m_current_drawable)
-		[dev->GetRenderCmdBuf() presentDrawable:m_current_drawable];
 	dev->FlushEncoders();
+	if (m_current_drawable)
+		[m_current_drawable present];
 	m_current_drawable = nullptr;
 	if (m_capture_start_frame)
 	{
