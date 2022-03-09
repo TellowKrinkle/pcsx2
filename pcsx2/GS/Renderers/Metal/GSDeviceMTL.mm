@@ -1455,6 +1455,9 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 	memcpy(allocation.cpu_buffer, config.verts, vertsize);
 	memcpy(static_cast<u8*>(allocation.cpu_buffer) + vertsize, config.indices, idxsize);
 
+	FlushClears(config.tex);
+	FlushClears(config.pal);
+
 	GSTexture* stencil = nullptr;
 	GSTexture* primid_tex = nullptr;
 	GSTexture* rt = config.rt;
@@ -1465,6 +1468,7 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 			break; // No setup
 		case GSHWDrawConfig::DestinationAlphaMode::PrimIDTracking:
 		{
+			FlushClears(config.rt);
 			GSVector2i size = config.rt->GetSize();
 			primid_tex = CreateRenderTarget(size.x, size.y, GSTexture::Format::PrimID);
 			DepthStencilSelector dsel = config.depth;
@@ -1509,9 +1513,6 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 		g_perfmon.Put(GSPerfMon::TextureCopies, 1);
 	}
 
-	FlushClears(config.tex);
-	FlushClears(config.pal);
-
 	// Try to reduce render pass restarts
 	if (!stencil && config.depth.key == DepthStencilSelector::NoDepth().key && (m_current_render.color_target != rt || m_current_render.depth_target != config.ds))
 		config.ds = nullptr;
@@ -1521,23 +1522,15 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 	BeginRenderPass(@"RenderHW", rt, MTLLoadActionLoad, config.ds, MTLLoadActionLoad, stencil, MTLLoadActionLoad);
 	id<MTLRenderCommandEncoder> mtlenc = m_current_render.encoder;
 	FlushDebugEntries(mtlenc);
-	MRESetScissor(config.scissor);
-	MRESetTexture(config.tex, GSMTLTextureIndexTex);
-	MRESetTexture(config.pal, GSMTLTextureIndexPalette);
+	MREInitHWDraw(config, allocation);
 	if (config.require_one_barrier || config.require_full_barrier)
 		MRESetTexture(config.rt, GSMTLTextureIndexRenderTarget);
 	if (primid_tex)
 		MRESetTexture(primid_tex, GSMTLTextureIndexPrimIDs);
-	MRESetSampler(config.sampler);
 	if (config.blend.index && config.blend.is_constant)
 		MRESetBlendColor(config.blend.factor);
 	MRESetHWPipelineState(config.vs, config.ps, config.blend, config.colormask);
 	MRESetDSS(config.depth);
-
-	MRESetCB(config.cb_vs);
-	MRESetCB(config.cb_ps);
-
-	MRESetVertices(allocation.gpu_buffer, allocation.gpu_offset);
 
 	SendHWDraw(config, mtlenc, allocation.gpu_buffer, allocation.gpu_offset + vertsize);
 
