@@ -396,3 +396,12 @@ fragment float4 ps_shadeboost(float4 p [[position]], DirectReadTextureIn<float> 
 
 	return float4(conColor, 1);
 }
+
+kernel void waste_time(constant uint& cycles [[buffer(0)]], device uint* spin [[buffer(1)]])
+{
+	uint value = spin[0];
+	for (uint i = 0; i < cycles; i++) {
+		value = spin[value];
+	}
+	spin[0] = value;
+}
