@@ -44,13 +44,11 @@ HostDisplay* MakeMetalHostDisplay()
 }
 
 MetalHostDisplay::MetalHostDisplay()
-	: m_gpu_work_sema(dispatch_semaphore_create(3))
 {
 }
 
 MetalHostDisplay::~MetalHostDisplay()
 {
-	dispatch_release(m_gpu_work_sema);
 }
 
 HostDisplay::AdapterAndModeList GetMetalAdapterAndModeList()
@@ -144,7 +142,6 @@ bool MetalHostDisplay::CreateRenderDevice(const WindowInfo& wi, std::string_view
 			AttachSurfaceOnMainThread();
 		});
 		SetVSync(vsync);
-		m_drawable_fetcher.Start(m_layer);
 		return true;
 	}
 	else
@@ -170,7 +167,6 @@ void MetalHostDisplay::DestroyRenderSurface()
 {
 	if (!m_layer)
 		return;
-	m_drawable_fetcher.Stop();
 	OnMainThread([this]{ DetachSurfaceOnMainThread(); });
 	m_layer = nullptr;
 }
@@ -217,7 +213,6 @@ void MetalHostDisplay::ResizeRenderWindow(s32 new_window_width, s32 new_window_h
 	@autoreleasepool
 	{
 		[m_layer setDrawableSize:CGSizeMake(new_window_width, new_window_height)];
-		m_drawable_fetcher.GetIfAvailable(); // Throw away the last drawable of the old size
 	}
 }
 
@@ -277,11 +272,7 @@ bool MetalHostDisplay::BeginPresent(bool frame_skip)
 		return false;
 	}
 	id<MTLCommandBuffer> buf = dev->GetRenderCmdBuf();
-	// TODO: Use synchronous fetch if vsync is enabled
-	dispatch_semaphore_wait(m_gpu_work_sema, DISPATCH_TIME_FOREVER);
-	dispatch_retain(m_gpu_work_sema);
-	[buf addCompletedHandler:[sema = m_gpu_work_sema](id<MTLCommandBuffer>){ dispatch_semaphore_signal(sema); dispatch_release(sema); }];
-	m_current_drawable = m_drawable_fetcher.GetIfAvailable();
+	m_current_drawable = MRCRetain([m_layer nextDrawable]);
 	dev->EndRenderPass();
 	if (!m_current_drawable)
 	{

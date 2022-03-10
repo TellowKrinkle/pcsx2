@@ -24,7 +24,6 @@
 #ifdef __APPLE__
 
 #include "GS/Renderers/Metal/GSMTLDeviceInfo.h"
-#include "GS/Renderers/Metal/MTLDrawableFetcher.h"
 #include <AppKit/AppKit.h>
 #include <Metal/Metal.h>
 #include <QuartzCore/QuartzCore.h>
@@ -38,8 +37,6 @@ class MetalHostDisplay final : public HostDisplay
 	MRCOwned<id<MTLTexture>> m_font_tex;
 	MRCOwned<id<CAMetalDrawable>> m_current_drawable;
 	MRCOwned<MTLRenderPassDescriptor*> m_pass_desc;
-	MTLDrawableFetcher m_drawable_fetcher;
-	dispatch_semaphore_t m_gpu_work_sema;
 	u32 m_capture_start_frame;
 
 	void AttachSurfaceOnMainThread();
