@@ -987,7 +987,6 @@ elseif(USE_METAL)
 		GS/Renderers/Metal/GSDeviceMTL.mm
 		GS/Renderers/Metal/GSMTLDeviceInfo.mm
 		GS/Renderers/Metal/GSTextureMTL.mm
-		GS/Renderers/Metal/MTLDrawableFetcher.mm
 	)
 	list(APPEND pcsx2GSHeaders
 		GS/Renderers/Metal/GSDeviceMTL.h
@@ -996,7 +995,6 @@ elseif(USE_METAL)
 		GS/Renderers/Metal/GSMTLSharedHeader.h
 		GS/Renderers/Metal/GSMTLShaderCommon.h
 		GS/Renderers/Metal/GSTextureMTL.h
-		GS/Renderers/Metal/MTLDrawableFetcher.h
 	)
 	list(APPEND pcsx2FrontendSources
 		Frontend/MetalHostDisplay.mm
