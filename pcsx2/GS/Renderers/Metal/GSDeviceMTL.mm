@@ -258,6 +258,40 @@ void GSDeviceMTL::FlushEncoders()
 			dev->m_last_finished_draw.store(newval, std::memory_order_release);
 		}
 	}];
+	if (m_last_spin_cmdbuf)
+	{
+		double seconds_to_spin = m_spin_timer.GetTimeSeconds();
+		[m_current_render_cmdbuf addCompletedHandler:[spin = std::move(m_last_spin_cmdbuf), backref = m_backref, seconds_to_spin](id<MTLCommandBuffer> render){
+			if (@available(macOS 10.15, iOS 10.3, *))
+			{
+				CFTimeInterval start = [spin GPUStartTime];
+				CFTimeInterval end   = [spin GPUEndTime];
+				CFTimeInterval rstart = [render GPUStartTime];
+				[[maybe_unused]] CFTimeInterval spin_time = end - start;
+				[[maybe_unused]] CFTimeInterval total_time = rstart - start;
+				// Console.WriteLn("Spin Result: duration: %.2fms, time to fill: %.2fms, ratio: %.2f, target: %.2fms", spin_time * 1000, total_time * 1000, spin_time / total_time, seconds_to_spin * 1000);
+				std::lock_guard<std::mutex> lock(backref->first);
+				if (GSDeviceMTL* dev = backref->second)
+				{
+					if (!start || !end)
+					{
+						Console.Warning("Spin never ended???");
+					}
+					else if (spin_time < seconds_to_spin - 0.001)
+					{
+						dev->m_spin_cycles += (dev->m_spin_cycles >> 4);
+						// Console.WriteLn("Spin finished early, increasing cycles to %d", dev->m_spin_cycles);
+					}
+					else if (spin_time > seconds_to_spin)
+					{
+						dev->m_spin_cycles -= (dev->m_spin_cycles >> 4);
+						// Console.WriteLn("Spin finished late, reducing cycles to %d", dev->m_spin_cycles);
+					}
+				}
+			}
+		}];
+		m_last_spin_cmdbuf = nil;
+	}
 	[m_current_render_cmdbuf commit];
 	m_current_render_cmdbuf = nil;
 	m_current_draw++;
@@ -613,6 +647,11 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 	m_queue = MRCRetain((__bridge id<MTLCommandQueue>)m_display->GetRenderContext());
 	MTLPixelFormat layer_px_fmt = [(__bridge CAMetalLayer*)m_display->GetRenderSurface() pixelFormat];
 
+	if (const char* env = getenv("MTL_SPIN_READBACK"))
+		m_spin_enable = env[0] == '1' || env[0] == 'y' || env[0] == 'Y';
+	else
+		m_spin_enable = false;
+
 	m_features.geometry_shader = false;
 	m_features.image_load_store = m_dev.features.primid;
 	m_features.texture_barrier = true;
@@ -952,10 +991,42 @@ bool GSDeviceMTL::DownloadTexture(GSTexture* src, const GSVector4i& rect, GSText
 	       destinationOffset:0
 	  destinationBytesPerRow:out_map.pitch
 	destinationBytesPerImage:size];
+	if (m_spin_enable)
+		[encoder updateFence:m_draw_sync_fence];
 	[encoder endEncoding];
 	[cmdbuf popDebugGroup];
 
 	FlushEncoders();
+	if (m_spin_enable)
+	{
+		if (@available(macOS 10.15, iOS 10.3, *))
+		{
+			id<MTLCommandBuffer> spin_cmdbuf = [m_queue commandBuffer];
+			id<MTLComputeCommandEncoder> spin_enc = [spin_cmdbuf computeCommandEncoder];
+			[spin_enc waitForFence:m_draw_sync_fence];
+			if (!m_spin_pipeline)
+				m_spin_pipeline = MRCTransfer([m_dev.dev newComputePipelineStateWithFunction:LoadShader(@"waste_time") error:nil]);
+			if (!m_spin_buf)
+				m_spin_buf = MRCTransfer([m_dev.dev newBufferWithLength:4 options:MTLResourceStorageModeShared]);
+			*(u32*)[m_spin_buf contents] = 0;
+			[spin_enc setComputePipelineState:m_spin_pipeline];
+			[spin_enc setBuffer:m_spin_buf offset:0 atIndex:1];
+			if (m_spin_cycles < 1024)
+				m_spin_cycles = 1024;
+			// Console.WriteLn("Metal: Spin %d iters", m_spin_cycles);
+			[spin_enc setBytes:&m_spin_cycles length:4 atIndex:0];
+			[spin_enc dispatchThreads:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
+			[spin_enc endEncoding];
+			[spin_cmdbuf commit];
+			m_last_spin_cmdbuf = MRCRetain(spin_cmdbuf);
+			// Don't let the CPU go to sleep either!
+			while (![cmdbuf GPUEndTime])
+				ShortSpin();
+
+			m_spin_timer.Reset();
+		}
+	}
+
 	[cmdbuf waitUntilCompleted];
 
 	out_map.bits = static_cast<u8*>([m_texture_download_buf contents]);
