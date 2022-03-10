@@ -25,6 +25,7 @@
 
 #include "common/HashCombine.h"
 #include "common/MRCHelpers.h"
+#include "common/Timer.h"
 #include "GS/GS.h"
 #include "GSMTLDeviceInfo.h"
 #include "GSMTLSharedHeader.h"
@@ -295,6 +296,14 @@ public:
 	MRCOwned<id<MTLBlitCommandEncoder>> m_late_texture_upload_encoder;
 	MRCOwned<id<MTLCommandBuffer>> m_vertex_upload_cmdbuf;
 	MRCOwned<id<MTLBlitCommandEncoder>> m_vertex_upload_encoder;
+
+	// Spinning yay
+	u32 m_spin_enable = false;
+	u32 m_spin_cycles = 0;
+	Common::Timer m_spin_timer;
+	MRCOwned<id<MTLBuffer>> m_spin_buf;
+	MRCOwned<id<MTLComputePipelineState>> m_spin_pipeline;
+	MRCOwned<id<MTLCommandBuffer>> m_last_spin_cmdbuf;
 
 	struct DebugEntry
 	{
