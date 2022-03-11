@@ -75,6 +75,7 @@ public:
 	void Unmap() override;
 	void GenerateMipmap() override;
 	bool Save(const std::string& fn) override;
+	void Swap(GSTexture* tex) override;
 	id<MTLTexture> GetTexture() { return m_texture; }
 };
 

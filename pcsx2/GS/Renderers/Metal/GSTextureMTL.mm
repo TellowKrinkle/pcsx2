@@ -195,4 +195,22 @@ bool GSTextureMTL::Save(const std::string& fn)
 	return false;
 }
 
+void GSTextureMTL::Swap(GSTexture* other)
+{
+	GSTexture::Swap(other);
+
+	GSTextureMTL* mtex = static_cast<GSTextureMTL*>(other);
+	pxAssert(m_dev == mtex->m_dev);
+#define SWAP(x) std::swap(x, mtex->x)
+	SWAP(m_texture);
+	SWAP(m_has_mipmaps);
+	SWAP(m_needs_color_clear);
+	SWAP(m_needs_depth_clear);
+	SWAP(m_needs_stencil_clear);
+	SWAP(m_clear_color);
+	SWAP(m_clear_depth);
+	SWAP(m_clear_stencil);
+#undef SWAP
+}
+
 #endif
