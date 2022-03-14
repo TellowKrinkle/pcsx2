@@ -34,9 +34,11 @@ class VU_Thread : public pxThread {
 	alignas(64) std::atomic<bool> isBusy;   // Is thread processing data?
 	alignas(64) std::atomic<int> m_ato_read_pos; // Only modified by VU thread
 	alignas(64) std::atomic<int> m_ato_write_pos;    // Only modified by EE thread
-	alignas(64) int  m_read_pos; // temporary read pos (local to the VU thread)
-	int  m_write_pos; // temporary write pos (local to the EE thread)
-	Mutex     mtxBusy;
+	alignas(64) int m_read_pos; // temporary read pos (local to the VU thread)
+	int m_vu_thread_write_pos_cache; // VU thread local cache of m_ato_write_pos
+	alignas(64) int m_write_pos; // temporary write pos (local to the EE thread)
+	int m_ee_thread_read_pos_cache; // EE thread local cache of m_ato_read_pos
+	alignas(64) Mutex mtxBusy;
 	Semaphore semaEvent;
 	BaseVUmicroCPU*& vuCPU;
 	VURegs&          vuRegs;
@@ -105,6 +107,7 @@ private:
 
 	s32 GetReadPos();
 	s32 GetWritePos();
+	bool HasWork();
 
 	u32* GetWritePtr();
 

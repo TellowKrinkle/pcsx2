@@ -113,6 +113,8 @@ void VU_Thread::Reset()
 	m_write_pos = 0;
 	m_ato_read_pos = 0;
 	m_read_pos = 0;
+	m_vu_thread_write_pos_cache = 0;
+	m_ee_thread_read_pos_cache = 0;
 	memzero(vif);
 	memzero(vifRegs);
 	for (size_t i = 0; i < 4; ++i)
@@ -135,7 +137,7 @@ void VU_Thread::ExecuteRingBuffer()
 	{
 		semaEvent.WaitWithoutYield();
 		ScopedLockBool lock(mtxBusy, isBusy);
-		while (m_ato_read_pos.load(std::memory_order_relaxed) != GetWritePos())
+		while (HasWork())
 		{
 			u32 tag = Read();
 			switch (tag)
@@ -209,9 +211,13 @@ void VU_Thread::ExecuteRingBuffer()
 // Should only be called by ReserveSpace()
 __ri void VU_Thread::WaitOnSize(s32 size)
 {
+	if (m_ee_thread_read_pos_cache <= m_write_pos || m_ee_thread_read_pos_cache > m_write_pos + size + _4kb)
+		return;
+
+	s32 readPos;
 	for (;;)
 	{
-		s32 readPos = GetReadPos();
+		readPos = GetReadPos();
 		if (readPos <= m_write_pos)
 			break; // MTVU is reading in back of write_pos
 		// FIXME greg: there is a bug somewhere in the queue pointer
@@ -230,6 +236,7 @@ __ri void VU_Thread::WaitOnSize(s32 size)
 			std::this_thread::yield();
 		}
 	}
+	m_ee_thread_read_pos_cache = readPos;
 }
 
 // Makes sure theres enough room in the ring buffer
@@ -262,6 +269,19 @@ __fi s32 VU_Thread::GetReadPos()
 __fi s32 VU_Thread::GetWritePos()
 {
 	return m_ato_write_pos.load(std::memory_order_acquire);
+}
+
+__fi bool VU_Thread::HasWork()
+{
+	if (m_vu_thread_write_pos_cache != m_read_pos)
+		return true;
+	s32 write_pos = GetWritePos();
+	if (write_pos != m_read_pos)
+	{
+		m_vu_thread_write_pos_cache = write_pos;
+		return true;
+	}
+	return false;
 }
 
 // Gets the effective write pointer after
