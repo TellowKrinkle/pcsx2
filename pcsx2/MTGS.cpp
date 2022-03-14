@@ -405,7 +405,7 @@ void SysMtgsThread::ExecuteTaskInThread()
 					{
 						busy.PartialRelease();
 						// Wait for MTVU to complete vu1 program
-						vu1Thread.semaXGkick.WaitWithoutYield();
+						vu1Thread.semaXGkick.WaitWithoutYieldWithSpin();
 						busy.PartialAcquire();
 					}
 					Gif_Path& path = gifUnit.gifPath[GIF_PATH_1];
