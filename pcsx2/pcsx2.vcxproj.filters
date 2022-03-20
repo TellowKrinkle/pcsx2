@@ -1538,6 +1538,9 @@
     <ClCompile Include="GS\GSVector.cpp">
       <Filter>System\Ps2\GS</Filter>
     </ClCompile>
+    <ClCompile Include="GS\GSXXH.cpp">
+      <Filter>System\Ps2\GS</Filter>
+    </ClCompile>
     <ClCompile Include="GS\GSPng.cpp">
       <Filter>System\Ps2\GS</Filter>
     </ClCompile>
@@ -2753,6 +2756,9 @@
       <Filter>System\Ps2\GS</Filter>
     </ClInclude>
     <ClInclude Include="GS\GSVector8.h">
+      <Filter>System\Ps2\GS</Filter>
+    </ClInclude>
+    <ClInclude Include="GS\GSXXH.h">
       <Filter>System\Ps2\GS</Filter>
     </ClInclude>
     <ClInclude Include="GS\config.h">
