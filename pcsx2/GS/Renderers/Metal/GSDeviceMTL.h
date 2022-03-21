@@ -202,7 +202,7 @@ public:
 
 	// MARK: Configuration
 	simd::float3 m_shadeboost_constants;
-	int m_mipmap;
+	bool m_enable_small_rt;
 
 	// MARK: Permanent resources
 	std::shared_ptr<std::pair<std::mutex, GSDeviceMTL*>> m_backref;
@@ -261,6 +261,7 @@ public:
 		GSTexture* tex[8] = {};
 		void* vertex_buffer = nullptr;
 		void* name = nullptr;
+		GSVector2i size = GSVector2i(0, 0);
 		struct Has
 		{
 			bool cb_vs        : 1;
@@ -327,7 +328,7 @@ public:
 	/// End current render pass without flushing
 	void EndRenderPass();
 	/// Begin a new render pass (may reuse existing)
-	void BeginRenderPass(NSString* name, GSTexture* color, MTLLoadAction color_load, GSTexture* depth, MTLLoadAction depth_load, GSTexture* stencil = nullptr, MTLLoadAction stencil_load = MTLLoadActionDontCare);
+	void BeginRenderPass(NSString* name, GSTexture* color, MTLLoadAction color_load, GSTexture* depth, MTLLoadAction depth_load, GSTexture* stencil = nullptr, MTLLoadAction stencil_load = MTLLoadActionDontCare, GSVector2i size = GSVector2i(0, 0));
 
 	GSTexture* CreateSurface(GSTexture::Type type, int width, int height, int levels, GSTexture::Format format) override;
 

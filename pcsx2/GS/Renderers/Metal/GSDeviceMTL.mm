@@ -72,7 +72,6 @@ GSDeviceMTL::GSDeviceMTL()
 	, m_dev(nil)
 {
 	m_backref->second = this;
-	m_mipmap = theApp.GetConfigI("mipmap");
 }
 
 GSDeviceMTL::~GSDeviceMTL()
@@ -309,7 +308,7 @@ void GSDeviceMTL::EndRenderPass()
 	}
 }
 
-void GSDeviceMTL::BeginRenderPass(NSString* name, GSTexture* color, MTLLoadAction color_load, GSTexture* depth, MTLLoadAction depth_load, GSTexture* stencil, MTLLoadAction stencil_load)
+void GSDeviceMTL::BeginRenderPass(NSString* name, GSTexture* color, MTLLoadAction color_load, GSTexture* depth, MTLLoadAction depth_load, GSTexture* stencil, MTLLoadAction stencil_load, GSVector2i size)
 {
 	GSTextureMTL* mc = static_cast<GSTextureMTL*>(color);
 	GSTextureMTL* md = static_cast<GSTextureMTL*>(depth);
@@ -332,6 +331,12 @@ void GSDeviceMTL::BeginRenderPass(NSString* name, GSTexture* color, MTLLoadActio
 	needs_new |= mc && color_load   == MTLLoadActionClear;
 	needs_new |= md && depth_load   == MTLLoadActionClear;
 	needs_new |= ms && stencil_load == MTLLoadActionClear;
+	if (m_current_render.size != GSVector2i(0, 0))
+	{
+		needs_new |= size == GSVector2i(0, 0);
+		needs_new |= size.x > m_current_render.size.x;
+		needs_new |= size.y > m_current_render.size.y;
+	}
 
 	if (!needs_new)
 	{
@@ -380,6 +385,12 @@ void GSDeviceMTL::BeginRenderPass(NSString* name, GSTexture* color, MTLLoadActio
 		desc.stencilAttachment.loadAction = stencil_load;
 	}
 
+	if (@available(macOS 10.15, iOS 11, *))
+	{
+		desc.renderTargetWidth = size.x;
+		desc.renderTargetHeight = size.y;
+	}
+
 	EndRenderPass();
 	m_current_render.encoder = MRCRetain([GetRenderCmdBuf() renderCommandEncoderWithDescriptor:desc]);
 	m_current_render.name = (__bridge void*)name;
@@ -390,6 +401,12 @@ void GSDeviceMTL::BeginRenderPass(NSString* name, GSTexture* color, MTLLoadActio
 	m_current_render.color_target = color;
 	m_current_render.depth_target = depth;
 	m_current_render.stencil_target = stencil;
+	m_current_render.size = size;
+	if (size != GSVector2i(0, 0))
+	{
+		GSVector2i rtsize = color ? color->GetSize() : depth ? depth->GetSize() : stencil->GetSize();
+		[m_current_render.encoder setViewport: (MTLViewport){ .originX = 0, .originY = 0, .width = (double)rtsize.x, .height = (double)rtsize.y, .znear = 0, .zfar = 1 }];
+	}
 	pxAssertRel(m_current_render.encoder, "Failed to create render encoder!");
 }
 
@@ -651,6 +668,11 @@ bool GSDeviceMTL::Create(HostDisplay* display)
 		m_spin_enable = env[0] == '1' || env[0] == 'y' || env[0] == 'Y';
 	else
 		m_spin_enable = false;
+
+	if (const char* env = getenv("MTL_SMALL_RT"))
+		m_enable_small_rt = env[0] == '1' || env[0] == 'y' || env[0] == 'Y';
+	else
+		m_enable_small_rt = false;
 
 	m_features.geometry_shader = false;
 	m_features.image_load_store = m_dev.features.primid;
@@ -1590,7 +1612,8 @@ void GSDeviceMTL::RenderHW(GSHWDrawConfig& config)
 	if (!config.ds && m_current_render.color_target == rt && stencil == m_current_render.stencil_target && m_current_render.depth_target != config.tex)
 		config.ds = m_current_render.depth_target;
 
-	BeginRenderPass(@"RenderHW", rt, MTLLoadActionLoad, config.ds, MTLLoadActionLoad, stencil, MTLLoadActionLoad);
+	GSVector2i rtsize = m_enable_small_rt ? GSVector2i(config.scissor.z, config.scissor.w) : GSVector2i(0, 0);
+	BeginRenderPass(@"RenderHW", rt, MTLLoadActionLoad, config.ds, MTLLoadActionLoad, stencil, MTLLoadActionLoad, rtsize);
 	id<MTLRenderCommandEncoder> mtlenc = m_current_render.encoder;
 	FlushDebugEntries(mtlenc);
 	MREInitHWDraw(config, allocation);
