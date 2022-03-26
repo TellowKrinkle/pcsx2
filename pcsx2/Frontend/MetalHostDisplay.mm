@@ -303,9 +303,11 @@ void MetalHostDisplay::EndPresent()
 	ImGui::Render();
 	dev->RenderImGui(ImGui::GetDrawData());
 	dev->EndRenderPass();
-	dev->FlushEncoders();
 	if (m_current_drawable)
-		[m_current_drawable present];
+		[dev->m_current_render_cmdbuf addScheduledHandler:[drawable = std::move(m_current_drawable)](id<MTLCommandBuffer>){
+			[drawable present];
+		}];
+	dev->FlushEncoders();
 	m_current_drawable = nullptr;
 	if (@available(macOS 10.15, iOS 13, *))
 	{
