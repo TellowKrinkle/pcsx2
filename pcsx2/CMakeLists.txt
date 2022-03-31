@@ -1246,6 +1246,7 @@ if(NOT PCSX2_CORE)
 	)
 	list(APPEND pcsx2OSXSources
 		Linux/LnxConsolePipe.cpp
+		Darwin/DarwinKeyCodes.cpp
 	)
 	list(APPEND pcsx2FreeBSDSources
 		Linux/LnxConsolePipe.cpp

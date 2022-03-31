@@ -28,7 +28,6 @@ class GSRenderer : public GSState
 
 	bool Merge(int field);
 
-	bool m_f8_key;
 	bool m_shift_key;
 	bool m_control_key;
 
