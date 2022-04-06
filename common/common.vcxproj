@@ -78,6 +78,7 @@
     <ClCompile Include="Vulkan\Texture.cpp" />
     <ClCompile Include="Vulkan\Util.cpp" />
     <ClCompile Include="WindowInfo.cpp" />
+    <ClCompile Include="x86\MemcpyFast.cpp" />
     <ClCompile Include="PathUtils.cpp" />
     <ClCompile Include="Perf.cpp" />
     <ClCompile Include="PrecompiledHeader.cpp">
@@ -110,7 +111,11 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="EventSource.inl" />
-    <MASM Include="FastJmp.asm" />
+    <MASM Include="FastJmp.asm">
+      <FileType>Document</FileType>
+      <PreprocessorDefinitions Condition="'$(Platform)'=='Win32'">_M_X86_32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">_M_X86_64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </MASM>
     <None Include="Vulkan\EntryPoints.inl" />
   </ItemGroup>
   <ItemGroup>
