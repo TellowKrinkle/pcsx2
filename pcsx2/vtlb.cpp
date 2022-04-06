@@ -117,7 +117,7 @@ __inline int CheckCache(u32 addr)
 // See recVTLB.cpp for the dynarec versions.
 
 template< typename DataType >
-DataType vtlb_memRead(u32 addr)
+DataType __fastcall vtlb_memRead(u32 addr)
 {
 	static const uint DataSize = sizeof(DataType) * 8;
 	auto vmv = vtlbdata.vmap[addr>>VTLB_PAGE_BITS];
@@ -139,9 +139,11 @@ DataType vtlb_memRead(u32 addr)
 					case 32:
 						return readCache32(addr);
 						break;
+#ifdef _M_X86_64
 					case 64:
 						return readCache64(addr);
 						break;
+#endif
 
 					jNO_DEFAULT;
 				}
@@ -164,14 +166,42 @@ DataType vtlb_memRead(u32 addr)
 			return vmv.assumeHandler<16, false>()(paddr);
 		case 32:
 			return vmv.assumeHandler<32, false>()(paddr);
+#ifdef _M_X86_64
 		case 64:
 			return vmv.assumeHandler<64, false>()(paddr);
+#endif
 
 		jNO_DEFAULT;
 	}
 
 	return 0;		// technically unreachable, but suppresses warnings.
 }
+
+#ifndef _M_X86_64
+RETURNS_R64 vtlb_memRead64(u32 mem)
+{
+	auto vmv = vtlbdata.vmap[mem>>VTLB_PAGE_BITS];
+
+	if (!vmv.isHandler(mem))
+	{
+		if (!CHECK_EEREC) {
+			if(CHECK_CACHE && CheckCache(mem))
+			{
+				return r64_from_u64(readCache64(mem));
+			}
+		}
+
+		return r64_load(reinterpret_cast<const void*>(vmv.assumePtr(mem)));
+	}
+	else
+	{
+		//has to: translate, find function, call function
+		u32 paddr = vmv.assumeHandlerGetPAddr(mem);
+		//Console.WriteLn("Translated 0x%08X to 0x%08X", addr,paddr);
+		return vmv.assumeHandler<64, false>()(paddr);
+	}
+}
+#endif
 
 RETURNS_R128 vtlb_memRead128(u32 mem)
 {
@@ -199,7 +229,7 @@ RETURNS_R128 vtlb_memRead128(u32 mem)
 }
 
 template< typename DataType >
-void vtlb_memWrite(u32 addr, DataType data)
+void __fastcall vtlb_memWrite(u32 addr, DataType data)
 {
 	static const uint DataSize = sizeof(DataType) * 8;
 
@@ -240,6 +270,35 @@ void vtlb_memWrite(u32 addr, DataType data)
 	}
 }
 
+#ifndef _M_X86_64
+void TAKES_R64 vtlb_memWrite64(u32 mem, r64 value)
+{
+	auto vmv = vtlbdata.vmap[mem>>VTLB_PAGE_BITS];
+
+	if (!vmv.isHandler(mem))
+	{
+		if (!CHECK_EEREC)
+		{
+			if(CHECK_CACHE && CheckCache(mem))
+			{
+				writeCache64(mem, r64_to_u64(value));
+				return;
+			}
+		}
+
+		*(mem64_t*)vmv.assumePtr(mem) = r64_to_u64(value);
+	}
+	else
+	{
+		//has to: translate, find function, call function
+		u32 paddr = vmv.assumeHandlerGetPAddr(mem);
+		//Console.WriteLn("Translated 0x%08X to 0x%08X", addr,paddr);
+
+		vmv.assumeHandler<64, true>()(paddr, value);
+	}
+}
+#endif
+
 void TAKES_R128 vtlb_memWrite128(u32 mem, r128 value)
 {
 	auto vmv = vtlbdata.vmap[mem>>VTLB_PAGE_BITS];
@@ -271,11 +330,13 @@ void TAKES_R128 vtlb_memWrite128(u32 mem, r128 value)
 template mem8_t vtlb_memRead<mem8_t>(u32 mem);
 template mem16_t vtlb_memRead<mem16_t>(u32 mem);
 template mem32_t vtlb_memRead<mem32_t>(u32 mem);
-template mem64_t vtlb_memRead<mem64_t>(u32 mem);
 template void vtlb_memWrite<mem8_t>(u32 mem, mem8_t data);
 template void vtlb_memWrite<mem16_t>(u32 mem, mem16_t data);
 template void vtlb_memWrite<mem32_t>(u32 mem, mem32_t data);
+#ifdef _M_X86_64
+template mem64_t vtlb_memRead<mem64_t>(u32 mem);
 template void vtlb_memWrite<mem64_t>(u32 mem, mem64_t data);
+#endif
 
 template <typename DataType>
 bool vtlb_ramRead(u32 addr, DataType* value)
@@ -339,7 +400,7 @@ static void GoemonTlbMissDebug()
 	}
 }
 
-void GoemonPreloadTlb()
+void __fastcall GoemonPreloadTlb()
 {
 	// 0x3d5580 is the address of the TLB cache table
 	GoemonTlb* tlb = (GoemonTlb*)&eeMem->Main[0x3d5580];
@@ -363,7 +424,7 @@ void GoemonPreloadTlb()
 	}
 }
 
-void GoemonUnloadTlb(u32 key)
+void __fastcall GoemonUnloadTlb(u32 key)
 {
 	// 0x3d5580 is the address of the TLB cache table
 	GoemonTlb* tlb = (GoemonTlb*)&eeMem->Main[0x3d5580];
@@ -435,25 +496,25 @@ static __ri void vtlb_BusError(u32 addr,u32 mode)
 }
 
 template<typename OperandType, u32 saddr>
-OperandType vtlbUnmappedVReadSm(u32 addr)                   { vtlb_Miss(addr|saddr,0); return 0; }
+OperandType __fastcall vtlbUnmappedVReadSm(u32 addr)                   { vtlb_Miss(addr|saddr,0); return 0; }
 
 template<typename OperandType, u32 saddr>
 u_to_r<OperandType> __vectorcall vtlbUnmappedVReadLg(u32 addr)         { vtlb_Miss(addr|saddr,0); return rhelper<OperandType>::zero(); }
 
 template<typename OperandType, u32 saddr>
-void vtlbUnmappedVWriteSm(u32 addr,OperandType data)        { vtlb_Miss(addr|saddr,1); }
+void __fastcall vtlbUnmappedVWriteSm(u32 addr,OperandType data)        { vtlb_Miss(addr|saddr,1); }
 
 template<typename OperandType, u32 saddr>
 void __vectorcall vtlbUnmappedVWriteLg(u32 addr,u_to_r<OperandType> data)      { vtlb_Miss(addr|saddr,1); }
 
 template<typename OperandType, u32 saddr>
-OperandType vtlbUnmappedPReadSm(u32 addr)                   { vtlb_BusError(addr|saddr,0); return 0; }
+OperandType __fastcall vtlbUnmappedPReadSm(u32 addr)                   { vtlb_BusError(addr|saddr,0); return 0; }
 
 template<typename OperandType, u32 saddr>
 u_to_r<OperandType> __vectorcall vtlbUnmappedPReadLg(u32 addr)         { vtlb_BusError(addr|saddr,0); return rhelper<OperandType>::zero(); }
 
 template<typename OperandType, u32 saddr>
-void vtlbUnmappedPWriteSm(u32 addr,OperandType data)        { vtlb_BusError(addr|saddr,1); }
+void __fastcall vtlbUnmappedPWriteSm(u32 addr,OperandType data)        { vtlb_BusError(addr|saddr,1); }
 
 template<typename OperandType, u32 saddr>
 void __vectorcall vtlbUnmappedPWriteLg(u32 addr,u_to_r<OperandType> data)      { vtlb_BusError(addr|saddr,1); }
@@ -465,28 +526,28 @@ void __vectorcall vtlbUnmappedPWriteLg(u32 addr,u_to_r<OperandType> data)      {
 // properly.  All addressable physical memory should be configured as TLBMiss or Bus Error.
 //
 
-static mem8_t vtlbDefaultPhyRead8(u32 addr)
+static mem8_t __fastcall vtlbDefaultPhyRead8(u32 addr)
 {
 	pxFailDev(fmt::format("(VTLB) Attempted read8 from unmapped physical address @ 0x{:08X}.", addr).c_str());
 	return 0;
 }
 
-static mem16_t vtlbDefaultPhyRead16(u32 addr)
+static mem16_t __fastcall vtlbDefaultPhyRead16(u32 addr)
 {
 	pxFailDev(fmt::format("(VTLB) Attempted read16 from unmapped physical address @ 0x{:08X}.", addr).c_str());
 	return 0;
 }
 
-static mem32_t vtlbDefaultPhyRead32(u32 addr)
+static mem32_t __fastcall vtlbDefaultPhyRead32(u32 addr)
 {
 	pxFailDev(fmt::format("(VTLB) Attempted read32 from unmapped physical address @ 0x{:08X}.", addr).c_str());
 	return 0;
 }
 
-static mem64_t vtlbDefaultPhyRead64(u32 addr)
+static RETURNS_R64 vtlbDefaultPhyRead64(u32 addr)
 {
 	pxFailDev(fmt::format("(VTLB) Attempted read64 from unmapped physical address @ 0x{:08X}.", addr).c_str());
-	return 0;
+	return r64_zero();
 }
 
 static RETURNS_R128 vtlbDefaultPhyRead128(u32 addr)
@@ -495,22 +556,22 @@ static RETURNS_R128 vtlbDefaultPhyRead128(u32 addr)
 	return r128_zero();
 }
 
-static void vtlbDefaultPhyWrite8(u32 addr, mem8_t data)
+static void __fastcall vtlbDefaultPhyWrite8(u32 addr, mem8_t data)
 {
 	pxFailDev(fmt::format("(VTLB) Attempted write8 to unmapped physical address @ 0x{:08X}.", addr).c_str());
 }
 
-static void vtlbDefaultPhyWrite16(u32 addr, mem16_t data)
+static void __fastcall vtlbDefaultPhyWrite16(u32 addr, mem16_t data)
 {
 	pxFailDev(fmt::format("(VTLB) Attempted write16 to unmapped physical address @ 0x{:08X}.", addr).c_str());
 }
 
-static void vtlbDefaultPhyWrite32(u32 addr, mem32_t data)
+static void __fastcall vtlbDefaultPhyWrite32(u32 addr, mem32_t data)
 {
 	pxFailDev(fmt::format("(VTLB) Attempted write32 to unmapped physical address @ 0x{:08X}.", addr).c_str());
 }
 
-static void vtlbDefaultPhyWrite64(u32 addr,mem64_t data)
+static void TAKES_R64 vtlbDefaultPhyWrite64(u32 addr, r64 data)
 {
 	pxFailDev(fmt::format("(VTLB) Attempted write64 to unmapped physical address @ 0x{:08X}.", addr).c_str());
 }
@@ -733,11 +794,19 @@ void vtlb_Init()
 	vtlbHandlerCount=0;
 	memzero(vtlbdata.RWFT);
 
+#ifdef _M_X86_64
 #define VTLB_BuildUnmappedHandler(baseName, highBit) \
 	baseName##ReadSm<mem8_t,0>,		baseName##ReadSm<mem16_t,0>,	baseName##ReadSm<mem32_t,0>, \
 	baseName##ReadSm<mem64_t,0>,	baseName##ReadLg<mem128_t,0>, \
 	baseName##WriteSm<mem8_t,0>,	baseName##WriteSm<mem16_t,0>,	baseName##WriteSm<mem32_t,0>, \
 	baseName##WriteSm<mem64_t,0>,	baseName##WriteLg<mem128_t,0>
+#else
+#define VTLB_BuildUnmappedHandler(baseName, highBit) \
+	baseName##ReadSm<mem8_t,0>,		baseName##ReadSm<mem16_t,0>,	baseName##ReadSm<mem32_t,0>, \
+	baseName##ReadLg<mem64_t,0>,	baseName##ReadLg<mem128_t,0>, \
+	baseName##WriteSm<mem8_t,0>,	baseName##WriteSm<mem16_t,0>,	baseName##WriteSm<mem32_t,0>, \
+	baseName##WriteLg<mem64_t,0>,	baseName##WriteLg<mem128_t,0>
+#endif
 
 	//Register default handlers
 	//Unmapped Virt handlers _MUST_ be registered first.

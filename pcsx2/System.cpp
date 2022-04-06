@@ -212,6 +212,9 @@ void SysLogMachineCaps()
 
 	Console.WriteLn(Color_StrongBlack,	"x86 Features Detected:");
 	Console.Indent().WriteLn("%s", features.c_str());
+#ifdef __M_X86_32
+	Console.Indent().WriteLn("Pcsx2 was compiled for 32-bit x86.");
+#endif
 
 	Console.Newline();
 

@@ -36,7 +36,7 @@ __ri void cpuUpdateOperationMode() {
 	//}
 }
 
-void WriteCP0Status(u32 value) {
+void __fastcall WriteCP0Status(u32 value) {
 
 	//DMA_LOG("COP0 Status write = 0x%08x", value);
 
@@ -44,7 +44,7 @@ void WriteCP0Status(u32 value) {
     cpuSetNextEventDelta(4);
 }
 
-void WriteCP0Config(u32 value) {
+void __fastcall WriteCP0Config(u32 value) {
 	// Protect the read-only ICacheSize (IC) and DataCacheSize (DC) bits
 	cpuRegs.CP0.n.Config = value & ~0xFC0;
 	cpuRegs.CP0.n.Config |= 0x440;

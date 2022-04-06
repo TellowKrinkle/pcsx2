@@ -102,12 +102,12 @@ alignas(16) u32 dummyValue[4];
 //
 static void recLoadQuad(u32 bits, bool sign)
 {
-	pxAssume(bits == 128);
+	pxAssume(bits == 128 || bits == wordsize * 16);
 
 	// Load arg2 with the destination.
 	// 64/128 bit modes load the result directly into the cpuRegs.GPR struct.
 
-	int gprreg = _Rt_ ? _Rt_ : -1;
+	int gprreg = ((bits == 128) && _Rt_) ? _Rt_ : -1;
 	int reg;
 
 	if (GPR_IS_CONST1(_Rs_))
@@ -150,7 +150,7 @@ static void recLoadQuad(u32 bits, bool sign)
 //
 static void recLoadNonQuad(u32 bits, bool sign)
 {
-	pxAssume(bits <= 64);
+	pxAssume(bits <= wordsize * 8);
 
 	// 8/16/32 bit modes return the loaded value in EAX.
 
@@ -178,7 +178,21 @@ static void recLoadNonQuad(u32 bits, bool sign)
 	}
 
 	if (_Rt_)
+	{
+#if __M_X86_64
 		xMOV(ptr64[&cpuRegs.GPR.r[_Rt_].UD[0]], rax);
+#else
+		// EAX holds the loaded value, so sign extend as needed:
+		if (sign)
+			xCDQ();
+
+		xMOV(ptr32[&cpuRegs.GPR.r[_Rt_].UL[0]], eax);
+		if (sign)
+			xMOV(ptr32[&cpuRegs.GPR.r[_Rt_].UL[1]], edx);
+		else
+			xMOV(ptr32[&cpuRegs.GPR.r[_Rt_].UL[1]], 0);
+#endif
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -193,7 +207,7 @@ static void recStore(u32 bits)
 	// Load EDX first with the value being written, or the address of the value
 	// being written (64/128 bit modes).
 
-	if (bits < 128)
+	if (bits <= wordsize * 8)
 	{
 		_eeMoveGPRtoR(arg2reg, _Rt_);
 	}
@@ -203,7 +217,10 @@ static void recStore(u32 bits)
 
 		const xRegisterSSE& dreg = xRegisterSSE::GetArgRegister(1, 0);
 		_freeXMMreg(dreg.GetId());
-		xMOVAPS(dreg, ptr128[&cpuRegs.GPR.r[_Rt_].UL[0]]);
+		if (bits == 64)
+			xMOVQZX(dreg, ptr64[&cpuRegs.GPR.r[_Rt_].UL[0]]);
+		else
+			xMOVAPS(dreg, ptr128[&cpuRegs.GPR.r[_Rt_].UL[0]]);
 	}
 
 	// Load ECX with the destination address, or issue a direct optimized write
@@ -240,7 +257,11 @@ void recLH()  { recLoadNonQuad( 16, true);  EE::Profiler.EmitOp(eeOpcode::LH); }
 void recLHU() { recLoadNonQuad( 16, false); EE::Profiler.EmitOp(eeOpcode::LHU); }
 void recLW()  { recLoadNonQuad( 32, true);  EE::Profiler.EmitOp(eeOpcode::LW); }
 void recLWU() { recLoadNonQuad( 32, false); EE::Profiler.EmitOp(eeOpcode::LWU); }
+#ifdef _M_X86_64
 void recLD()  { recLoadNonQuad( 64, false); EE::Profiler.EmitOp(eeOpcode::LD); }
+#else
+void recLD()  { recLoadQuad( 64, false); EE::Profiler.EmitOp(eeOpcode::LD); }
+#endif
 void recLQ()  { recLoadQuad(128, false); EE::Profiler.EmitOp(eeOpcode::LQ); }
 
 void recSB()  { recStore(  8); EE::Profiler.EmitOp(eeOpcode::SB); }
@@ -276,6 +297,7 @@ void recLWL()
 	xMOV(ecx, calleeSavedReg1d);
 	xMOV(edx, 0xffffff);
 	xSHR(edx, cl);
+# ifdef __M_X86_64
 	xAND(edx, ptr32[&cpuRegs.GPR.r[_Rt_].UL[0]]);
 
 	// OR in bytes loaded
@@ -285,6 +307,19 @@ void recLWL()
 	xOR(eax, edx);
 
 	eeSignExtendTo(_Rt_);
+# else
+	xAND(ptr32[&cpuRegs.GPR.r[_Rt_].UL[0]], edx);
+
+	// OR in bytes loaded
+	xNEG(ecx);
+	xADD(ecx, 24);
+	xSHL(eax, cl);
+	xOR(ptr32[&cpuRegs.GPR.r[_Rt_].UL[0]], eax);
+
+	// eax will always have the sign bit
+	xCDQ();
+	xMOV(ptr32[&cpuRegs.GPR.r[_Rt_].UL[1]], edx);
+# endif
 #else
 	iFlushCall(FLUSH_INTERPRETER);
 	_deleteEEreg(_Rs_, 1);
@@ -499,7 +534,7 @@ void recLDL()
 	if (!_Rt_)
 		return;
 
-#ifdef REC_LOADS
+#if defined(REC_LOADS) && defined(_M_X86_64)
 
 	if (GPR_IS_CONST1(_Rt_))
 	{
@@ -581,7 +616,7 @@ void recLDR()
 	if (!_Rt_)
 		return;
 
-#ifdef REC_LOADS
+#if defined(REC_LOADS) && defined(_M_X86_64)
 	if (GPR_IS_CONST1(_Rt_))
 	{
 		_flushConstReg(_Rt_);
@@ -693,7 +728,7 @@ static void sdlrhelper(const xRegister32& maskamt, const xImpl_Group2& maskshift
 
 void recSDL()
 {
-#ifdef REC_STORES
+#if defined(REC_LOADS) && defined(_M_X86_64)
 	_flushEEreg(_Rt_); // flush register to mem
 	if (GPR_IS_CONST1(_Rs_))
 	{
@@ -766,7 +801,7 @@ void recSDL()
 ////////////////////////////////////////////////////
 void recSDR()
 {
-#ifdef REC_STORES
+#if defined(REC_LOADS) && defined(_M_X86_64)
 	_flushEEreg(_Rt_); // flush register to mem
 	if (GPR_IS_CONST1(_Rs_))
 	{

@@ -30,9 +30,23 @@ using namespace Xbyak;
 // If use_lod, m_local.gd->tex, else m_local.gd->tex[0]
 #define _64_m_local__gd__tex r14
 
-#define _rip_local_(ptrtype, field) ((m_rip) ? ptrtype[rip + (char*)&m_local.field] : ptrtype[_m_local + OFFSETOF(GSScanlineLocalData, field)])
+#define _rip_local_(ptrtype, field) ((is32 || m_rip) ? ptrtype[rip + (char*)&m_local.field] : ptrtype[_m_local + OFFSETOF(GSScanlineLocalData, field)])
 #define _rip_local(field) _rip_local_(ptr, field)
-#define _rip_global(field) ((m_rip) ? ptr[rip + (char*)&m_local.gd->field] : ptr[_m_local__gd + OFFSETOF(GSScanlineGlobalData, field)])
+#define _rip_global(field) ((is32 || m_rip) ? ptr[rip + (char*)&m_local.gd->field] : ptr[_m_local__gd + OFFSETOF(GSScanlineGlobalData, field)])
+
+/// Executes the given code only if targeting 32-bit
+#define ONLY32(code) if (is32) (code)
+
+/// Executes the given code only if targeting 64-bit
+#define ONLY64(code) if (is64) (code)
+
+/// Combines temporary with either dst64 on 64-bit or src32 on 32-bit
+/// Follow up with an ONLY32 save back to src32
+#define REG_64_MEM_32(operation, dst64, temporary, src32) \
+	if (is32) \
+		operation(temporary, src32); \
+	else \
+		operation(dst64, temporary)
 
 /// On AVX, does a v-prefixed separate destination operation
 /// On SSE, moves src1 into dst using movdqa, then does the operation
@@ -54,7 +68,14 @@ using namespace Xbyak;
 #define MOVE_IF_64(operation, dst, src64, ...) \
 	do \
 	{ \
-		THREEARG(operation, dst, src64, __VA_ARGS__); \
+		if (is64) \
+		{ \
+			THREEARG(operation, dst, src64, __VA_ARGS__); \
+		} \
+		else \
+		{ \
+			operation(dst, __VA_ARGS__); \
+		} \
 	} while (0)
 
 #define USING_XMM DRAW_SCANLINE_USING_XMM
@@ -85,21 +106,21 @@ GSDrawScanlineCodeGenerator2::GSDrawScanlineCodeGenerator2(Xbyak::CodeGenerator*
 	, m_local(*(GSScanlineLocalData*)param)
 	, m_rip(false)
 #ifdef _WIN32
-	, a0(rcx), a1(rdx)
-	, a2(r8) , a3(r9)
-	, t0(rdi), t1(rsi)
-	, t2(r8) , t3(r9)
+	, a0(rcx) , a1(rdx)
+	, a2(r8)  , a3(is64 ? r9 : rbx)
+	, t0(rdi) , t1(rsi)
+	, t2(is64 ? r8 : rbp), t3(r9)
 #else
-	, a0(rdi), a1(rsi)
-	, a2(rdx), a3(rcx)
-	, t0(r8) , t1(r9)
-	, t2(rcx), t3(rsi)
+	, a0(is64 ? rdi : rcx), a1(is64 ? rsi : rdx)
+	, a2(is64 ? rdx : r8),  a3(is64 ? rcx : rbx)
+	, t0(is64 ? r8  : rdi), t1(is64 ? r9  : rsi)
+	, t2(is64 ? rcx : rbp), t3(is64 ? rsi : r8)
 #endif
 	, _g_const(chooseLocal(&*g_const, _64_g_const))
 	, _m_local(chooseLocal(&m_local, _64_m_local))
 	, _m_local__gd(chooseLocal(m_local.gd, _64_m_local__gd))
 	, _m_local__gd__vm(chooseLocal(m_local.gd->vm, _64_m_local__gd__vm))
-	, _rb(xym5), _ga(xym6), _fm(xym3), _zm(xym4), _fd(xym2), _test(xym15)
+	, _rb(xym5), _ga(xym6), _fm(xym3), _zm(xym4), _fd(xym2), _test(is64 ? xym15 : xym7)
 	, _z(xym8), _f(xym9), _s(xym10), _t(xym11), _q(xym12), _f_rb(xym13), _f_ga(xym14)
 {
 	m_sel.key = key;
@@ -112,7 +133,8 @@ GSDrawScanlineCodeGenerator2::GSDrawScanlineCodeGenerator2(Xbyak::CodeGenerator*
 
 GSDrawScanlineCodeGenerator2::LocalAddr GSDrawScanlineCodeGenerator2::loadAddress(AddressReg reg, const void* addr)
 {
-	mov(reg, (size_t)addr);
+	if (is64)
+		mov(reg, (size_t)addr);
 	return choose3264((size_t)addr, reg);
 }
 
@@ -340,41 +362,51 @@ void GSDrawScanlineCodeGenerator2::Generate()
 	m_rip &= (size_t)&m_local < 0x80000000;
 	m_rip &= (size_t)&m_local.gd < 0x80000000;
 
-	push(rbp);
-	mov(rbp, rsp); // Stack traces look much nicer this way
+	if (is32)
+	{
+		push(rbx);
+		push(rsi);
+		push(rdi);
+		push(rbp);
+	}
+	else
+	{
+		push(rbp);
+		mov(rbp, rsp); // Stack traces look much nicer this way
 #ifdef _WIN32
-	push(rbx);
-	push(rsi);
-	push(rdi);
-	push(r12);
-	push(r13);
-	push(r14);
+		push(rbx);
+		push(rsi);
+		push(rdi);
+		push(r12);
+		push(r13);
+		push(r14);
 
-	sub(rsp, _64_win_stack_size);
+		sub(rsp, _64_win_stack_size);
 
-	for (int i = 0; i < 10; i++)
-	{
-		movdqa(ptr[rsp + _64_win_xmm_start + 16 * i], Xmm(i + 6));
-	}
+		for (int i = 0; i < 10; i++)
+		{
+			movdqa(ptr[rsp + _64_win_xmm_start + 16 * i], Xmm(i + 6));
+		}
 #else
-	mov(ptr[rsp + _64_rz_rbx], rbx);
-	if (!m_rip)
-	{
-		mov(ptr[rsp + _64_rz_r12], r12);
-		mov(ptr[rsp + _64_rz_r13], r13);
-	}
-	mov(ptr[rsp + _64_rz_r14], r14);
-	mov(ptr[rsp + _64_rz_r15], r15);
+		mov(ptr[rsp + _64_rz_rbx], rbx);
+		if (!m_rip)
+		{
+			mov(ptr[rsp + _64_rz_r12], r12);
+			mov(ptr[rsp + _64_rz_r13], r13);
+		}
+		mov(ptr[rsp + _64_rz_r14], r14);
+		mov(ptr[rsp + _64_rz_r15], r15);
 #endif
-	mov(_64_g_const, (size_t)&*g_const);
-	if (!m_rip)
-	{
-		mov(_64_m_local, (size_t)&m_local);
-		mov(_64_m_local__gd, _rip_local(gd));
-	}
+		mov(_64_g_const, (size_t)&*g_const);
+		if (!m_rip)
+		{
+			mov(_64_m_local, (size_t)&m_local);
+			mov(_64_m_local__gd, _rip_local(gd));
+		}
 
-	if (need_clut)
-		mov(_64_m_local__gd__clut, _rip_global(clut));
+		if (need_clut)
+			mov(_64_m_local__gd__clut, _rip_global(clut));
+	}
 
 	Init();
 
@@ -593,33 +625,50 @@ L("step");
 
 L("exit");
 
-#ifdef _WIN32
-	for (int i = 0; i < 10; i++)
-	{
-		movdqa(Xmm(i + 6), ptr[rsp + _64_win_xmm_start + 16 * i]);
-	}
-	add(rsp, _64_win_stack_size);
 
-	pop(r14);
-	pop(r13);
-	pop(r12);
-	pop(rdi);
-	pop(rsi);
-	pop(rbx);
-#else
-	mov(rbx, ptr[rsp + _64_rz_rbx]);
-	if (!m_rip)
+
+	if (is32)
 	{
-		mov(r12, ptr[rsp + _64_rz_r12]);
-		mov(r13, ptr[rsp + _64_rz_r13]);
+		pop(ebp);
+		pop(edi);
+		pop(esi);
+		pop(ebx);
+
+		if (isYmm)
+			vzeroupper();
+
+		ret(8);
 	}
-	mov(r14, ptr[rsp + _64_rz_r14]);
-	mov(r15, ptr[rsp + _64_rz_r15]);
+	else
+	{
+#ifdef _WIN32
+		for (int i = 0; i < 10; i++)
+		{
+			movdqa(Xmm(i + 6), ptr[rsp + _64_win_xmm_start + 16 * i]);
+		}
+		add(rsp, _64_win_stack_size);
+
+		pop(r14);
+		pop(r13);
+		pop(r12);
+		pop(rdi);
+		pop(rsi);
+		pop(rbx);
+#else
+		mov(rbx, ptr[rsp + _64_rz_rbx]);
+		if (!m_rip)
+		{
+			mov(r12, ptr[rsp + _64_rz_r12]);
+			mov(r13, ptr[rsp + _64_rz_r13]);
+		}
+		mov(r14, ptr[rsp + _64_rz_r14]);
+		mov(r15, ptr[rsp + _64_rz_r15]);
 #endif
-	pop(rbp);
-	if (isYmm)
-		vzeroupper();
-	ret();
+		pop(rbp);
+		if (isYmm)
+			vzeroupper();
+		ret();
+	}
 }
 
 /// Inputs: a0=pixels, a1=left, a2[x64]=top, a3[x64]=v
@@ -647,7 +696,7 @@ void GSDrawScanlineCodeGenerator2::Init()
 		and(eax, a0.cvt32());
 		if (isXmm)
 			shl(eax, 4); // * sizeof(m_test[0])
-		cdqe();
+		ONLY64(cdqe());
 
 		if (isXmm)
 		{
@@ -677,19 +726,43 @@ void GSDrawScanlineCodeGenerator2::Init()
 	// rbx = left
 	// Free: rax, t0, t1
 
-	// GSVector2i* fza_base = &m_local.gd->fzbr[top];
-	mov(rax, _rip_global(fzbr));
-	lea(t1, ptr[rax + a2 * 8]);
+	if (is64)
+	{
+		// GSVector2i* fza_base = &m_local.gd->fzbr[top];
+		mov(rax, _rip_global(fzbr));
+		lea(t1, ptr[rax + a2 * 8]);
 
-	// GSVector2i* fza_offset = &m_local.gd->fzbc[left >> 2];
-	mov(rax, _rip_global(fzbc));
-	lea(t0, ptr[rax + rbx * 2]);
+		// GSVector2i* fza_offset = &m_local.gd->fzbc[left >> 2];
+		mov(rax, _rip_global(fzbc));
+		lea(t0, ptr[rax + rbx * 2]);
+	}
+	else
+	{
+		// GSVector2i* fza_base = &m_local.gd->fzbr[top];
+		mov(t1, ptr[rsp + _top]);
+		lea(t1, ptr[t1 * 8]);
+		add(t1, ptr[&m_local.gd->fzbr]);
+
+		// GSVector2i* fza_offset = &m_local.gd->fzbc[left >> 2];
+		lea(t0, ptr[rbx * 2]);
+		add(t0, ptr[(size_t)&m_local.gd->fzbc]);
+	}
 
 	if (m_sel.prim != GS_SPRITE_CLASS && (m_sel.fwrite && m_sel.fge || m_sel.zb) || m_sel.fb && (m_sel.edge || m_sel.tfx != TFX_NONE || m_sel.iip))
 	{
 		// a1 = &m_local.d[skip] // note a1 was (skip << 4)
-		lea(rax, _rip_local(d));
-		lea(a1, ptr[rax + a1 * 8]);
+
+		if (is64)
+		{
+			lea(rax, _rip_local(d));
+			lea(a1, ptr[rax + a1 * 8]);
+		}
+		else
+		{
+			lea(a1, ptr[(size_t)m_local.d + a1 * 8]);
+			// a3 starts on the stack in x86, we want it in a register
+			mov(a3, ptr[rsp + _v]);
+		}
 	}
 
 	// a0 = steps      (rcx | rdi)
@@ -700,7 +773,8 @@ void GSDrawScanlineCodeGenerator2::Init()
 	// t1 = fza_base   (rsi | r9 )
 	// Free: rax
 
-	const XYm& f = _f;
+	const XYm& f = is64 ? _f : xym1;
+	const XYm& z = is64 ? _z : xym0;
 
 	if (m_sel.prim != GS_SPRITE_CLASS)
 	{
@@ -718,33 +792,54 @@ void GSDrawScanlineCodeGenerator2::Init()
 				punpcklwd(f, f);
 				pshufd(f, f, _MM_SHUFFLE(0, 0, 0, 0));
 				paddw(f, ptr[a1 + offsetof(GSScanlineLocalData::skip, f)]);
+
+				if (is32) // _f is shared on x86
+					movdqa(ptr[&m_local.temp.f], f);
 			}
 
 			if (m_sel.zb && m_sel.zequal)
 			{
-				Xmm zx(_z.getIdx());
-				cvttsd2si(rax, ptr[a3 + offsetof(GSVertexSW, p.z)]);
-				movd(zx, eax);
-				if (hasAVX2)
-					vpbroadcastd(_z, zx);
+				Xmm zx(z.getIdx());
+				if (is64 || !m_sel.zoverflow)
+				{
+					cvttsd2si(rax, ptr[a3 + offsetof(GSVertexSW, p.z)]);
+					movd(zx, eax);
+				}
 				else
-					pshufd(_z, _z, _MM_SHUFFLE(0, 0, 0, 0));
+				{
+					movsd(zx, ptr[a3 + offsetof(GSVertexSW, p.z)]);
+					addsd(zx, ptr[&GSVector4::m_xc1e00000000fffff]);
+					cvtsd2si(rax, zx);
+					add(eax, 0x80000000);
+					movd(zx, eax);
+				}
+
+				if (hasAVX2)
+					vpbroadcastd(z, zx);
+				else
+					pshufd(z, z, _MM_SHUFFLE(0, 0, 0, 0));
+
+				ONLY32(movaps(_rip_local(temp.z0), z));
 			}
 			else if (m_sel.zb)
 			{
+				const XYm& z0 = is64 ? xym7 : xym5;
 				// z = vp.zzzz() + m_local.d[skip].z;
 				broadcastsd(xym1, ptr[a3 + offsetof(GSVertexSW, p.z)]); // v.p.z
-				cvtps2pd(xym7, ptr[a1 + offsetof(GSScanlineLocalData::skip, z.I8[0])]);
-				addpd(xym7, xym1);
-				movaps(_rip_local(temp.z0), xym7);
-				cvtps2pd(_z, ptr[a1 + offsetof(GSScanlineLocalData::skip, z.I8[vecsize/2])]);
-				addpd(_z, xym1);
+				cvtps2pd(z0, ptr[a1 + offsetof(GSScanlineLocalData::skip, z.I8[0])]);
+				addpd(z0, xym1);
+				movaps(_rip_local(temp.z0), z0);
+				cvtps2pd(z, ptr[a1 + offsetof(GSScanlineLocalData::skip, z.I8[vecsize/2])]);
+				addpd(z, xym1);
+				ONLY32(movaps(_rip_local(temp.z1), z));
 			}
 		}
 	}
 	else
 	{
-		if (m_sel.fwrite && m_sel.fge)
+		if (m_sel.ztest)
+			pbroadcastdLocal(z, _rip_local(p.z));
+		if (m_sel.fwrite && m_sel.fge && is64)
 			pbroadcastwLocal(_f, _rip_local(p.f));
 	}
 
@@ -777,8 +872,8 @@ void GSDrawScanlineCodeGenerator2::Init()
 
 			// a1 = &m_local.d[skip]
 
-			const XYm& s = _s;
-			const XYm& t = _t;
+			const XYm& s = is64 ? _s : xym2;
+			const XYm& t = is64 ? _t : xym3;
 
 			if (m_sel.fst)
 			{
@@ -806,10 +901,13 @@ void GSDrawScanlineCodeGenerator2::Init()
 					psrlw(vf, 12);
 					movdqa(_rip_local(temp.vf), vf);
 				}
+
+				ONLY32(movdqa(_rip_local(temp.s), s));
+				ONLY32(movdqa(_rip_local(temp.t), t));
 			}
 			else
 			{
-				const XYm& q = _q;
+				const XYm& q = is64 ? _q : vt;
 
 				// s = vt.xxxx() + m_local.d[skip].s;
 				// t = vt.yyyy() + m_local.d[skip].t;
@@ -825,7 +923,7 @@ void GSDrawScanlineCodeGenerator2::Init()
 				{
 					movaps(s, vt);
 					movaps(t, vt);
-					movaps(q, vt);
+					ONLY64(movaps(q, vt));
 
 					shufps(s, s, _MM_SHUFFLE(0, 0, 0, 0));
 					shufps(t, t, _MM_SHUFFLE(1, 1, 1, 1));
@@ -835,13 +933,20 @@ void GSDrawScanlineCodeGenerator2::Init()
 				addps(s, ptr[a1 + offsetof(GSScanlineLocalData::skip, s)]);
 				addps(t, ptr[a1 + offsetof(GSScanlineLocalData::skip, t)]);
 				addps(q, ptr[a1 + offsetof(GSScanlineLocalData::skip, q)]);
+
+				if (is32)
+				{
+					movaps(_rip_local(temp.s), s);
+					movaps(_rip_local(temp.t), t);
+					movaps(_rip_local(temp.q), q);
+				}
 			}
 		}
 
 		if (!(m_sel.tfx == TFX_DECAL && m_sel.tcc))
 		{
-			const XYm& f_rb = _f_rb;
-			const XYm& f_ga = _f_ga;
+			const XYm& f_rb = is64 ? _f_rb : xym5;
+			const XYm& f_ga = is64 ? _f_ga : xym6;
 			if (m_sel.iip)
 			{
 				// GSVector4i vc = GSVector4i(v.c);
@@ -869,32 +974,38 @@ void GSDrawScanlineCodeGenerator2::Init()
 
 				paddw(f_rb, ptr[a1 + offsetof(GSScanlineLocalData::skip, rb)]);
 				paddw(f_ga, ptr[a1 + offsetof(GSScanlineLocalData::skip, ga)]);
+
+				ONLY32(movdqa(_rip_local(temp.rb), f_rb));
+				ONLY32(movdqa(_rip_local(temp.ga), f_ga));
 			}
-			else
+			else if (is64 || m_sel.tfx == TFX_NONE)
 			{
 				movdqa(f_rb, _rip_local(c.rb));
 				movdqa(f_ga, _rip_local(c.ga));
 			}
 
-			movdqa(_rb, _f_rb);
-			movdqa(_ga, _f_ga);
+			ONLY64(movdqa(_rb, _f_rb));
+			ONLY64(movdqa(_ga, _f_ga));
 		}
 	}
 
-	if (m_sel.fwrite && m_sel.fpsm == 2 && m_sel.dthe)
+	if (is64)
 	{
-		// On linux, a2 is edx which will be used for fzm
-		// In all case, it will require a mov in dthe code, so let's keep the value on the stack
-		mov(ptr[rsp + _top], a2);
-	}
+		if (m_sel.fwrite && m_sel.fpsm == 2 && m_sel.dthe)
+		{
+			// On linux, a2 is edx which will be used for fzm
+			// In all case, it will require a mov in dthe code, so let's keep the value on the stack
+			mov(ptr[rsp + _top], a2);
+		}
 
-	mov(_64_m_local__gd__vm, _rip_global(vm));
-	if (m_sel.fb && m_sel.tfx != TFX_NONE)
-	{
-		if (use_lod)
-			lea(_64_m_local__gd__tex, _rip_global(tex));
-		else
-			mov(_64_m_local__gd__tex, _rip_global(tex));
+		mov(_64_m_local__gd__vm, _rip_global(vm));
+		if (m_sel.fb && m_sel.tfx != TFX_NONE)
+		{
+			if (use_lod)
+				lea(_64_m_local__gd__tex, _rip_global(tex));
+			else
+				mov(_64_m_local__gd__tex, _rip_global(tex));
+		}
 	}
 }
 
@@ -912,7 +1023,8 @@ void GSDrawScanlineCodeGenerator2::Step()
 
 	add(t0, vecsize / 2);
 
-	const XYm& f = _f;
+	const XYm& z = is64 ? _z : xym0;
+	const XYm& f = is64 ? _f : xym1;
 
 	if (m_sel.prim != GS_SPRITE_CLASS)
 	{
@@ -921,17 +1033,37 @@ void GSDrawScanlineCodeGenerator2::Step()
 		if (m_sel.zb && !m_sel.zequal)
 		{
 			broadcastsd(xym7, _rip_local_d_p(z));
-			addpd(_z, xym7);
+			ONLY32(movaps(z, _rip_local(temp.z1)));
+			addpd(z, xym7);
 			addpd(xym7, _rip_local(temp.z0));
 			movaps(_rip_local(temp.z0), xym7);
+			ONLY32(movaps(_rip_local(temp.z1), z));
+		}
+		else if (m_sel.zb && is32)
+		{
+			movdqa(z, _rip_local(temp.z0));
 		}
 
 		// f = f.add16(m_local.d4.f);
 
 		if (m_sel.fwrite && m_sel.fge)
 		{
-			BROADCAST_AND_OP(vpbroadcastw, paddw, f, xym0, _rip_local_d_p(f));
+			if (is32)
+			{
+				pbroadcastwLocal(f, _rip_local_d_p(f));
+				paddw(f, _rip_local(temp.f));
+				movdqa(_rip_local(temp.f), f);
+			}
+			else
+			{
+				BROADCAST_AND_OP(vpbroadcastw, paddw, f, xym0, _rip_local_d_p(f));
+			}
 		}
+	}
+	else
+	{
+		if (is32 && m_sel.zb)
+			pbroadcastdLocal(z, _rip_local(p.z));
 	}
 
 	if (m_sel.fb)
@@ -940,7 +1072,7 @@ void GSDrawScanlineCodeGenerator2::Step()
 		{
 			if (m_sel.fst)
 			{
-				const XYm& stq = xym0;
+				const XYm& stq = is64 ? xym0 : xym4;
 				// GSVector4i stq = m_local.d4.stq;
 
 				// s += stq.xxxx();
@@ -948,22 +1080,28 @@ void GSDrawScanlineCodeGenerator2::Step()
 
 				broadcasti128(stq, _rip_local_d(stq));
 
-				XYm s = xym1;
+				XYm s = is64 ? xym1 : xym2;
 				pshufd(s, stq, _MM_SHUFFLE(0, 0, 0, 0));
-				paddd(_s, s);
+				REG_64_MEM_32(paddd, _s, s, _rip_local(temp.s));
+				ONLY32(movdqa(_rip_local(temp.s), s));
 
-				XYm t = xym1;
+				XYm t = is64 ? xym1 : xym3;
 				if (m_sel.prim != GS_SPRITE_CLASS || m_sel.mmin)
 				{
 					pshufd(t, stq, _MM_SHUFFLE(1, 1, 1, 1));
-					paddd(_t, t);
+					REG_64_MEM_32(paddd, _t, t, _rip_local(temp.t));
+					ONLY32(movdqa(_rip_local(temp.t), t));
+				}
+				else
+				{
+					ONLY32(movdqa(t, _rip_local(temp.t)));
 				}
 			}
 			else
 			{
 				const XYm& s = xym2;
 				const XYm& t = xym3;
-				const XYm& q = xym1;
+				const XYm& q = is64 ? xym1 : xym4;
 				// GSVector4 stq = m_local.d4.stq;
 
 				// s += stq.xxxx();
@@ -989,9 +1127,13 @@ void GSDrawScanlineCodeGenerator2::Step()
 					shufps(q, q, _MM_SHUFFLE(2, 2, 2, 2));
 				}
 
-				addps(_s, s);
-				addps(_t, t);
-				addps(_q, q);
+				REG_64_MEM_32(addps, _s, s, _rip_local(temp.s));
+				REG_64_MEM_32(addps, _t, t, _rip_local(temp.t));
+				REG_64_MEM_32(addps, _q, q, _rip_local(temp.q));
+
+				ONLY32(movaps(_rip_local(temp.s), s));
+				ONLY32(movaps(_rip_local(temp.t), t));
+				ONLY32(movaps(_rip_local(temp.q), q));
 			}
 		}
 
@@ -999,7 +1141,7 @@ void GSDrawScanlineCodeGenerator2::Step()
 		{
 			if (m_sel.iip)
 			{
-				XYm c = xym0;
+				XYm c = is64 ? xym0 : xym7;
 				// GSVector4i c = m_local.d4.c;
 
 				// rb = rb.add16(c.xxxx());
@@ -1010,18 +1152,29 @@ void GSDrawScanlineCodeGenerator2::Step()
 				pshufd(_rb, c, _MM_SHUFFLE(0, 0, 0, 0));
 				pshufd(_ga, c, _MM_SHUFFLE(1, 1, 1, 1));
 
-				paddw(_f_rb, _rb);
-				paddw(_f_ga, _ga);
+				REG_64_MEM_32(paddw, _f_rb, _rb, _rip_local(temp.rb));
+				REG_64_MEM_32(paddw, _f_ga, _ga, _rip_local(temp.ga));
 
 				// FIXME: color may underflow and roll over at the end of the line, if decreasing
 
 				pxor(c, c);
-				pmaxsw(_f_rb, c);
-				pmaxsw(_f_ga, c);
+				pmaxsw(is64 ? _f_rb : _rb, c);
+				pmaxsw(is64 ? _f_ga : _ga, c);
+
+				ONLY32(movdqa(_rip_local(temp.rb), _rb));
+				ONLY32(movdqa(_rip_local(temp.ga), _ga));
+			}
+			else
+			{
+				if (m_sel.tfx == TFX_NONE)
+				{
+					ONLY32(movdqa(_rb, ptr[&m_local.c.rb]));
+					ONLY32(movdqa(_ga, ptr[&m_local.c.ga]));
+				}
 			}
 
-			movdqa(_rb, _f_rb);
-			movdqa(_ga, _f_ga);
+			ONLY64(movdqa(_rb, _f_rb));
+			ONLY64(movdqa(_ga, _f_ga));
 		}
 	}
 
@@ -1034,7 +1187,7 @@ void GSDrawScanlineCodeGenerator2::Step()
 		and(eax, a0.cvt32());
 		if (isXmm)
 			shl(eax, 4);
-		cdqe();
+		ONLY64(cdqe());
 
 #if USING_XMM
 		movdqa(_test, ptr[rax + _g_const + offsetof(GSScanlineConstantData, m_test_128b[7])]);
@@ -1066,9 +1219,9 @@ void GSDrawScanlineCodeGenerator2::TestZ(const XYm& temp1, const XYm& temp2)
 	{
 		if (m_sel.zequal)
 		{
-			movdqa(xym0, _z);
+			ONLY64(movdqa(xym0, _z));
 		}
-		else if (m_sel.zoverflow)
+		else if (m_sel.zoverflow && is64)
 		{
 			// GSVector4i zl = z0.add64(VectorF::m_xc1e00000000fffff).f64toi32();
 			// GSVector4i zh = z1.add64(VectorF::m_xc1e00000000fffff).f64toi32();
@@ -1093,7 +1246,23 @@ void GSDrawScanlineCodeGenerator2::TestZ(const XYm& temp1, const XYm& temp2)
 			pslld(temp1, 31);
 			paddd(xym0, temp1);
 		}
-		else
+		else if (m_sel.zoverflow && is32)
+		{
+			broadcastsd(temp1, ptr[&GSVector4::m_xc1e00000000fffff]);
+			addpd(xym0, temp1);
+			addpd(temp1, _rip_local(temp.z0));
+			cvtpd2dq(Xmm(temp2.getIdx()), xym0);
+			cvtpd2dq(xmm0, temp1);
+#if USING_YMM
+			vinserti128(xym0, xym0, Xmm(temp2.getIdx()), 1);
+#else
+			punpcklqdq(xym0, temp2);
+#endif
+			pcmpeqd(temp1, temp1);
+			pslld(temp1, 31);
+			paddd(xym0, temp1);
+		}
+		else if (is64)
 		{
 			// zs = GSVector8i(z0.f64toi32(), z1.f64toi32());
 
@@ -1102,6 +1271,17 @@ void GSDrawScanlineCodeGenerator2::TestZ(const XYm& temp1, const XYm& temp2)
 #if USING_YMM
 			vinserti128(xym0, xym0, Xmm(temp1.getIdx()), 1);
 #else
+			punpcklqdq(xym0, temp1);
+#endif
+		}
+		else
+		{
+			cvttpd2dq(Xmm(temp1.getIdx()), xym0);
+#if USING_YMM
+			cvttpd2dq(xmm0, yword[&m_local.temp.z0]);
+			vinserti128(xym0, xym0, Xmm(temp1.getIdx()), 1);
+#else
+			cvttpd2dq(xmm0, xword[&m_local.temp.z0]);
 			punpcklqdq(xym0, temp1);
 #endif
 		}
@@ -1122,7 +1302,7 @@ void GSDrawScanlineCodeGenerator2::TestZ(const XYm& temp1, const XYm& temp2)
 	}
 	else
 	{
-		pbroadcastdLocal(xym0, _rip_local(p.z));
+		ONLY64(movdqa(xym0, _z));
 	}
 
 	if (m_sel.ztest)
@@ -1187,11 +1367,22 @@ void GSDrawScanlineCodeGenerator2::SampleTexture()
 		return;
 	}
 
+
+	if (is32)
+	{
+		mov(ebx, ptr[&m_local.gd->tex[0]]);
+
+		if (m_sel.tlu)
+		{
+			mov(edx, ptr[&m_local.gd->clut]);
+		}
+	}
+
 	const bool needsMoreRegs = isYmm;
 
 	if (!m_sel.fst)
 	{
-		rcpps(xym0, _q);
+		rcpps(xym0, is64 ? _q : xym4);
 
 		MOVE_IF_64(mulps, xym2, _s, xym0);
 		MOVE_IF_64(mulps, xym3, _t, xym0);
@@ -1213,19 +1404,21 @@ void GSDrawScanlineCodeGenerator2::SampleTexture()
 	}
 	else
 	{
-		movdqa(xym2, _s);
-		movdqa(xym3, _t);
+		ONLY64(movdqa(xym2, _s));
+		ONLY64(movdqa(xym3, _t));
 	}
 
 	if (m_sel.ltf)
 	{
-		const XYm& vf = xym7;
+		const XYm& vf = is64 ? xym7 : xym0;
 
 		// GSVector4i uf = u.xxzzlh().srl16(12);
 
 		pshuflw(xym4, xym2, _MM_SHUFFLE(2, 2, 0, 0));
 		pshufhw(xym4, xym4, _MM_SHUFFLE(2, 2, 0, 0));
 		psrlw(xym4, 12);
+		if (is32 && needsMoreRegs)
+			movdqa(_rip_local(temp.uf), xym4);
 
 		if (m_sel.prim != GS_SPRITE_CLASS)
 		{
@@ -1234,10 +1427,10 @@ void GSDrawScanlineCodeGenerator2::SampleTexture()
 			pshuflw(vf, xym3, _MM_SHUFFLE(2, 2, 0, 0));
 			pshufhw(vf, vf, _MM_SHUFFLE(2, 2, 0, 0));
 			psrlw(vf, 12);
-			if (needsMoreRegs)
+			if (is32 || needsMoreRegs)
 				movdqa(_rip_local(temp.vf), vf);
 		}
-		else if (!needsMoreRegs)
+		else if (is64 && !needsMoreRegs)
 		{
 			movdqa(vf, _rip_local(temp.vf));
 		}
@@ -1346,8 +1539,8 @@ void GSDrawScanlineCodeGenerator2::SampleTexture_TexelReadHelper(int mip_offset)
 		// c10 = addr10.gather32_32((const u32/u8*)tex[, clut]);
 		// c11 = addr11.gather32_32((const u32/u8*)tex[, clut]);
 
-		const XYm& tmp1 = xym7; // OK to destroy if needsMoreRegs
-		const XYm& tmp2 = xym4;
+		const XYm& tmp1 = is64 ? xym7 : xym4; // OK to destroy if needsMoreRegs
+		const XYm& tmp2 = is64 ? xym4 : xym7;
 		//         d0    d1    d2s0  d3s1  s2    s3
 		ReadTexel4(xym5, xym6, xym0, xym2, xym1, xym3, tmp1, tmp2, mip_offset);
 
@@ -1357,6 +1550,9 @@ void GSDrawScanlineCodeGenerator2::SampleTexture_TexelReadHelper(int mip_offset)
 		// xym5 = c11
 		// xym6 = c00
 		// xym7 = used[x86] vf[x64&&!needsMoreRegs]
+
+		if (is32 && needsMoreRegs)
+			movdqa(xym4, _rip_local(temp.uf));
 
 		// GSVector4i rb00 = c00 & mask;
 		// GSVector4i ga00 = (c00 >> 8) & mask;
@@ -1424,8 +1620,8 @@ void GSDrawScanlineCodeGenerator2::SampleTexture_TexelReadHelper(int mip_offset)
 		// rb00 = rb00.lerp16_4(rb10, vf);
 		// ga00 = ga00.lerp16_4(ga10, vf);
 
-		XYm vf = xym7;
-		if (needsMoreRegs)
+		XYm vf = is64 ? xym7 : xym2;
+		if (needsMoreRegs || is32)
 			movdqa(vf, _rip_local(temp.vf));
 
 		lerp16_4(xym5, xym0, vf);
@@ -1588,9 +1784,22 @@ void GSDrawScanlineCodeGenerator2::SampleTextureLOD()
 		return;
 	}
 
+	if (is32)
+	{
+		push(t2);
+
+		mov(t2, (size_t)m_local.gd->tex);
+
+		if (m_sel.tlu)
+		{
+			mov(edx, ptr[&m_local.gd->clut]);
+		}
+	}
+
 	const bool needsMoreRegs = isYmm;
 
-	movdqa(xym4, _q);
+	if (is64)
+		movdqa(xym4, _q);
 
 	if (!m_sel.fst)
 	{
@@ -1604,8 +1813,8 @@ void GSDrawScanlineCodeGenerator2::SampleTextureLOD()
 	}
 	else
 	{
-		movdqa(xym2, _s);
-		movdqa(xym3, _t);
+		ONLY64(movdqa(xym2, _s));
+		ONLY64(movdqa(xym3, _t));
 	}
 
 	// xym2 = u
@@ -1820,7 +2029,7 @@ void GSDrawScanlineCodeGenerator2::SampleTextureLOD()
 
 	if (m_sel.ltf)
 	{
-		const XYm& vf = xym7;
+		const XYm& vf = is64 ? xym7 : xym0;
 		// u -= 0x8000;
 		// v -= 0x8000;
 
@@ -1835,13 +2044,15 @@ void GSDrawScanlineCodeGenerator2::SampleTextureLOD()
 		pshuflw(xym4, xym2, _MM_SHUFFLE(2, 2, 0, 0));
 		pshufhw(xym4, xym4, _MM_SHUFFLE(2, 2, 0, 0));
 		psrlw(xym4, 12);
+		if (is32 && needsMoreRegs)
+			movdqa(_rip_local(temp.uf), xym4);
 
 		// GSVector4i vf = v.xxzzlh().srl16(1);
 
 		pshuflw(vf, xym3, _MM_SHUFFLE(2, 2, 0, 0));
 		pshufhw(vf, vf, _MM_SHUFFLE(2, 2, 0, 0));
 		psrlw(vf, 12);
-		if (needsMoreRegs)
+		if (is32 || needsMoreRegs)
 			movdqa(_rip_local(temp.vf), vf);
 	}
 
@@ -1902,7 +2113,7 @@ void GSDrawScanlineCodeGenerator2::SampleTextureLOD()
 
 		if (m_sel.ltf)
 		{
-			const XYm& vf = xym7;
+			const XYm& vf = is64 ? xym7 : xym0;
 			// u -= 0x8000;
 			// v -= 0x8000;
 
@@ -1917,13 +2128,15 @@ void GSDrawScanlineCodeGenerator2::SampleTextureLOD()
 			pshuflw(xym4, xym2, _MM_SHUFFLE(2, 2, 0, 0));
 			pshufhw(xym4, xym4, _MM_SHUFFLE(2, 2, 0, 0));
 			psrlw(xym4, 12);
+			if (is32 && needsMoreRegs)
+				movdqa(_rip_local(temp.uf), xym4);
 
 			// GSVector4i vf = v.xxzzlh().srl16(1);
 
 			pshuflw(vf, xym3, _MM_SHUFFLE(2, 2, 0, 0));
 			pshufhw(vf, vf, _MM_SHUFFLE(2, 2, 0, 0));
 			psrlw(vf, 12);
-			if (needsMoreRegs)
+			if (is32 || needsMoreRegs)
 				movdqa(_rip_local(temp.vf), vf);
 		}
 
@@ -1973,6 +2186,9 @@ void GSDrawScanlineCodeGenerator2::SampleTextureLOD()
 		lerp16(xym5, xym2, xym0, 0);
 		lerp16(xym6, xym3, xym0, 0);
 	}
+
+	if (is32)
+		pop(t2);
 }
 
 void GSDrawScanlineCodeGenerator2::WrapLOD(const XYm& uv)
@@ -2103,15 +2319,19 @@ void GSDrawScanlineCodeGenerator2::AlphaTFX()
 		return;
 	}
 
-	const XYm& f_ga  = _f_ga;
-	const XYm& tmpga = xym1;
-	const XYm& tmp   = xym0;
+	const XYm& f_ga  = is64 ? _f_ga : xym4;
+	const XYm& tmpga = is64 ? xym1  : f_ga;
+	const XYm& tmp   = is64 ? xym0  : xym3;
+	Address _32_gaptr = m_sel.iip ? _rip_local(temp.ga) : _rip_local(c.ga);
 
 	switch (m_sel.tfx)
 	{
 		case TFX_MODULATE:
 
 			// GSVector4i ga = iip ? gaf : m_local.c.ga;
+
+			ONLY32(movdqa(f_ga, _32_gaptr));
+
 			// gat = gat.modulate16<1>(ga).clamp8();
 
 			modulate16(_ga, f_ga, 1);
@@ -2136,6 +2356,8 @@ void GSDrawScanlineCodeGenerator2::AlphaTFX()
 			{
 				// GSVector4i ga = iip ? gaf : m_local.c.ga;
 
+				ONLY32(movdqa(f_ga, _32_gaptr));
+
 				MOVE_IF_64(psrlw, tmpga, f_ga, 7);
 
 				mix16(_ga, tmpga, tmp);
@@ -2146,6 +2368,10 @@ void GSDrawScanlineCodeGenerator2::AlphaTFX()
 		case TFX_HIGHLIGHT:
 
 			// GSVector4i ga = iip ? gaf : m_local.c.ga;
+
+			ONLY32(movdqa(f_ga, _32_gaptr));
+			ONLY32(movdqa(xym2, f_ga)); // WHY
+
 			// gat = gat.mix16(!tcc ? ga.srl16(7) : gat.addus8(ga.srl16(7)));
 
 			MOVE_IF_64(psrlw, tmpga, f_ga, 7);
@@ -2166,6 +2392,9 @@ void GSDrawScanlineCodeGenerator2::AlphaTFX()
 			if (!m_sel.tcc)
 			{
 				// GSVector4i ga = iip ? gaf : m_local.c.ga;
+
+				ONLY32(movdqa(f_ga, _32_gaptr));
+				ONLY32(movdqa(xym2, f_ga));
 
 				MOVE_IF_64(psrlw, tmpga, f_ga, 7);
 
@@ -2331,13 +2560,16 @@ void GSDrawScanlineCodeGenerator2::ColorTFX()
 		return;
 	}
 
-	const XYm& f_ga  = _f_ga;
-	const XYm& tmpga = xym2;
+	const XYm& f_ga  = is64 ? _f_ga : xym2;
+	const XYm& tmpga = is64 ? xym2  : f_ga;
 
 	auto modulate16_1_rb = [&]
 	{
 		// GSVector4i rb = iip ? rbf : m_local.c.rb;
-		modulate16(_rb, _f_rb, 1);
+		if (is64)
+			modulate16(_rb, _f_rb, 1);
+		else
+			modulate16(_rb, m_sel.iip ? _rip_local(temp.rb) : _rip_local(c.rb), 1);
 	};
 
 	switch (m_sel.tfx)
@@ -2360,6 +2592,14 @@ void GSDrawScanlineCodeGenerator2::ColorTFX()
 
 		case TFX_HIGHLIGHT:
 		case TFX_HIGHLIGHT2:
+
+			if (m_sel.tfx == TFX_HIGHLIGHT2 && m_sel.tcc)
+			{
+				// GSVector4i ga = iip ? gaf : m_local.c.ga;
+
+				ONLY32(movdqa(f_ga, m_sel.iip ? _rip_local(temp.ga) : _rip_local(c.ga)));
+			}
+
 			// gat = gat.modulate16<1>(ga).add16(af).clamp8().mix16(gat);
 
 			movdqa(xym1, _ga);
@@ -2408,11 +2648,20 @@ void GSDrawScanlineCodeGenerator2::Fog()
 		return;
 	}
 
-	const XYm& f   = _f;
-	const XYm& tmp = xym0;
+	const XYm& f   = is64 ? _f   : xym0;
+	const XYm& tmp = is64 ? xym0 : xym2;
 
 	// rb = m_local.gd->frb.lerp16<0>(rb, f);
 	// ga = m_local.gd->fga.lerp16<0>(ga, f).mix16(ga);
+
+	if (m_sel.prim != GS_SPRITE_CLASS)
+	{
+		ONLY32(movdqa(f, _rip_local(temp.f)));
+	}
+	else
+	{
+		ONLY32(pbroadcastwLocal(f, _rip_local(p.f)));
+	}
 
 	movdqa(xym1, _ga);
 
@@ -2857,7 +3106,7 @@ void GSDrawScanlineCodeGenerator2::WriteFrame()
 	}
 
 
-	const XYm& tmp = xym15;
+	const XYm& tmp = is64 ? xym15 : xym7;
 
 	if (m_sel.fpsm == 2 && m_sel.dthe)
 	{
@@ -3176,7 +3425,7 @@ void GSDrawScanlineCodeGenerator2::ReadTexelImpl(
 
 void GSDrawScanlineCodeGenerator2::ReadTexelImplLoadTexLOD(int lod, int mip_offset)
 {
-	AddressReg texIn = _64_m_local__gd__tex;
+	AddressReg texIn = is64 ? _64_m_local__gd__tex : t2;
 	Address lod_addr = m_sel.lcm ? _rip_global(lod.i.U32[lod]) : _rip_local(temp.lod.i.U32[lod]);
 	mov(ebx, lod_addr);
 	mov(rbx, ptr[texIn + rbx * wordsize + mip_offset]);
@@ -3194,7 +3443,7 @@ void GSDrawScanlineCodeGenerator2::ReadTexelImplYmm(
 	const Ymm t1[]  = { d1,   d2s0, d3s1,   s2 };
 	const Ymm t2[]  = { tmp,  tmp,  tmp,  tmp  };
 
-	bool texInRBX = false;
+	bool texInRBX = is32;
 	if (use_lod && m_sel.lcm)
 	{
 		ReadTexelImplLoadTexLOD(0, mip_offset);
@@ -3286,7 +3535,7 @@ void GSDrawScanlineCodeGenerator2::ReadTexelImplSSE4(
 	else
 	{
 		bool preserve = false;
-		bool texInRBX = false;
+		bool texInRBX = is32;
 
 		if (use_lod && m_sel.lcm)
 		{
@@ -3308,7 +3557,7 @@ void GSDrawScanlineCodeGenerator2::ReadTexelImpl(const Xmm& dst, const Xmm& addr
 {
 	ASSERT(i < 4);
 
-	AddressReg clut = _64_m_local__gd__clut;
+	AddressReg clut = is64 ? _64_m_local__gd__clut : rdx;
 	AddressReg tex = texInRBX ? rbx : _64_m_local__gd__tex;
 	Address src = m_sel.tlu ? ptr[clut + rax * 4] : ptr[tex + rax * 4];
 

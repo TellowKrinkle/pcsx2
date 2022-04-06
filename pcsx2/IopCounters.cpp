@@ -173,7 +173,7 @@ void psxRcntInit()
 	psxNextsCounter = psxRegs.cycle;
 }
 
-static bool _rcntFireInterrupt(int i, bool isOverflow)
+static bool __fastcall _rcntFireInterrupt(int i, bool isOverflow)
 {
 	bool ret = false;
 #
@@ -207,7 +207,7 @@ static bool _rcntFireInterrupt(int i, bool isOverflow)
 
 	return ret;
 }
-static void _rcntTestTarget(int i)
+static void __fastcall _rcntTestTarget(int i)
 {
 	if (psxCounters[i].count < psxCounters[i].target)
 		return;

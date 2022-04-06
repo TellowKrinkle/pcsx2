@@ -91,7 +91,16 @@ GSDrawScanlineCodeGenerator::GSDrawScanlineCodeGenerator(void* param, u64 key, v
 
 	if (shouldUseCDrawScanline(key))
 	{
-#if defined(_WIN32)
+#if defined(_M_X86_32)
+		push(ptr[&m_local.gd]);
+		push(reinterpret_cast<size_t>(&m_local));
+		push(ptr[esp + 16]);
+		push(ptr[esp + 16]);
+		push(edx);
+		push(ecx);
+		call(reinterpret_cast<void*>(GSDrawScanline::CDrawScanline));
+		ret(24);
+#elif defined(_WIN32)
 		mov(r8, reinterpret_cast<size_t>(&m_local));
 		push(ptr[r8 + offsetof(GSScanlineLocalData, gd)]);
 		push(r8);

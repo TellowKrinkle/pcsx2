@@ -14,6 +14,7 @@
  */
 
 #include <wx/wx.h>
+#include "common/Pcsx2Defs.h" // __fastcall
 
 bool pxIsEnglish(int id)
 {
@@ -24,12 +25,12 @@ bool pxIsEnglish(int id)
 //  pxExpandMsg  -- an Iconized Text Translator
 //  Was replaced by a standard implementation of wxGetTranslation
 // --------------------------------------------------------------------------------------
-const wxChar* pxExpandMsg(const wxChar* message)
+const wxChar* __fastcall pxExpandMsg(const wxChar* message)
 {
 	return wxGetTranslation(message).wc_str();
 }
 
-const wxChar* pxGetTranslation(const wxChar* message)
+const wxChar* __fastcall pxGetTranslation(const wxChar* message)
 {
 	return wxGetTranslation(message).wc_str();
 }

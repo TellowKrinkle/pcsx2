@@ -453,9 +453,9 @@ extern void gsWrite8(u32 mem, u8 value);
 extern void gsWrite16(u32 mem, u16 value);
 extern void gsWrite32(u32 mem, u32 value);
 
-extern void gsWrite64_page_00(u32 mem, u64 value);
-extern void gsWrite64_page_01(u32 mem, u64 value);
-extern void gsWrite64_generic(u32 mem, u64 value);
+extern void TAKES_R64 gsWrite64_page_00(u32 mem, r64 value);
+extern void TAKES_R64 gsWrite64_page_01(u32 mem, r64 value);
+extern void TAKES_R64 gsWrite64_generic(u32 mem, r64 value);
 
 extern void TAKES_R128 gsWrite128_page_00(u32 mem, r128 value);
 extern void TAKES_R128 gsWrite128_page_01(u32 mem, r128 value);

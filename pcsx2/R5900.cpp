@@ -571,8 +571,8 @@ __fi void CPU_INT( EE_EventType n, s32 ecycle)
 	cpuSetNextEventDelta( cpuRegs.eCycle[n] );
 }
 
-// Called from recompilers; define is mandatory.
-void eeGameStarting()
+// Called from recompilers; __fastcall define is mandatory.
+void __fastcall eeGameStarting()
 {
 	if (!g_GameStarted)
 	{
@@ -641,8 +641,8 @@ int ParseArgumentString(u32 arg_block)
 	return argc;
 }
 
-// Called from recompilers; define is mandatory.
-void eeloadHook()
+// Called from recompilers; __fastcall define is mandatory.
+void __fastcall eeloadHook()
 {
 #ifndef PCSX2_CORE
 	const std::string elf_override(StringUtil::wxStringToUTF8String(GetCoreThread().GetElfOverride()));
@@ -761,9 +761,9 @@ void eeloadHook()
 		g_GameLoading = true;
 }
 
-// Called from recompilers; define is mandatory.
+// Called from recompilers; __fastcall define is mandatory.
 // Only called if g_SkipBiosHack is true
-void eeloadHook2()
+void __fastcall eeloadHook2()
 {
 	if (EmuConfig.CurrentGameArgs.empty())
 		return;

@@ -164,7 +164,12 @@ public:
 
 #define pxsFmt FastFormatUnicode().Write
 #define pxsFmtV FastFormatUnicode().WriteV
+
+#ifdef _M_X86_64
 #define pxsPtr(ptr) pxsFmt("0x%016" PRIXPTR, (ptr)).c_str()
+#else
+#define pxsPtr(ptr) pxsFmt("0x%08" PRIXPTR, (ptr)).c_str()
+#endif
 
 extern wxString& operator+=(wxString& str1, const FastFormatUnicode& str2);
 extern wxString operator+(const wxString& str1, const FastFormatUnicode& str2);
@@ -232,8 +237,8 @@ extern wxString fromAscii(const char* src);
 #define pxE_dev(english) pxExpandMsg((english))
 
 
-extern const wxChar* pxExpandMsg(const wxChar* message);
-extern const wxChar* pxGetTranslation(const wxChar* message);
+extern const wxChar* __fastcall pxExpandMsg(const wxChar* message);
+extern const wxChar* __fastcall pxGetTranslation(const wxChar* message);
 extern bool pxIsEnglish(int id);
 
 namespace StringUtil

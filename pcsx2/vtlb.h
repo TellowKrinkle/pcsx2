@@ -23,17 +23,17 @@
 static const uptr VTLB_AllocUpperBounds = _1gb * 2;
 
 // Specialized function pointers for each read type
-typedef  mem8_t vtlbMemR8FP(u32 addr);
-typedef  mem16_t vtlbMemR16FP(u32 addr);
-typedef  mem32_t vtlbMemR32FP(u32 addr);
-typedef  mem64_t vtlbMemR64FP(u32 addr);
+typedef  mem8_t __fastcall vtlbMemR8FP(u32 addr);
+typedef  mem16_t __fastcall vtlbMemR16FP(u32 addr);
+typedef  mem32_t __fastcall vtlbMemR32FP(u32 addr);
+typedef  RETURNS_R64 vtlbMemR64FP(u32 addr);
 typedef  RETURNS_R128 vtlbMemR128FP(u32 addr);
 
 // Specialized function pointers for each write type
-typedef  void vtlbMemW8FP(u32 addr,mem8_t data);
-typedef  void vtlbMemW16FP(u32 addr,mem16_t data);
-typedef  void vtlbMemW32FP(u32 addr,mem32_t data);
-typedef  void vtlbMemW64FP(u32 addr,mem64_t data);
+typedef  void __fastcall vtlbMemW8FP(u32 addr,mem8_t data);
+typedef  void __fastcall vtlbMemW16FP(u32 addr,mem16_t data);
+typedef  void __fastcall vtlbMemW32FP(u32 addr,mem32_t data);
+typedef  void TAKES_R64 vtlbMemW64FP(u32 addr,r64 data);
 typedef  void TAKES_R128 vtlbMemW128FP(u32 addr,r128 data);
 
 template <size_t Width, bool Write> struct vtlbMemFP;
@@ -86,11 +86,17 @@ extern void vtlb_VMapUnmap(u32 vaddr,u32 sz);
 //Memory functions
 
 template< typename DataType >
-extern DataType vtlb_memRead(u32 mem);
+extern DataType __fastcall vtlb_memRead(u32 mem);
+#ifndef _M_X86_64
+extern RETURNS_R64 vtlb_memRead64(u32 mem);
+#endif
 extern RETURNS_R128 vtlb_memRead128(u32 mem);
 
 template< typename DataType >
-extern void vtlb_memWrite(u32 mem, DataType value);
+extern void __fastcall vtlb_memWrite(u32 mem, DataType value);
+#ifndef _M_X86_64
+extern void TAKES_R64 vtlb_memWrite64(u32 mem, r64 value);
+#endif
 extern void TAKES_R128 vtlb_memWrite128(u32 mem, r128 value);
 
 // "Safe" variants of vtlb, designed for external tools.

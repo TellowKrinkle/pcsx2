@@ -125,7 +125,11 @@ namespace x86Emitter
 
 		const xRegisterBase& reg = param1.IsReg() ? param1 : param2;
 
+#ifdef __M_X86_64
 		u8 nR = reg.IsExtended() ? 0x00 : 0x80;
+#else
+		u8 nR = 0x80;
+#endif
 		u8 L;
 
 		// Needed for 256-bit movemask.
@@ -157,9 +161,15 @@ namespace x86Emitter
 
 		const xRegisterInt& reg = param1.IsReg() ? param1 : param2;
 
+#ifdef __M_X86_64
 		u8 nR = reg.IsExtended() ? 0x00 : 0x80;
 		u8 nB = param3.IsExtended() ? 0x00 : 0x20;
 		u8 nX = 0x40; // likely unused so hardwired to disabled
+#else
+		u8 nR = 0x80;
+		u8 nB = 0x20;
+		u8 nX = 0x40;
+#endif
 		u8 L = reg.IsWideSIMD() ? 4 : 0;
 		u8 W = (w == -1) ? (reg.GetOperandSize() == 8 ? 0x80 : 0) : // autodetect the size
                            0x80 * w; // take directly the W value

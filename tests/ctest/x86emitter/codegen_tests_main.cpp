@@ -176,91 +176,91 @@ TEST(CodegenTests, SSETest)
 
 TEST(CodegenTests, AVXTest)
 {
-	CODEGEN_TEST_64(xVMOVAPS(xmm0, xmm1), "c5 f8 28 c1");
-	CODEGEN_TEST_64(xVMOVAPS(xmm0, ptr32[rdi]), "c5 f8 28 07");
-	CODEGEN_TEST_64(xVMOVAPS(ptr32[rdi], xmm0), "c5 f8 29 07");
-	CODEGEN_TEST_64(xVMOVUPS(xmm0, ptr32[rdi]), "c5 f8 10 07");
-	CODEGEN_TEST_64(xVMOVUPS(ptr32[rdi], xmm0), "c5 f8 11 07");
+	CODEGEN_TEST_BOTH(xVMOVAPS(xmm0, xmm1), "c5 f8 28 c1");
+	CODEGEN_TEST_BOTH(xVMOVAPS(xmm0, ptr32[rdi]), "c5 f8 28 07");
+	CODEGEN_TEST_BOTH(xVMOVAPS(ptr32[rdi], xmm0), "c5 f8 29 07");
+	CODEGEN_TEST_BOTH(xVMOVUPS(xmm0, ptr32[rdi]), "c5 f8 10 07");
+	CODEGEN_TEST_BOTH(xVMOVUPS(ptr32[rdi], xmm0), "c5 f8 11 07");
 
-	CODEGEN_TEST_64(xVADD.PS(xmm0, xmm1, xmm2), "c5 f0 58 c2");
-	CODEGEN_TEST_64(xVADD.PD(xmm0, xmm1, xmm2), "c5 f1 58 c2");
-	CODEGEN_TEST_64(xVADD.SS(xmm0, xmm1, xmm2), "c5 f2 58 c2");
-	CODEGEN_TEST_64(xVADD.SD(xmm0, xmm1, xmm2), "c5 f3 58 c2");
-	CODEGEN_TEST_64(xVSUB.PS(xmm0, xmm1, xmm2), "c5 f0 5c c2");
-	CODEGEN_TEST_64(xVSUB.PD(xmm0, xmm1, xmm2), "c5 f1 5c c2");
-	CODEGEN_TEST_64(xVSUB.SS(xmm0, xmm1, xmm2), "c5 f2 5c c2");
-	CODEGEN_TEST_64(xVSUB.SD(xmm0, xmm1, xmm2), "c5 f3 5c c2");
-	CODEGEN_TEST_64(xVMUL.PS(xmm0, xmm1, xmm2), "c5 f0 59 c2");
-	CODEGEN_TEST_64(xVMUL.PD(xmm0, xmm1, xmm2), "c5 f1 59 c2");
-	CODEGEN_TEST_64(xVMUL.SS(xmm0, xmm1, xmm2), "c5 f2 59 c2");
-	CODEGEN_TEST_64(xVMUL.SD(xmm0, xmm1, xmm2), "c5 f3 59 c2");
-	CODEGEN_TEST_64(xVDIV.PS(xmm0, xmm1, xmm2), "c5 f0 5e c2");
-	CODEGEN_TEST_64(xVDIV.PD(xmm0, xmm1, xmm2), "c5 f1 5e c2");
-	CODEGEN_TEST_64(xVDIV.SS(xmm0, xmm1, xmm2), "c5 f2 5e c2");
-	CODEGEN_TEST_64(xVDIV.SD(xmm0, xmm1, xmm2), "c5 f3 5e c2");
+	CODEGEN_TEST_BOTH(xVADD.PS(xmm0, xmm1, xmm2), "c5 f0 58 c2");
+	CODEGEN_TEST_BOTH(xVADD.PD(xmm0, xmm1, xmm2), "c5 f1 58 c2");
+	CODEGEN_TEST_BOTH(xVADD.SS(xmm0, xmm1, xmm2), "c5 f2 58 c2");
+	CODEGEN_TEST_BOTH(xVADD.SD(xmm0, xmm1, xmm2), "c5 f3 58 c2");
+	CODEGEN_TEST_BOTH(xVSUB.PS(xmm0, xmm1, xmm2), "c5 f0 5c c2");
+	CODEGEN_TEST_BOTH(xVSUB.PD(xmm0, xmm1, xmm2), "c5 f1 5c c2");
+	CODEGEN_TEST_BOTH(xVSUB.SS(xmm0, xmm1, xmm2), "c5 f2 5c c2");
+	CODEGEN_TEST_BOTH(xVSUB.SD(xmm0, xmm1, xmm2), "c5 f3 5c c2");
+	CODEGEN_TEST_BOTH(xVMUL.PS(xmm0, xmm1, xmm2), "c5 f0 59 c2");
+	CODEGEN_TEST_BOTH(xVMUL.PD(xmm0, xmm1, xmm2), "c5 f1 59 c2");
+	CODEGEN_TEST_BOTH(xVMUL.SS(xmm0, xmm1, xmm2), "c5 f2 59 c2");
+	CODEGEN_TEST_BOTH(xVMUL.SD(xmm0, xmm1, xmm2), "c5 f3 59 c2");
+	CODEGEN_TEST_BOTH(xVDIV.PS(xmm0, xmm1, xmm2), "c5 f0 5e c2");
+	CODEGEN_TEST_BOTH(xVDIV.PD(xmm0, xmm1, xmm2), "c5 f1 5e c2");
+	CODEGEN_TEST_BOTH(xVDIV.SS(xmm0, xmm1, xmm2), "c5 f2 5e c2");
+	CODEGEN_TEST_BOTH(xVDIV.SD(xmm0, xmm1, xmm2), "c5 f3 5e c2");
 
 	// Don't need to test all variants, since they just change the condition immediate.
-	CODEGEN_TEST_64(xVCMP.EQ.PS(xmm0, xmm1, xmm2), "c5 f0 c2 c2 00");
-	CODEGEN_TEST_64(xVCMP.EQ.PD(xmm0, xmm1, xmm2), "c5 f1 c2 c2 00");
-	CODEGEN_TEST_64(xVCMP.EQ.SS(xmm0, xmm1, xmm2), "c5 f2 c2 c2 00");
-	CODEGEN_TEST_64(xVCMP.EQ.SD(xmm0, xmm1, xmm2), "c5 f3 c2 c2 00");
-	CODEGEN_TEST_64(xVCMP.LE.PS(xmm0, xmm1, xmm2), "c5 f0 c2 c2 02");
-	CODEGEN_TEST_64(xVCMP.LE.PD(xmm0, xmm1, xmm2), "c5 f1 c2 c2 02");
-	CODEGEN_TEST_64(xVCMP.LE.SS(xmm0, xmm1, xmm2), "c5 f2 c2 c2 02");
-	CODEGEN_TEST_64(xVCMP.LE.SD(xmm0, xmm1, xmm2), "c5 f3 c2 c2 02");
+	CODEGEN_TEST_BOTH(xVCMP.EQ.PS(xmm0, xmm1, xmm2), "c5 f0 c2 c2 00");
+	CODEGEN_TEST_BOTH(xVCMP.EQ.PD(xmm0, xmm1, xmm2), "c5 f1 c2 c2 00");
+	CODEGEN_TEST_BOTH(xVCMP.EQ.SS(xmm0, xmm1, xmm2), "c5 f2 c2 c2 00");
+	CODEGEN_TEST_BOTH(xVCMP.EQ.SD(xmm0, xmm1, xmm2), "c5 f3 c2 c2 00");
+	CODEGEN_TEST_BOTH(xVCMP.LE.PS(xmm0, xmm1, xmm2), "c5 f0 c2 c2 02");
+	CODEGEN_TEST_BOTH(xVCMP.LE.PD(xmm0, xmm1, xmm2), "c5 f1 c2 c2 02");
+	CODEGEN_TEST_BOTH(xVCMP.LE.SS(xmm0, xmm1, xmm2), "c5 f2 c2 c2 02");
+	CODEGEN_TEST_BOTH(xVCMP.LE.SD(xmm0, xmm1, xmm2), "c5 f3 c2 c2 02");
 
-	CODEGEN_TEST_64(xVPCMP.EQB(xmm0, xmm1, xmm2), "c5 f1 74 c2");
-	CODEGEN_TEST_64(xVPCMP.EQW(xmm0, xmm1, xmm2), "c5 f1 75 c2");
-	CODEGEN_TEST_64(xVPCMP.EQD(xmm0, xmm1, xmm2), "c5 f1 76 c2");
-	CODEGEN_TEST_64(xVPCMP.GTB(xmm0, xmm1, xmm2), "c5 f1 64 c2");
-	CODEGEN_TEST_64(xVPCMP.GTW(xmm0, xmm1, xmm2), "c5 f1 65 c2");
-	CODEGEN_TEST_64(xVPCMP.GTD(xmm0, xmm1, xmm2), "c5 f1 66 c2");
+	CODEGEN_TEST_BOTH(xVPCMP.EQB(xmm0, xmm1, xmm2), "c5 f1 74 c2");
+	CODEGEN_TEST_BOTH(xVPCMP.EQW(xmm0, xmm1, xmm2), "c5 f1 75 c2");
+	CODEGEN_TEST_BOTH(xVPCMP.EQD(xmm0, xmm1, xmm2), "c5 f1 76 c2");
+	CODEGEN_TEST_BOTH(xVPCMP.GTB(xmm0, xmm1, xmm2), "c5 f1 64 c2");
+	CODEGEN_TEST_BOTH(xVPCMP.GTW(xmm0, xmm1, xmm2), "c5 f1 65 c2");
+	CODEGEN_TEST_BOTH(xVPCMP.GTD(xmm0, xmm1, xmm2), "c5 f1 66 c2");
 
-	CODEGEN_TEST_64(xVPAND(xmm0, xmm1, xmm2), "c5 f1 db c2");
-	CODEGEN_TEST_64(xVPANDN(xmm0, xmm1, xmm2), "c5 f1 df c2");
-	CODEGEN_TEST_64(xVPOR(xmm0, xmm1, xmm2), "c5 f1 eb c2");
-	CODEGEN_TEST_64(xVPXOR(xmm0, xmm1, xmm2), "c5 f1 ef c2");
+	CODEGEN_TEST_BOTH(xVPAND(xmm0, xmm1, xmm2), "c5 f1 db c2");
+	CODEGEN_TEST_BOTH(xVPANDN(xmm0, xmm1, xmm2), "c5 f1 df c2");
+	CODEGEN_TEST_BOTH(xVPOR(xmm0, xmm1, xmm2), "c5 f1 eb c2");
+	CODEGEN_TEST_BOTH(xVPXOR(xmm0, xmm1, xmm2), "c5 f1 ef c2");
 
-	CODEGEN_TEST_64(xVMOVMSKPS(eax, xmm1), "c5 f8 50 c1");
-	CODEGEN_TEST_64(xVMOVMSKPD(eax, xmm1), "c5 f9 50 c1");
+	CODEGEN_TEST_BOTH(xVMOVMSKPS(eax, xmm1), "c5 f8 50 c1");
+	CODEGEN_TEST_BOTH(xVMOVMSKPD(eax, xmm1), "c5 f9 50 c1");
 }
 
 TEST(CodegenTests, AVX256Test)
 {
-	CODEGEN_TEST_64(xVMOVAPS(ymm0, ymm1), "c5 fc 28 c1");
-	CODEGEN_TEST_64(xVMOVAPS(ymm0, ptr32[rdi]), "c5 fc 28 07");
-	CODEGEN_TEST_64(xVMOVAPS(ptr32[rdi], ymm0), "c5 fc 29 07");
-	CODEGEN_TEST_64(xVMOVUPS(ymm0, ptr32[rdi]), "c5 fc 10 07");
-	CODEGEN_TEST_64(xVMOVUPS(ptr32[rdi], ymm0), "c5 fc 11 07");
+	CODEGEN_TEST_BOTH(xVMOVAPS(ymm0, ymm1), "c5 fc 28 c1");
+	CODEGEN_TEST_BOTH(xVMOVAPS(ymm0, ptr32[rdi]), "c5 fc 28 07");
+	CODEGEN_TEST_BOTH(xVMOVAPS(ptr32[rdi], ymm0), "c5 fc 29 07");
+	CODEGEN_TEST_BOTH(xVMOVUPS(ymm0, ptr32[rdi]), "c5 fc 10 07");
+	CODEGEN_TEST_BOTH(xVMOVUPS(ptr32[rdi], ymm0), "c5 fc 11 07");
 
-	CODEGEN_TEST_64(xVZEROUPPER(), "c5 f8 77");
+	CODEGEN_TEST_BOTH(xVZEROUPPER(), "c5 f8 77");
 
-	CODEGEN_TEST_64(xVADD.PS(ymm0, ymm1, ymm2), "c5 f4 58 c2");
-	CODEGEN_TEST_64(xVADD.PD(ymm0, ymm1, ymm2), "c5 f5 58 c2");
-	CODEGEN_TEST_64(xVSUB.PS(ymm0, ymm1, ymm2), "c5 f4 5c c2");
-	CODEGEN_TEST_64(xVSUB.PD(ymm0, ymm1, ymm2), "c5 f5 5c c2");
-	CODEGEN_TEST_64(xVMUL.PS(ymm0, ymm1, ymm2), "c5 f4 59 c2");
-	CODEGEN_TEST_64(xVMUL.PD(ymm0, ymm1, ymm2), "c5 f5 59 c2");
-	CODEGEN_TEST_64(xVDIV.PS(ymm0, ymm1, ymm2), "c5 f4 5e c2");
-	CODEGEN_TEST_64(xVDIV.PD(ymm0, ymm1, ymm2), "c5 f5 5e c2");
+	CODEGEN_TEST_BOTH(xVADD.PS(ymm0, ymm1, ymm2), "c5 f4 58 c2");
+	CODEGEN_TEST_BOTH(xVADD.PD(ymm0, ymm1, ymm2), "c5 f5 58 c2");
+	CODEGEN_TEST_BOTH(xVSUB.PS(ymm0, ymm1, ymm2), "c5 f4 5c c2");
+	CODEGEN_TEST_BOTH(xVSUB.PD(ymm0, ymm1, ymm2), "c5 f5 5c c2");
+	CODEGEN_TEST_BOTH(xVMUL.PS(ymm0, ymm1, ymm2), "c5 f4 59 c2");
+	CODEGEN_TEST_BOTH(xVMUL.PD(ymm0, ymm1, ymm2), "c5 f5 59 c2");
+	CODEGEN_TEST_BOTH(xVDIV.PS(ymm0, ymm1, ymm2), "c5 f4 5e c2");
+	CODEGEN_TEST_BOTH(xVDIV.PD(ymm0, ymm1, ymm2), "c5 f5 5e c2");
 
-	CODEGEN_TEST_64(xVCMP.EQ.PS(ymm0, ymm1, ymm2), "c5 f4 c2 c2 00");
-	CODEGEN_TEST_64(xVCMP.EQ.PD(ymm0, ymm1, ymm2), "c5 f5 c2 c2 00");
-	CODEGEN_TEST_64(xVCMP.LE.PS(ymm0, ymm1, ymm2), "c5 f4 c2 c2 02");
-	CODEGEN_TEST_64(xVCMP.LE.PD(ymm0, ymm1, ymm2), "c5 f5 c2 c2 02");
+	CODEGEN_TEST_BOTH(xVCMP.EQ.PS(ymm0, ymm1, ymm2), "c5 f4 c2 c2 00");
+	CODEGEN_TEST_BOTH(xVCMP.EQ.PD(ymm0, ymm1, ymm2), "c5 f5 c2 c2 00");
+	CODEGEN_TEST_BOTH(xVCMP.LE.PS(ymm0, ymm1, ymm2), "c5 f4 c2 c2 02");
+	CODEGEN_TEST_BOTH(xVCMP.LE.PD(ymm0, ymm1, ymm2), "c5 f5 c2 c2 02");
 
-	CODEGEN_TEST_64(xVPCMP.EQB(ymm0, ymm1, ymm2), "c5 f5 74 c2");
-	CODEGEN_TEST_64(xVPCMP.EQW(ymm0, ymm1, ymm2), "c5 f5 75 c2");
-	CODEGEN_TEST_64(xVPCMP.EQD(ymm0, ymm1, ymm2), "c5 f5 76 c2");
-	CODEGEN_TEST_64(xVPCMP.GTB(ymm0, ymm1, ymm2), "c5 f5 64 c2");
-	CODEGEN_TEST_64(xVPCMP.GTW(ymm0, ymm1, ymm2), "c5 f5 65 c2");
-	CODEGEN_TEST_64(xVPCMP.GTD(ymm0, ymm1, ymm2), "c5 f5 66 c2");
+	CODEGEN_TEST_BOTH(xVPCMP.EQB(ymm0, ymm1, ymm2), "c5 f5 74 c2");
+	CODEGEN_TEST_BOTH(xVPCMP.EQW(ymm0, ymm1, ymm2), "c5 f5 75 c2");
+	CODEGEN_TEST_BOTH(xVPCMP.EQD(ymm0, ymm1, ymm2), "c5 f5 76 c2");
+	CODEGEN_TEST_BOTH(xVPCMP.GTB(ymm0, ymm1, ymm2), "c5 f5 64 c2");
+	CODEGEN_TEST_BOTH(xVPCMP.GTW(ymm0, ymm1, ymm2), "c5 f5 65 c2");
+	CODEGEN_TEST_BOTH(xVPCMP.GTD(ymm0, ymm1, ymm2), "c5 f5 66 c2");
 
-	CODEGEN_TEST_64(xVPAND(ymm0, ymm1, ymm2), "c5 f5 db c2");
-	CODEGEN_TEST_64(xVPANDN(ymm0, ymm1, ymm2), "c5 f5 df c2");
-	CODEGEN_TEST_64(xVPOR(ymm0, ymm1, ymm2), "c5 f5 eb c2");
-	CODEGEN_TEST_64(xVPXOR(ymm0, ymm1, ymm2), "c5 f5 ef c2");
+	CODEGEN_TEST_BOTH(xVPAND(ymm0, ymm1, ymm2), "c5 f5 db c2");
+	CODEGEN_TEST_BOTH(xVPANDN(ymm0, ymm1, ymm2), "c5 f5 df c2");
+	CODEGEN_TEST_BOTH(xVPOR(ymm0, ymm1, ymm2), "c5 f5 eb c2");
+	CODEGEN_TEST_BOTH(xVPXOR(ymm0, ymm1, ymm2), "c5 f5 ef c2");
 
-	CODEGEN_TEST_64(xVMOVMSKPS(eax, ymm1), "c5 fc 50 c1");
-	CODEGEN_TEST_64(xVMOVMSKPD(eax, ymm1), "c5 fd 50 c1");
+	CODEGEN_TEST_BOTH(xVMOVMSKPS(eax, ymm1), "c5 fc 50 c1");
+	CODEGEN_TEST_BOTH(xVMOVMSKPD(eax, ymm1), "c5 fd 50 c1");
 }

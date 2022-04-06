@@ -1077,7 +1077,7 @@ void Pcsx2App::ProgramLog_PostEvent( wxEvent& evt )
 //  ConsoleImpl_ToFile
 // --------------------------------------------------------------------------------------
 
-static void ConsoleToFile_Newline()
+static void __concall ConsoleToFile_Newline()
 {
 #if defined(__POSIX__)
 	if ((g_Conf) && (g_Conf->EmuOptions.ConsoleToStdio)) ConsoleWriter_Stdout.Newline();
@@ -1090,7 +1090,7 @@ static void ConsoleToFile_Newline()
 #endif
 }
 
-static void ConsoleToFile_DoWrite( const char* fmt )
+static void __concall ConsoleToFile_DoWrite( const char* fmt )
 {
 #if defined(__POSIX__)
 	if ((g_Conf) && (g_Conf->EmuOptions.ConsoleToStdio)) ConsoleWriter_Stdout.WriteRaw(fmt);
@@ -1099,7 +1099,7 @@ static void ConsoleToFile_DoWrite( const char* fmt )
 	px_fputs( emuLog, fmt );
 }
 
-static void ConsoleToFile_DoWriteLn( const char* fmt )
+static void __concall ConsoleToFile_DoWriteLn( const char* fmt )
 {
 	ConsoleToFile_DoWrite( fmt );
 	ConsoleToFile_Newline();
@@ -1107,12 +1107,12 @@ static void ConsoleToFile_DoWriteLn( const char* fmt )
 	if (emuLog != NULL) fflush( emuLog );
 }
 
-static void ConsoleToFile_SetTitle( const char* title )
+static void __concall ConsoleToFile_SetTitle( const char* title )
 {
 	ConsoleWriter_Stdout.SetTitle(title);
 }
 
-static void ConsoleToFile_DoSetColor( ConsoleColors color )
+static void __concall ConsoleToFile_DoSetColor( ConsoleColors color )
 {
 	ConsoleWriter_Stdout.DoSetColor(color);
 }
@@ -1140,7 +1140,7 @@ Mutex& Pcsx2App::GetProgramLogLock()
 //  ConsoleToWindow Implementations
 // --------------------------------------------------------------------------------------
 template< const IConsoleWriter& secondary >
-static void ConsoleToWindow_SetTitle( const char* title )
+static void __concall ConsoleToWindow_SetTitle( const char* title )
 {
 	secondary.SetTitle(title);
 	wxCommandEvent evt( pxEvt_SetTitleText );
@@ -1149,13 +1149,13 @@ static void ConsoleToWindow_SetTitle( const char* title )
 }
 
 template< const IConsoleWriter& secondary >
-static void ConsoleToWindow_DoSetColor( ConsoleColors color )
+static void __concall ConsoleToWindow_DoSetColor( ConsoleColors color )
 {
 	secondary.DoSetColor(color);
 }
 
 template< const IConsoleWriter& secondary >
-static void ConsoleToWindow_Newline()
+static void __concall ConsoleToWindow_Newline()
 {
 	secondary.Newline();
 
@@ -1166,7 +1166,7 @@ static void ConsoleToWindow_Newline()
 }
 
 template< const IConsoleWriter& secondary >
-static void ConsoleToWindow_DoWrite( const char* fmt )
+static void __concall ConsoleToWindow_DoWrite( const char* fmt )
 {
 	if( secondary.WriteRaw != NULL )
 		secondary.WriteRaw( fmt );
@@ -1178,7 +1178,7 @@ static void ConsoleToWindow_DoWrite( const char* fmt )
 }
 
 template< const IConsoleWriter& secondary >
-static void ConsoleToWindow_DoWriteLn( const char* fmt )
+static void __concall ConsoleToWindow_DoWriteLn( const char* fmt )
 {
 	if( secondary.DoWriteLn != NULL )
 		secondary.DoWriteLn( fmt );
@@ -1189,7 +1189,7 @@ static void ConsoleToWindow_DoWriteLn( const char* fmt )
 	if( needsSleep ) wxGetApp().Ping();
 }
 
-typedef void DoWriteFn(const wxString&);
+typedef void __concall DoWriteFn(const wxString&);
 
 static const IConsoleWriter	ConsoleWriter_Window =
 {

@@ -215,22 +215,24 @@ __fi void gsWrite32(u32 mem, u32 value)
 //////////////////////////////////////////////////////////////////////////
 // GS Write 64 bit
 
-void gsWrite64_generic( u32 mem, u64 value )
+void TAKES_R64 gsWrite64_generic( u32 mem, r64 rvalue )
 {
+	u64 value = r64_to_u64(rvalue);
 	GIF_LOG("GS Write64 at %8.8lx with data %8.8x_%8.8x", mem, (u32)(value >> 32), (u32)value);
 
 	std::memcpy(PS2GS_BASE(mem), &value, sizeof(value));
 }
 
-void gsWrite64_page_00( u32 mem, u64 value )
+void TAKES_R64 gsWrite64_page_00( u32 mem, r64 value )
 {
 	s_GSRegistersWritten |= (mem == GS_DISPFB1 || mem == GS_DISPFB2 || mem == GS_PMODE);
 
 	gsWrite64_generic( mem, value );
 }
 
-void gsWrite64_page_01( u32 mem, u64 value )
+void TAKES_R64 gsWrite64_page_01( u32 mem, r64 rvalue )
 {
+	u64 value = r64_to_u64(rvalue);
 	GIF_LOG("GS Write64 at %8.8lx with data %8.8x_%8.8x", mem, (u32)(value >> 32), (u32)value);
 
 	switch( mem )
@@ -247,7 +249,7 @@ void gsWrite64_page_01( u32 mem, u64 value )
 				GUNIT_LOG("Busdir - EE->GS Upload");
 			}
 
-			gsWrite64_generic( mem, value );
+			gsWrite64_generic( mem, rvalue );
 		return;
 
 		case GS_CSR:
@@ -259,7 +261,7 @@ void gsWrite64_page_01( u32 mem, u64 value )
 		return;
 	}
 
-	gsWrite64_generic( mem, value );
+	gsWrite64_generic( mem, rvalue );
 }
 
 //////////////////////////////////////////////////////////////////////////

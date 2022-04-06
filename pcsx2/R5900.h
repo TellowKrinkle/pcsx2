@@ -270,7 +270,7 @@ void intSetBranch();
 
 // This is a special form of the interpreter's doBranch that is run from various
 // parts of the Recs (namely COP0's branch codes and stuff).
-void intDoBranch(u32 target);
+void __fastcall intDoBranch(u32 target);
 
 // modules loaded at hardcoded addresses by the kernel
 const u32 EEKERNEL_START	= 0;
@@ -279,9 +279,9 @@ const u32 EELOAD_START		= 0x82000;
 const u32 EELOAD_SIZE		= 0x20000; // overestimate for searching
 extern u32 g_eeloadMain, g_eeloadExec;
 
-extern void eeGameStarting();
-extern void eeloadHook();
-extern void eeloadHook2();
+extern void __fastcall eeGameStarting();
+extern void __fastcall eeloadHook();
+extern void __fastcall eeloadHook2();
 
 // --------------------------------------------------------------------------------------
 //  R5900cpu
@@ -428,8 +428,8 @@ extern void cpuTlbMissR(u32 addr, u32 bd);
 extern void cpuTlbMissW(u32 addr, u32 bd);
 extern void cpuTestHwInts();
 extern void cpuClearInt(uint n);
-extern void GoemonPreloadTlb();
-extern void GoemonUnloadTlb(u32 key);
+extern void __fastcall GoemonPreloadTlb();
+extern void __fastcall GoemonUnloadTlb(u32 key);
 
 extern void cpuSetNextEvent( u32 startCycle, s32 delta );
 extern void cpuSetNextEventDelta( s32 delta );

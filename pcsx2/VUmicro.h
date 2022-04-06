@@ -83,7 +83,7 @@ public:
 	// C++ Calling Conventions are unstable, and some compilers don't even allow us to take the
 	// address of C++ methods.  We need to use a wrapper function to invoke the ExecuteBlock from
 	// recompiled code.
-	static void ExecuteBlockJIT(BaseVUmicroCPU* cpu, bool interlocked);
+	static void __fastcall ExecuteBlockJIT(BaseVUmicroCPU* cpu, bool interlocked);
 
 	// VU1 sometimes needs to break execution on XGkick Path1 transfers if
 	// there is another gif path 2/3 transfer already taking place.
@@ -184,7 +184,7 @@ extern BaseVUmicroCPU* CpuVU1;
 
 // VU0
 extern void vu0ResetRegs();
-extern void vu0ExecMicro(u32 addr);
+extern void __fastcall vu0ExecMicro(u32 addr);
 extern void vu0Exec(VURegs* VU);
 extern void _vu0FinishMicro();
 extern void vu0Finish();
@@ -193,7 +193,7 @@ extern void iDumpVU0Registers();
 // VU1
 extern void vu1Finish(bool add_cycles);
 extern void vu1ResetRegs();
-extern void vu1ExecMicro(u32 addr);
+extern void __fastcall vu1ExecMicro(u32 addr);
 extern void vu1Exec(VURegs* VU);
 extern void iDumpVU1Registers();
 extern void MTVUInterrupt();

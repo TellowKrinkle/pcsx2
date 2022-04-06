@@ -57,6 +57,9 @@ enum ConsoleColors
 static const ConsoleColors DefaultConsoleColor = Color_Default;
 
 
+// Use fastcall for the console; should be helpful in most cases
+#define __concall __fastcall
+
 // ----------------------------------------------------------------------------------------
 //  IConsoleWriter -- For printing messages to the console.
 // ----------------------------------------------------------------------------------------
@@ -72,22 +75,22 @@ struct IConsoleWriter
 {
 	// A direct console write, without tabbing or newlines.  Useful to devs who want to do quick
 	// logging of various junk; but should *not* be used in production code due.
-	void(* WriteRaw)(const char* fmt);
+	void(__concall* WriteRaw)(const char* fmt);
 
 	// WriteLn implementation for internal use only.  Bypasses tabbing, prefixing, and other
 	// formatting.
-	void(* DoWriteLn)(const char* fmt);
+	void(__concall* DoWriteLn)(const char* fmt);
 
 	// SetColor implementation for internal use only.
-	void(* DoSetColor)(ConsoleColors color);
+	void(__concall* DoSetColor)(ConsoleColors color);
 
 	// Special implementation of DoWrite that's pretty much for MSVC use only.
 	// All implementations should map to DoWrite, except Stdio which should map to Null.
 	// (This avoids circular/recursive stdio output)
-	void(* DoWriteFromStdout)(const char* fmt);
+	void(__concall* DoWriteFromStdout)(const char* fmt);
 
-	void(* Newline)();
-	void(* SetTitle)(const char* title);
+	void(__concall* Newline)();
+	void(__concall* SetTitle)(const char* title);
 
 	// internal value for indentation of individual lines.  Use the Indent() member to invoke.
 	int _imm_indentation;

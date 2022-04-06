@@ -55,7 +55,18 @@ namespace x86Emitter
 		// mov eax has a special from when writing directly to a DISP32 address
 		// (sans any register index/base registers).
 
-		xOpWrite(from.GetPrefix16(), from.Is8BitOp() ? 0x88 : 0x89, from, dest);
+#ifndef __M_X86_64
+		// Note: On x86-64 this is an immediate 64-bit address, which is larger than the equivalent rip offset instr
+		if (from.IsAccumulator() && dest.Index.IsEmpty() && dest.Base.IsEmpty())
+		{
+			xOpAccWrite(from.GetPrefix16(), from.Is8BitOp() ? 0xa2 : 0xa3, from, dest);
+			xWrite32(dest.Displacement);
+		}
+		else
+#endif
+		{
+			xOpWrite(from.GetPrefix16(), from.Is8BitOp() ? 0x88 : 0x89, from, dest);
+		}
 	}
 
 	void xImpl_Mov::operator()(const xRegisterInt& to, const xIndirectVoid& src) const
@@ -63,7 +74,18 @@ namespace x86Emitter
 		// mov eax has a special from when reading directly from a DISP32 address
 		// (sans any register index/base registers).
 
-		xOpWrite(to.GetPrefix16(), to.Is8BitOp() ? 0x8a : 0x8b, to, src);
+#ifndef __M_X86_64
+		// Note: On x86-64 this is an immediate 64-bit address, which is larger than the equivalent rip offset instr
+		if (to.IsAccumulator() && src.Index.IsEmpty() && src.Base.IsEmpty())
+		{
+			xOpAccWrite(to.GetPrefix16(), to.Is8BitOp() ? 0xa0 : 0xa1, to, src);
+			xWrite32(src.Displacement);
+		}
+		else
+#endif
+		{
+			xOpWrite(to.GetPrefix16(), to.Is8BitOp() ? 0x8a : 0x8b, to, src);
+		}
 	}
 
 	void xImpl_Mov::operator()(const xIndirect64orLess& dest, sptr imm) const
@@ -131,6 +153,7 @@ namespace x86Emitter
 
 	const xImpl_Mov xMOV;
 
+#ifdef __M_X86_64
 	void xImpl_MovImm64::operator()(const xRegister64& to, s64 imm, bool preserve_flags) const
 	{
 		if (imm == (u32)imm || imm == (s32)imm)
@@ -146,6 +169,7 @@ namespace x86Emitter
 	}
 
 	const xImpl_MovImm64 xMOV64;
+#endif
 
 	// --------------------------------------------------------------------------------------
 	//  CMOVcc
@@ -217,6 +241,7 @@ namespace x86Emitter
 		xOpWrite0F(SignExtend ? 0xbf : 0xb7, to, sibsrc);
 	}
 
+#ifdef __M_X86_64
 	void xImpl_MovExtend::operator()(const xRegister64& to, const xRegister32& from) const
 	{
 		EbpAssert();
@@ -230,6 +255,7 @@ namespace x86Emitter
 		pxAssertMsg(SignExtend, "Use mov for 64-bit movzx");
 		xOpWrite(0, 0x63, to, sibsrc);
 	}
+#endif
 
 	const xImpl_MovExtend xMOVSX = {true};
 	const xImpl_MovExtend xMOVZX = {false};

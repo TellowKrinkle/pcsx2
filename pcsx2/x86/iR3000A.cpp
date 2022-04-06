@@ -113,7 +113,7 @@ static u32 psxdump = 0;
 //  Dynamically Compiled Dispatchers - R3000A style
 // =====================================================================================================
 
-static void iopRecRecompile(const u32 startpc);
+static void __fastcall iopRecRecompile(const u32 startpc);
 
 // Recompiled code buffer for EE recompiler dispatchers!
 alignas(__pagesize) static u8 iopRecDispatchers[__pagesize];
@@ -590,7 +590,11 @@ static void psxRecompileIrxImport()
 
 	if (SysTraceActive(IOP.Bios))
 	{
-		xMOV64(arg3reg, (uptr)funcname);
+		#ifdef __M_X86_64
+			xMOV64(arg3reg, (uptr)funcname);
+		#else
+			xPUSH((uptr)funcname);
+		#endif
 
 		xFastCall((void*)irxImportLog_rec, import_table, index);
 	}
@@ -1265,7 +1269,7 @@ void psxRecompileNextInstruction(int delayslot)
 	_clearNeededX86regs();
 }
 
-static void PreBlockCheck(u32 blockpc)
+static void __fastcall PreBlockCheck(u32 blockpc)
 {
 #ifdef PCSX2_DEBUG
 	extern void iDumpPsxRegisters(u32 startpc, u32 temp);
@@ -1292,7 +1296,7 @@ static void PreBlockCheck(u32 blockpc)
 #endif
 }
 
-static void iopRecRecompile(const u32 startpc)
+static void __fastcall iopRecRecompile(const u32 startpc)
 {
 	u32 i;
 	u32 willbranch3 = 0;

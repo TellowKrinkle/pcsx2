@@ -136,7 +136,7 @@ extern void vif1Interrupt();
 extern void vif1VUFinish();
 extern void vif1Reset();
 
-typedef int FnType_VifCmdHandler(int pass, const u32 *data);
+typedef int __fastcall FnType_VifCmdHandler(int pass, const u32 *data);
 typedef FnType_VifCmdHandler* Fnptr_VifCmdHandler;
 
 alignas(16) extern const Fnptr_VifCmdHandler vifCmdHandler[2][128];

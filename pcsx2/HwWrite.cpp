@@ -38,13 +38,13 @@ using namespace R5900;
 #define HELPSWITCH(m) (((m)>>4) & 0xff)
 #define mcase(src) case HELPSWITCH(src)
 
-template< uint page > void _hwWrite8(u32 mem, u8 value);
-template< uint page > void _hwWrite16(u32 mem, u8 value);
+template< uint page > void __fastcall _hwWrite8(u32 mem, u8 value);
+template< uint page > void __fastcall _hwWrite16(u32 mem, u8 value);
 template< uint page > void TAKES_R128 _hwWrite128(u32 mem, r128 value);
 
 
 template<uint page>
-void _hwWrite32( u32 mem, u32 value )
+void __fastcall _hwWrite32( u32 mem, u32 value )
 {
 	pxAssume( (mem & 0x03) == 0 );
 
@@ -275,7 +275,7 @@ void _hwWrite32( u32 mem, u32 value )
 }
 
 template<uint page>
-void hwWrite32( u32 mem, u32 value )
+void __fastcall hwWrite32( u32 mem, u32 value )
 {
 	eeHwTraceLog( mem, value, false );
 	_hwWrite32<page>( mem, value );
@@ -286,7 +286,7 @@ void hwWrite32( u32 mem, u32 value )
 // --------------------------------------------------------------------------------------
 
 template< uint page >
-void _hwWrite8(u32 mem, u8 value)
+void __fastcall _hwWrite8(u32 mem, u8 value)
 {
 #if PSX_EXTRALOGS
 	if ((mem & 0x1000ff00) == 0x1000f300) DevCon.Warning("8bit Write to SIF Register %x value %x wibble", mem, value);
@@ -335,14 +335,14 @@ void _hwWrite8(u32 mem, u8 value)
 }
 
 template< uint page >
-void hwWrite8(u32 mem, u8 value)
+void __fastcall hwWrite8(u32 mem, u8 value)
 {
 	eeHwTraceLog( mem, value, false );
 	_hwWrite8<page>(mem, value);
 }
 
 template< uint page >
-void _hwWrite16(u32 mem, u16 value)
+void __fastcall _hwWrite16(u32 mem, u16 value)
 {
 	pxAssume( (mem & 0x01) == 0 );
 #if PSX_EXTRALOGS
@@ -366,15 +366,16 @@ void _hwWrite16(u32 mem, u16 value)
 }
 
 template< uint page >
-void hwWrite16(u32 mem, u16 value)
+void __fastcall hwWrite16(u32 mem, u16 value)
 {
 	eeHwTraceLog( mem, value, false );
 	_hwWrite16<page>(mem, value);
 }
 
 template<uint page>
-void _hwWrite64( u32 mem, u64 value )
+void TAKES_R64 _hwWrite64( u32 mem, r64 rvalue )
 {
+	u64 value = r64_to_u64(rvalue);
 	pxAssume( (mem & 0x07) == 0 );
 
 	// * Only the IPU has true 64 bit registers.
@@ -412,7 +413,7 @@ void _hwWrite64( u32 mem, u64 value )
 }
 
 template<uint page>
-void hwWrite64( u32 mem, mem64_t value )
+void TAKES_R64 hwWrite64( u32 mem, r64 value )
 {
 	eeHwTraceLog( mem, value, false );
 	_hwWrite64<page>(mem, value);
@@ -482,7 +483,7 @@ void TAKES_R128 _hwWrite128(u32 mem, r128 srcval)
 	}
 
 	// All upper bits of all non-FIFO 128-bit HW writes are almost certainly disregarded. --air
-	hwWrite64<page>(mem, r128_to_u64(srcval));
+	hwWrite64<page>(mem, r128_to_r64(srcval));
 
 	//CopyQWC(&psHu128(mem), srcval);
 }
@@ -495,10 +496,10 @@ void TAKES_R128 hwWrite128(u32 mem, r128 srcval)
 }
 
 #define InstantizeHwWrite(pageidx) \
-	template void hwWrite8<pageidx>(u32 mem, mem8_t value); \
-	template void hwWrite16<pageidx>(u32 mem, mem16_t value); \
-	template void hwWrite32<pageidx>(u32 mem, mem32_t value); \
-	template void hwWrite64<pageidx>(u32 mem, mem64_t value); \
+	template void __fastcall hwWrite8<pageidx>(u32 mem, mem8_t value); \
+	template void __fastcall hwWrite16<pageidx>(u32 mem, mem16_t value); \
+	template void __fastcall hwWrite32<pageidx>(u32 mem, mem32_t value); \
+	template void TAKES_R64 hwWrite64<pageidx>(u32 mem, r64 value); \
 	template void TAKES_R128 hwWrite128<pageidx>(u32 mem, r128 srcval);
 
 InstantizeHwWrite(0x00);	InstantizeHwWrite(0x08);

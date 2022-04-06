@@ -70,6 +70,9 @@ using namespace x86Emitter;
 	_fullread:
 	movzx eax,al;
 	sub   ecx,eax;
+ #ifndef __M_X86_64 // The x86-64 marker will be cleared by using 32-bit ops
+	sub   ecx,0x80000000;
+ #endif
 	call [eax+stuff];
 	cont:
 	........
@@ -118,14 +121,20 @@ namespace vtlb_private
 				break;
 
 			case 32:
+#ifdef _M_X86_64
 				if (sign)
 					xMOVSX(rax, ptr32[arg1reg]);
 				else
+#endif
 					xMOV(eax, ptr32[arg1reg]);
 				break;
 
 			case 64:
+#ifdef _M_X86_64
 				xMOV(rax, ptr64[arg1reg]);
+#else
+				xMOVQZX(xmm0, ptr64[arg1reg]);
+#endif
 				break;
 
 			case 128:
@@ -157,7 +166,11 @@ namespace vtlb_private
 				break;
 
 			case 64:
+#ifdef _M_X86_64
 				xMOV(ptr[arg1reg], arg2reg);
+#else
+				xMOVQ(ptr[arg1reg], xRegisterSSE::GetArgRegister(1, 0));
+#endif
 				break;
 
 			case 128:
@@ -225,7 +238,7 @@ static void DynGen_IndirectTlbDispatcher(int mode, int bits, bool sign)
 		xSUB(arg1regd, 0x80000000);
 	xSUB(arg1regd, eax);
 
-	// jump to the indirect handler, which is a C++ function.
+	// jump to the indirect handler, which is a __fastcall C++ function.
 	// [ecx is address, edx is data]
 	sptr table = (sptr)vtlbdata.RWFT[bits][mode];
 	if (table == (s32)table)
@@ -254,7 +267,7 @@ static void DynGen_IndirectTlbDispatcher(int mode, int bits, bool sign)
 			else
 				xMOVZX(rax, ax);
 		}
-		else if (bits == 2)
+		else if (bits == 2 && wordsize > 4)
 		{
 			if (sign)
 				xCDQE();
@@ -314,7 +327,7 @@ static void vtlb_SetWriteback(u32* writeback)
 //                            Dynarec Load Implementations
 int vtlb_DynGenReadQuad(u32 bits, int gpr)
 {
-	pxAssume(bits == 128);
+	pxAssume(bits == 128 || bits == wordsize * 16);
 
 	u32* writeback = DynGen_PrepRegs();
 
@@ -333,7 +346,7 @@ int vtlb_DynGenReadQuad(u32 bits, int gpr)
 //   Returns read value in eax.
 void vtlb_DynGenReadNonQuad(u32 bits, bool sign)
 {
-	pxAssume(bits <= 64);
+	pxAssume(bits <= wordsize * 8);
 
 	u32* writeback = DynGen_PrepRegs();
 
@@ -348,7 +361,7 @@ void vtlb_DynGenReadNonQuad(u32 bits, bool sign)
 // recompiler if the TLB is changed.
 int vtlb_DynGenReadQuad_Const(u32 bits, u32 addr_const, int gpr)
 {
-	pxAssert(bits == 128);
+	pxAssert(bits == 128 || bits == wordsize * 16);
 
 	EE::Profiler.EmitConstMem(addr_const);
 
@@ -358,14 +371,32 @@ int vtlb_DynGenReadQuad_Const(u32 bits, u32 addr_const, int gpr)
 	{
 		void* ppf = reinterpret_cast<void*>(vmv.assumePtr(addr_const));
 		reg = gpr == -1 ? _allocTempXMMreg(XMMT_INT, -1) : _allocGPRtoXMMreg(-1, gpr, MODE_WRITE);
-		xMOVAPS(xRegisterSSE(reg), ptr128[ppf]);
+		switch (bits)
+		{
+#ifndef _M_X86_64
+			case 64:
+				xMOVQZX(xRegisterSSE(reg), ptr64[ppf]);
+				break;
+#endif
+
+			case 128:
+				xMOVAPS(xRegisterSSE(reg), ptr128[ppf]);
+				break;
+
+			jNO_DEFAULT
+		}
 	}
 	else
 	{
 		// has to: translate, find function, call function
 		u32 paddr = vmv.assumeHandlerGetPAddr(addr_const);
 
-		const int szidx = 4;
+		int szidx = 0;
+		switch (bits)
+		{
+			case  64: szidx = 3; break;
+			case 128: szidx = 4; break;
+		}
 		iFlushCall(FLUSH_FULLVTLB);
 		reg = gpr == -1 ? _allocTempXMMreg(XMMT_INT, 0) : _allocGPRtoXMMreg(0, gpr, MODE_WRITE); // Handler returns in xmm0
 		xFastCall(vmv.assumeHandlerGetRaw(szidx, 0), paddr, arg2reg);
@@ -406,15 +437,18 @@ void vtlb_DynGenReadNonQuad_Const(u32 bits, bool sign, u32 addr_const)
 				break;
 
 			case 32:
+#ifdef _M_X86_64
 				if (sign)
 					xMOVSX(rax, ptr32[(u32*)ppf]);
 				else
+#endif
 					xMOV(eax, ptr32[(u32*)ppf]);
 				break;
-
+#ifdef _M_X86_64
 			case 64:
 				xMOV(rax, ptr64[(u64*)ppf]);
 				break;
+#endif
 		}
 	}
 	else
@@ -457,7 +491,7 @@ void vtlb_DynGenReadNonQuad_Const(u32 bits, bool sign, u32 addr_const)
 				else
 					xMOVZX(rax, ax);
 			}
-			else if (bits == 32)
+			else if (bits == 32 && wordsize > 4)
 			{
 				if (sign)
 					xCDQE();
@@ -510,7 +544,11 @@ void vtlb_DynGenWrite_Const(u32 bits, u32 addr_const)
 				break;
 
 			case 64:
+#ifdef _M_X86_64
 				xMOV(ptr64[(void*)ppf], arg2reg);
+#else
+				xMOVQ(ptr64[(void*)ppf], xRegisterSSE::GetArgRegister(1, 0));
+#endif
 				break;
 
 			case 128:

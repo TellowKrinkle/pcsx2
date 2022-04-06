@@ -36,7 +36,7 @@
 // 0x6000 - 0x7000 : GS    (all registers map to 0x6000)
 // 0x7000 - 0x8000 : IPU   (registers map to 0x7000 and 0x7010, respectively)
 
-void ReadFIFO_VIF1(mem128_t* out)
+void __fastcall ReadFIFO_VIF1(mem128_t* out)
 {
 	if (vif1Regs.stat.test(VIF1_STAT_INT | VIF1_STAT_VSS | VIF1_STAT_VIS | VIF1_STAT_VFS))
 		DevCon.Warning("Reading from vif1 fifo when stalled");
@@ -66,7 +66,7 @@ void ReadFIFO_VIF1(mem128_t* out)
 //////////////////////////////////////////////////////////////////////////
 // WriteFIFO Pages
 //
-void WriteFIFO_VIF0(const mem128_t* value)
+void __fastcall WriteFIFO_VIF0(const mem128_t* value)
 {
 	VIF_LOG("WriteFIFO/VIF0 <- 0x%08X.%08X.%08X.%08X", value->_u32[0], value->_u32[1], value->_u32[2], value->_u32[3]);
 
@@ -88,7 +88,7 @@ void WriteFIFO_VIF0(const mem128_t* value)
 	pxAssertDev(ret, "vif stall code not implemented");
 }
 
-void WriteFIFO_VIF1(const mem128_t* value)
+void __fastcall WriteFIFO_VIF1(const mem128_t* value)
 {
 	VIF_LOG("WriteFIFO/VIF1 <- 0x%08X.%08X.%08X.%08X", value->_u32[0], value->_u32[1], value->_u32[2], value->_u32[3]);
 
@@ -128,7 +128,7 @@ void WriteFIFO_VIF1(const mem128_t* value)
 	pxAssertDev(ret, "vif stall code not implemented");
 }
 
-void WriteFIFO_GIF(const mem128_t* value)
+void __fastcall WriteFIFO_GIF(const mem128_t* value)
 {
 	GUNIT_LOG("WriteFIFO_GIF()");
 	if ((!gifUnit.CanDoPath3() || gif_fifo.fifoSize > 0))

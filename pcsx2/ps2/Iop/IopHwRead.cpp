@@ -41,7 +41,7 @@ using namespace Internal;
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-mem8_t iopHwRead8_Page1( u32 addr )
+mem8_t __fastcall iopHwRead8_Page1( u32 addr )
 {
 	// all addresses are assumed to be prefixed with 0x1f801xxx:
 	pxAssume( (addr >> 12) == 0x1f801 );
@@ -107,7 +107,7 @@ mem8_t iopHwRead8_Page1( u32 addr )
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-mem8_t iopHwRead8_Page3( u32 addr )
+mem8_t __fastcall iopHwRead8_Page3( u32 addr )
 {
 	// all addresses are assumed to be prefixed with 0x1f803xxx:
 	pxAssume( (addr >> 12) == 0x1f803 );
@@ -125,7 +125,7 @@ mem8_t iopHwRead8_Page3( u32 addr )
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-mem8_t iopHwRead8_Page8( u32 addr )
+mem8_t __fastcall iopHwRead8_Page8( u32 addr )
 {
 	// all addresses are assumed to be prefixed with 0x1f808xxx:
 	pxAssume( (addr >> 12) == 0x1f808 );
@@ -373,14 +373,14 @@ static __fi T _HwRead_16or32_Page1( u32 addr )
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-mem16_t iopHwRead16_Page1( u32 addr )
+mem16_t __fastcall iopHwRead16_Page1( u32 addr )
 {
 	return _HwRead_16or32_Page1<mem16_t>( addr );
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-mem16_t iopHwRead16_Page3( u32 addr )
+mem16_t __fastcall iopHwRead16_Page3( u32 addr )
 {
 	// all addresses are assumed to be prefixed with 0x1f803xxx:
 	pxAssume( (addr >> 12) == 0x1f803 );
@@ -392,7 +392,7 @@ mem16_t iopHwRead16_Page3( u32 addr )
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-mem16_t iopHwRead16_Page8( u32 addr )
+mem16_t __fastcall iopHwRead16_Page8( u32 addr )
 {
 	// all addresses are assumed to be prefixed with 0x1f808xxx:
 	pxAssume( (addr >> 12) == 0x1f808 );
@@ -404,14 +404,14 @@ mem16_t iopHwRead16_Page8( u32 addr )
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-mem32_t iopHwRead32_Page1( u32 addr )
+mem32_t __fastcall iopHwRead32_Page1( u32 addr )
 {
 	return _HwRead_16or32_Page1<mem32_t>( addr );
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-mem32_t iopHwRead32_Page3( u32 addr )
+mem32_t __fastcall iopHwRead32_Page3( u32 addr )
 {
 	// all addresses are assumed to be prefixed with 0x1f803xxx:
 	pxAssume( (addr >> 12) == 0x1f803 );
@@ -422,7 +422,7 @@ mem32_t iopHwRead32_Page3( u32 addr )
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-mem32_t iopHwRead32_Page8( u32 addr )
+mem32_t __fastcall iopHwRead32_Page8( u32 addr )
 {
 	// all addresses are assumed to be prefixed with 0x1f808xxx:
 	pxAssume( (addr >> 12) == 0x1f808 );
