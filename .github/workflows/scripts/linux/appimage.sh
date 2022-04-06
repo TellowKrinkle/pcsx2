@@ -5,11 +5,12 @@ set -ex
 echo "${PLATFORM}"
 if [ "${PLATFORM}" == "x86" ]; then
   APPARCH="i686"
-  ARCH="i386"
+  export ARCH="i386"
   LIBARCH="i386-linux-gnu"
+  export CC="gcc -m32"
 else
   APPARCH="x86_64"
-  ARCH="x86_64"
+  export ARCH="x86_64"
   LIBARCH="x86_64-linux-gnu"
 fi
 cd /tmp
@@ -35,12 +36,14 @@ mkdir -p squashfs-root/usr/lib/
 mkdir -p squashfs-root/usr/optional/libstdc++
 mkdir -p squashfs-root/usr/optional/libgcc_s
 cp ./.github/workflows/scripts/linux/AppRun "$GITHUB_WORKSPACE"/squashfs-root/AppRun
-curl -sSfL "https://github.com/PCSX2/appimage-checkrt-branch/releases/download/AppImage-checkrt/AppRun_patched" -o "$GITHUB_WORKSPACE"/squashfs-root/AppRun-patched
-curl -sSfL "https://github.com/PCSX2/appimage-checkrt-branch/releases/download/AppImage-checkrt/exec.so" -o "$GITHUB_WORKSPACE"/squashfs-root/usr/optional/exec.so
+git clone https://github.com/darealshinji/AppImageKit-checkrt --branch old --depth 1
+git clone https://github.com/AppImage/AppImageKit.git --branch 13 --depth 1
+cp AppImageKit/src/AppRun.c AppImageKit-checkrt/AppRun.c
+make -C AppImageKit-checkrt
+cp AppImageKit-checkrt/AppRun_patched "$GITHUB_WORKSPACE"/squashfs-root/AppRun-patched
+cp AppImageKit-checkrt/exec.so "$GITHUB_WORKSPACE"/squashfs-root/usr/optional/exec.so
 chmod a+x ./squashfs-root/AppRun
 chmod a+x ./squashfs-root/runtime
-chmod a+x ./squashfs-root/AppRun-patched
-chmod a+x ./squashfs-root/usr/optional/exec.so
 echo "$name" > "$GITHUB_WORKSPACE"/squashfs-root/version.txt
 mkdir -p "$GITHUB_WORKSPACE"/squashfs-root/apprun-hooks
 cp /usr/lib/$LIBARCH/libthai.so.0 "$GITHUB_WORKSPACE"/squashfs-root/usr/lib/
@@ -55,9 +58,9 @@ export UPD_INFO="gh-releases-zsync|PCSX2|pcsx2|latest|$name.AppImage.zsync"
 mkdir -p squashfs-root/usr/lib/wayland
 mv squashfs-root/usr/lib/libwayland-* squashfs-root/usr/lib/wayland
 rm squashfs-root/usr/lib/libgmodule-2.0.so.0
-curl -sSfL "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$ARCH.AppImage" -o ./appimagetool-"$ARCH".AppImage
+curl -sSfL "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$APPARCH.AppImage" -o ./appimagetool-"$APPARCH".AppImage
 chmod a+x appimagetool*.AppImage
-./appimagetool-"$ARCH".AppImage "$GITHUB_WORKSPACE"/squashfs-root "$name.AppImage"
+./appimagetool-"$APPARCH".AppImage "$GITHUB_WORKSPACE"/squashfs-root "$name.AppImage"
 mkdir -p "$GITHUB_WORKSPACE"/ci-artifacts/
 ls -al .
 mv "$name.AppImage" "$GITHUB_WORKSPACE"/ci-artifacts # && mv "$name.AppImage.zsync" "$GITHUB_WORKSPACE"/ci-artifacts

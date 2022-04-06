@@ -19,6 +19,17 @@ jobs:
       buildAppImage: true
     secrets: inherit
 
+  build_gcc_lto_x86:
+    name: "GCC"
+    uses: ./.github/workflows/linux_build_wx.yml
+    with:
+      jobName: "x86 with LTO"
+      platform: x86
+      compiler: gcc
+      cmakeflags: "-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON"
+      buildAppImage: true
+    secrets: inherit
+
   # (PCH conflicts with ccache, fixed by https://gitlab.kitware.com/cmake/cmake/-/merge_requests/4400)
   build_gcc_nopch:
     name: "GCC"
@@ -35,6 +46,7 @@ jobs:
     uses: ./.github/workflows/linux_build_wx.yml
     with:
       jobName: "AVX2 and No PCH"
+      platform: x86
       compiler: gcc
       cmakeflags: "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON -DARCH_FLAG=-march=haswell"
       detail: " avx2 nopch"
