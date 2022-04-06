@@ -45,13 +45,19 @@ jobs:
       matrix:
         include:
           - os: ubuntu-18.04
-            platform: x64
+            platform: x86
             compiler: gcc
             cmakeflags: -DLTO_PCSX2_CORE=ON
             appimage: true
             experimental: false
           - os: ubuntu-18.04
             platform: x64
+            compiler: gcc
+            cmakeflags: -DLTO_PCSX2_CORE=ON
+            appimage: true
+            experimental: false
+          - os: ubuntu-18.04
+            platform: x86
             compiler: clang
             # Need to disable PCH until cmake 3.17
             # (PCH conflicts with ccache, fixed by https://gitlab.kitware.com/cmake/cmake/-/merge_requests/4400)
@@ -60,21 +66,21 @@ jobs:
             appimage: false
             experimental: false
           - os: ubuntu-18.04
-            platform: x64
+            platform: x86
             compiler: gcc
             cmakeflags: -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON
             detail: " nopch"
             appimage: false
             experimental: false
           - os: ubuntu-18.04
-            platform: x64
+            platform: x86
             compiler: gcc
             cmakeflags: -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON -DARCH_FLAG=-march=haswell
             detail: " avx2 nopch"
             appimage: false
             experimental: false
 
-    name: ${{ matrix.compiler }}${{ matrix.detail }}
+    name: ${{ matrix.platform }} | ${{ matrix.compiler }}${{ matrix.detail }}
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
     # Set some sort of timeout in the event of run-away builds.  We are limited on concurrent jobs so, get rid of them.

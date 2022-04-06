@@ -41,11 +41,14 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-2019]
-        platform: [x64]
+        platform: [Win32, x64]
         configuration: [Release, Release AVX2, CMake, Qt]
         experimental: [false]
+        exclude:
+          - platform: win32
+            configuration: Qt
 
-    name: ${{ matrix.configuration }}
+    name: ${{ matrix.platform }} | ${{ matrix.configuration }}
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
     # Set some sort of timeout in the event of run-away builds.  We are limited on concurrent jobs so, get rid of them.
