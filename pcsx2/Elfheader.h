@@ -16,6 +16,7 @@
 #ifndef __ELF_H__
 #define __ELF_H__
 
+#include "common/SafeArray.h"
 #include "CDVD/IsoFS/IsoFSCDVD.h"
 #include "CDVD/IsoFS/IsoFS.h"
 

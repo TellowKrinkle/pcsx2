@@ -21,6 +21,8 @@
 #include <sstream>
 #include <algorithm>
 
+#include "fmt/core.h"
+
 #ifdef _WIN32
 #include "RedtapeWindows.h"
 #endif
@@ -395,5 +397,16 @@ namespace StringUtil
 		dest.assign(buf.data(), buf.length());
 		return true;
 #endif
+	}
+
+	std::string U128ToString(const u128& u)
+	{
+		return fmt::format("0x{:08X}.{:08X}.{:08X}.{:08X}", u._u32[0], u._u32[1], u._u32[2], u._u32[3]);
+	}
+
+	std::string& AppendU128ToString(const u128& u, std::string& s)
+	{
+		fmt::format_to(std::back_inserter(s), "0x{:08X}.{:08X}.{:08X}.{:08X}", u._u32[0], u._u32[1], u._u32[2], u._u32[3]);
+		return s;
 	}
 } // namespace StringUtil

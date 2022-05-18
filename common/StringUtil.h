@@ -244,4 +244,8 @@ namespace StringUtil
 	/// Converts the specified wide string to a UTF-8 string.
 	std::string WideStringToUTF8String(const std::wstring_view& str);
 	bool WideStringToUTF8String(std::string& dest, const std::wstring_view& str);
+
+	/// Converts unsigned 128-bit data to string.
+	std::string U128ToString(const u128& u);
+	std::string& AppendU128ToString(const u128& u, std::string& s);
 } // namespace StringUtil

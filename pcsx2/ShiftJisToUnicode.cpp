@@ -844,9 +844,9 @@ wchar_t ShiftJIS_ConvertChar(const u8* input, int& used)
 	}
 }
 
-wxString ShiftJIS_ConvertString( const char* src )
+std::string ShiftJIS_ConvertString( const char* src )
 {
-	wxString result;
+	std::string result;
 
 	// Implementation Notes:
 	//  * The length of the result (in chars) cannot exceed the length of the source.
@@ -863,9 +863,9 @@ wxString ShiftJIS_ConvertString( const char* src )
 	return result;
 }
 
-wxString ShiftJIS_ConvertString( const char* src, int maxlen )
+std::string ShiftJIS_ConvertString( const char* src, int maxlen )
 {
-	wxString result;
+	std::string result;
 
 	// The length of the result (in chars) cannot exceed the length of the source.
 	result.reserve( maxlen );
