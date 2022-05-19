@@ -347,13 +347,6 @@ extern void __Log( const char* fmt, ... );
 #	define SysTraceActive(trace)	(false)
 #endif
 
-#ifdef __WXMAC__
-    // Not available on OSX, apparently always double buffered window.
-#   define                          SetDoubleBuffered(x)
-
-    // TODO OSX OsxKeyCodes.cpp pending
-#endif
-
 #define macTrace(trace)	SysTraceActive(trace) && SysTrace.trace.Write
 
 #define SIF_LOG			macTrace(SIF)
