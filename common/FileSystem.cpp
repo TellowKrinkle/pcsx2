@@ -14,6 +14,7 @@
  */
 
 #include "FileSystem.h"
+#include "Path.h"
 #include "Assertions.h"
 #include "Console.h"
 #include "StringUtil.h"
@@ -21,6 +22,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
@@ -33,11 +35,9 @@
 #endif
 
 #if defined(_WIN32)
+#include "RedtapeWindows.h"
+#include <winioctl.h>
 #include <shlobj.h>
-
-// We can't guarantee that windows.h isn't included before here, so we have to undef.
-#undef min
-#undef max
 
 #if defined(_UWP)
 #include <fcntl.h>
@@ -87,7 +87,7 @@ static inline bool FileSystemCharacterIsSane(char c, bool StripSlashes)
 	return true;
 }
 
-void FileSystem::SanitizeFileName(char* Destination, u32 cbDestination, const char* FileName, bool StripSlashes /* = true */)
+void Path::SanitizeFileName(char* Destination, u32 cbDestination, const char* FileName, bool StripSlashes /* = true */)
 {
 	u32 i;
 	u32 fileNameLength = static_cast<u32>(std::strlen(FileName));
@@ -112,7 +112,7 @@ void FileSystem::SanitizeFileName(char* Destination, u32 cbDestination, const ch
 	}
 }
 
-void FileSystem::SanitizeFileName(std::string& Destination, bool StripSlashes /* = true*/)
+void Path::SanitizeFileName(std::string& Destination, bool StripSlashes /* = true*/)
 {
 	const std::size_t len = Destination.length();
 	for (std::size_t i = 0; i < len; i++)
@@ -122,7 +122,7 @@ void FileSystem::SanitizeFileName(std::string& Destination, bool StripSlashes /*
 	}
 }
 
-bool FileSystem::IsAbsolutePath(const std::string_view& path)
+bool Path::IsAbsolute(const std::string_view& path)
 {
 #ifdef _WIN32
 	return (path.length() >= 3 && ((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) &&
@@ -132,7 +132,13 @@ bool FileSystem::IsAbsolutePath(const std::string_view& path)
 #endif
 }
 
-std::string_view FileSystem::GetExtension(const std::string_view& path)
+std::string Path::Normalize(const std::string_view& path)
+{
+	// TODO
+	return std::string(path);
+}
+
+std::string_view Path::GetExtension(const std::string_view& path)
 {
 	const std::string_view::size_type pos = path.rfind('.');
 	if (pos == std::string_view::npos)
@@ -141,7 +147,7 @@ std::string_view FileSystem::GetExtension(const std::string_view& path)
 	return path.substr(pos + 1);
 }
 
-std::string_view FileSystem::StripExtension(const std::string_view& path)
+std::string_view Path::StripExtension(const std::string_view& path)
 {
 	const std::string_view::size_type pos = path.rfind('.');
 	if (pos == std::string_view::npos)
@@ -150,7 +156,7 @@ std::string_view FileSystem::StripExtension(const std::string_view& path)
 	return path.substr(0, pos);
 }
 
-std::string FileSystem::ReplaceExtension(const std::string_view& path, const std::string_view& new_extension)
+std::string Path::ReplaceExtension(const std::string_view& path, const std::string_view& new_extension)
 {
 	const std::string_view::size_type pos = path.rfind('.');
 	if (pos == std::string_view::npos)
@@ -183,10 +189,10 @@ static std::string_view::size_type GetLastSeperatorPosition(const std::string_vi
 
 std::string FileSystem::GetDisplayNameFromPath(const std::string_view& path)
 {
-	return std::string(GetFileNameFromPath(path));
+	return std::string(Path::GetFileName(path));
 }
 
-std::string_view FileSystem::GetPathDirectory(const std::string_view& path)
+std::string_view Path::GetDirectory(const std::string_view& path)
 {
 	const std::string::size_type pos = GetLastSeperatorPosition(path, false);
 	if (pos == std::string_view::npos)
@@ -195,7 +201,7 @@ std::string_view FileSystem::GetPathDirectory(const std::string_view& path)
 	return path.substr(0, pos);
 }
 
-std::string_view FileSystem::GetFileNameFromPath(const std::string_view& path)
+std::string_view Path::GetFileName(const std::string_view& path)
 {
 	const std::string_view::size_type pos = GetLastSeperatorPosition(path, true);
 	if (pos == std::string_view::npos)
@@ -204,9 +210,9 @@ std::string_view FileSystem::GetFileNameFromPath(const std::string_view& path)
 	return path.substr(pos);
 }
 
-std::string_view FileSystem::GetFileTitleFromPath(const std::string_view& path)
+std::string_view Path::GetFileTitle(const std::string_view& path)
 {
-	const std::string_view filename(GetFileNameFromPath(path));
+	const std::string_view filename(GetFileName(path));
 	const std::string::size_type pos = filename.rfind('.');
 	if (pos == std::string_view::npos)
 		return filename;
@@ -214,7 +220,83 @@ std::string_view FileSystem::GetFileTitleFromPath(const std::string_view& path)
 	return filename.substr(0, pos);
 }
 
-std::vector<std::string_view> FileSystem::SplitWindowsPath(const std::string_view& path)
+std::string Path::ChangeFileName(const std::string_view& path, const std::string_view& new_filename)
+{
+	const std::string_view::size_type pos = GetLastSeperatorPosition(path, true);
+	std::string ret;
+	if (pos == std::string_view::npos)
+	{
+		ret = new_filename;
+	}
+	else
+	{
+		ret = path;
+		ret.erase(pos);
+		ret.append(new_filename);
+	}
+
+	return ret;
+}
+
+void Path::ChangeFileName(std::string* path, const std::string_view& new_filename)
+{
+	const std::string_view::size_type pos = GetLastSeperatorPosition(*path, true);
+	if (pos == std::string_view::npos)
+	{
+		*path = new_filename;
+	}
+	else
+	{
+		path->erase(pos);
+		path->append(new_filename);
+	}
+}
+
+std::string Path::AppendDirectory(const std::string_view& path, const std::string_view& new_dir)
+{
+	std::string ret;
+	if (!new_dir.empty())
+	{
+		const std::string_view::size_type pos = GetLastSeperatorPosition(path, true);
+
+		ret.reserve(path.length() + new_dir.length() + 1);
+		if (pos != std::string_view::npos)
+			ret.append(path.substr(0, pos));
+
+		ret.append(new_dir);
+		ret += FS_OSPATH_SEPARATOR_CHARACTER;
+		if (pos != std::string_view::npos)
+			ret.append(path.substr(pos));
+		else
+			ret.append(path);
+	}
+	else
+	{
+		ret = path;
+	}
+
+	return ret;
+}
+
+void Path::AppendDirectory(std::string* path, const std::string_view& new_dir)
+{
+	if (new_dir.empty())
+		return;
+
+	const std::string_view::size_type pos = GetLastSeperatorPosition(*path, false);
+	if (pos != std::string_view::npos)
+	{
+		path->insert(pos, 1, FS_OSPATH_SEPARATOR_CHARACTER);
+		path->insert(pos + 1, new_dir);
+	}
+	else
+	{
+		path->insert(0, new_dir);
+		path->insert(new_dir.length(), 1, FS_OSPATH_SEPARATOR_CHARACTER);
+	}
+}
+
+std::vector<std::string_view> Path::SplitWindowsPath(const std::string_view& path)
 {
 	std::vector<std::string_view> parts;
 
@@ -242,9 +324,23 @@ std::vector<std::string_view> FileSystem::SplitWindowsPath(const std::string_vie
 	return parts;
 }
 
-std::vector<std::string_view> FileSystem::SplitNativePath(const std::string_view& path)
+std::string Path::JoinWindowsPath(const std::vector<std::string_view>& components)
 {
+	return StringUtil::JoinString(components.begin(), components.end(), '\\');
+}
+
+std::vector<std::string_view> Path::SplitNativePath(const std::string_view& path)
+{
+#ifdef _WIN32
+	return SplitWindowsPath(path);
+#else
 	return StringUtil::SplitString(path, FS_OSPATH_SEPARATOR_CHARACTER, true);
+#endif
+}
+
+std::string Path::JoinNativePath(const std::vector<std::string_view>& components)
+{
+	return StringUtil::JoinString(components.begin(), components.end(), FS_OSPATH_SEPARATOR_CHARACTER);
 }
 
 std::vector<std::string> FileSystem::GetRootDirectoryList()
@@ -297,7 +393,7 @@ std::vector<std::string> FileSystem::GetRootDirectoryList()
 	return results;
 }
 
-std::string FileSystem::BuildRelativePath(const std::string_view& filename, const std::string_view& new_filename)
+std::string Path::BuildRelativePath(const std::string_view& filename, const std::string_view& new_filename)
 {
 	std::string new_string;
 
@@ -308,10 +404,21 @@ std::string FileSystem::BuildRelativePath(const std::string_view& filename, cons
 	return new_string;
 }
 
-std::string FileSystem::JoinPath(const std::string_view& base, const std::string_view& next)
+std::string Path::Combine(const std::string_view& base, const std::string_view& next)
 {
-	// TODO: Rewrite this natively when wxDirName is dropped.
-	return Path::CombineStdString(base, next);
+	std::string ret;
+	ret.reserve(base.length() + next.length() + 1);
+
+	ret.append(base);
+	while (!ret.empty() && (ret.back() == '/' || ret.back() == '\\'))
+		ret.pop_back();
+
+	ret += FS_OSPATH_SEPARATOR_CHARACTER;
+	ret.append(next);
+	while (!ret.empty() && (ret.back() == '/' || ret.back() == '\\'))
+		ret.pop_back();
+
+	return ret;
 }
 
 #ifdef _UWP
@@ -631,6 +738,49 @@ bool FileSystem::RecursiveDeleteDirectory(const char* path)
 	return DeleteDirectory(path);
 }
 
+bool FileSystem::CopyFilePath(const char* source, const char* destination, bool replace)
+{
+#ifndef _WIN32
+	// TODO: There's technically a race here between checking and opening the file..
+	// But fopen doesn't specify any way to say "don't create if it exists"...
+	if (!replace && FileExists(destination))
+		return false;
+
+	auto in_fp = OpenManagedCFile(source, "rb");
+	if (!in_fp)
+		return false;
+
+	auto out_fp = OpenManagedCFile(destination, "wb");
+	if (!out_fp)
+		return false;
+
+	u8 buf[4096];
+	while (!std::feof(in_fp.get()))
+	{
+		size_t bytes_in = std::fread(buf, 1, sizeof(buf), in_fp.get());
+		if ((bytes_in == 0 && !std::feof(in_fp.get())) ||
+			(bytes_in > 0 && std::fwrite(buf, 1, bytes_in, out_fp.get()) != bytes_in))
+		{
+			out_fp.reset();
+			DeleteFilePath(destination);
+			return false;
+		}
+	}
+
+	if (std::fflush(out_fp.get()) != 0)
+	{
+		out_fp.reset();
+		DeleteFilePath(destination);
+		return false;
+	}
+
+	return true;
+#else
+	return CopyFileW(StringUtil::UTF8StringToWideString(source).c_str(),
+		StringUtil::UTF8StringToWideString(destination).c_str(), !replace);
+#endif
+}
+
 #ifdef _WIN32
 
 static u32 TranslateWin32Attributes(u32 Win32Attributes)
@@ -783,6 +933,7 @@ static u32 RecursiveFindFiles(const char* origin_path, const char* parent_path, 
 				outData.FileName = utf8_filename;
 		}
 
+		outData.CreationTime = ConvertFileTimeToUnixTime(wfd.ftCreationTime);
 		outData.ModificationTime = ConvertFileTimeToUnixTime(wfd.ftLastWriteTime);
 		outData.Size = (static_cast<u64>(wfd.nFileSizeHigh) << 32) | static_cast<u64>(wfd.nFileSizeLow);
 
@@ -904,6 +1055,7 @@ bool FileSystem::StatFile(const char* path, FILESYSTEM_STAT_DATA* sd)
 
 	// fill in the stat data
 	sd->Attributes = TranslateWin32Attributes(bhfi.dwFileAttributes);
+	sd->CreationTime = ConvertFileTimeToUnixTime(bhfi.ftCreationTime);
 	sd->ModificationTime = ConvertFileTimeToUnixTime(bhfi.ftLastWriteTime);
 	sd->Size = static_cast<s64>(((u64)bhfi.nFileSizeHigh) << 32 | (u64)bhfi.nFileSizeLow);
 	return true;
@@ -913,6 +1065,7 @@ bool FileSystem::StatFile(const char* path, FILESYSTEM_STAT_DATA* sd)
 		return false;
 
 	sd->Attributes = TranslateWin32Attributes(fad.dwFileAttributes);
+	sd->CreationTime = ConvertFileTimeToUnixTime(fad.ftCreationTime);
 	sd->ModificationTime = ConvertFileTimeToUnixTime(fad.ftLastWriteTime);
 	sd->Size = static_cast<s64>(((u64)fad.nFileSizeHigh) << 32 | (u64)fad.nFileSizeLow);
 	return true;
@@ -930,6 +1083,7 @@ bool FileSystem::StatFile(std::FILE* fp, FILESYSTEM_STAT_DATA* sd)
 		return false;
 
 	// parse attributes
+	sd->CreationTime = st.st_ctime;
 	sd->ModificationTime = st.st_mtime;
 	sd->Attributes = 0;
 	if ((st.st_mode & _S_IFMT) == _S_IFDIR)
@@ -986,6 +1140,37 @@ bool FileSystem::DirectoryExists(const char* path)
 		return true;
 	else
 		return false;
+}
+
+bool FileSystem::DirectoryIsEmpty(const char* path)
+{
+	std::wstring wpath(StringUtil::UTF8StringToWideString(path));
+	wpath += L"\\*";
+
+	WIN32_FIND_DATAW wfd;
+#ifndef _UWP
+	HANDLE hFind = FindFirstFileW(wpath.c_str(), &wfd);
+#else
+	HANDLE hFind = FindFirstFileExFromAppW(wpath.c_str(), FindExInfoBasic, &wfd, FindExSearchNameMatch, nullptr, 0);
+#endif
+
+	if (hFind == INVALID_HANDLE_VALUE)
+		return true;
+
+	do
+	{
+		if (wfd.cFileName[0] == L'.')
+		{
+			if (wfd.cFileName[1] == L'\0' || (wfd.cFileName[1] == L'.' && wfd.cFileName[2] == L'\0'))
+				continue;
+		}
+
+		FindClose(hFind);
+		return false;
+	} while (FindNextFileW(hFind, &wfd));
+
+	FindClose(hFind);
+	return true;
 }
 
 bool FileSystem::CreateDirectoryPath(const char* Path, bool Recursive)
@@ -1317,6 +1502,7 @@ static u32 RecursiveFindFiles(const char* OriginPath, const char* ParentPath, co
 		}
 
 		outData.Size = static_cast<u64>(sDir.st_size);
+		outData.CreationTime = sDir.st_ctime;
 		outData.ModificationTime = sDir.st_mtime;
 
 		// match the filename
@@ -1400,6 +1586,7 @@ bool FileSystem::StatFile(const char* path, FILESYSTEM_STAT_DATA* sd)
 		return false;
 
 	// parse attributes
+	sd->CreationTime = sysStatData.st_ctime;
 	sd->ModificationTime = sysStatData.st_mtime;
 	sd->Attributes = 0;
 	if (S_ISDIR(sysStatData.st_mode))
@@ -1432,6 +1619,7 @@ bool FileSystem::StatFile(std::FILE* fp, FILESYSTEM_STAT_DATA* sd)
 		return false;
 
 	// parse attributes
+	sd->CreationTime = sysStatData.st_ctime;
 	sd->ModificationTime = sysStatData.st_mtime;
 	sd->Attributes = 0;
 	if (S_ISDIR(sysStatData.st_mode))
@@ -1489,6 +1677,30 @@ bool FileSystem::DirectoryExists(const char* path)
 		return true;
 	else
 		return false;
+}
+
+bool FileSystem::DirectoryIsEmpty(const char* path)
+{
+	DIR* pDir = opendir(path);
+	if (pDir == nullptr)
+		return true;
+
+	// iterate results
+	struct dirent* pDirEnt;
+	while ((pDirEnt = readdir(pDir)) != nullptr)
+	{
+		if (pDirEnt->d_name[0] == '.')
+		{
+			if (pDirEnt->d_name[1] == '\0' || (pDirEnt->d_name[1] == '.' && pDirEnt->d_name[2] == '\0'))
+				continue;
+		}
+
+		closedir(pDir);
+		return false;
+	}
+
+	closedir(pDir);
+	return true;
 }
 
 bool FileSystem::CreateDirectoryPath(const char* path, bool recursive)

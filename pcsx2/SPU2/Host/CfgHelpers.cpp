@@ -14,6 +14,7 @@
  */
 
 #include "PrecompiledHeader.h"
+#if 0
 #include "common/StringUtil.h"
 #include "SPU2/Host/Config.h"
 #include "SPU2/Host/Dialogs.h"
@@ -73,3 +74,4 @@ void CfgWriteFloat(const wchar_t* Section, const wchar_t* Name, float Value)
 void CfgWriteStr(const wchar_t* Section, const wchar_t* Name, const wxString& Data)
 {
 }
+#endif

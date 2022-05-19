@@ -206,7 +206,7 @@ bool GSDeviceOGL::Create(HostDisplay* display)
 
 	if (!theApp.GetConfigB("disable_shader_cache"))
 	{
-		if (!m_shader_cache.Open(false, StringUtil::wxStringToUTF8String(EmuFolders::Cache.ToString()), SHADER_VERSION))
+		if (!m_shader_cache.Open(false, EmuFolders::Cache, SHADER_VERSION))
 			Console.Warning("Shader cache failed to open.");
 	}
 	else

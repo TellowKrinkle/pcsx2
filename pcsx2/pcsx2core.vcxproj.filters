@@ -347,9 +347,6 @@
     <ClCompile Include="ShiftJisToUnicode.cpp">
       <Filter>Misc</Filter>
     </ClCompile>
-    <ClCompile Include="Utilities\FileUtils.cpp">
-      <Filter>Misc\Utilities</Filter>
-    </ClCompile>
     <ClCompile Include="Dump.cpp">
       <Filter>System</Filter>
     </ClCompile>
@@ -2077,11 +2074,6 @@
     <ClInclude Include="Frontend\imgui_impl_vulkan.h">
       <Filter>Host</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="GS\GS.rc">
-      <Filter>System\Ps2\GS</Filter>
-    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuildStep Include="rdebug\deci2.h">

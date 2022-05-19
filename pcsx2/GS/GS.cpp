@@ -30,6 +30,7 @@
 #include "GSLzma.h"
 
 #include "common/Console.h"
+#include "common/Path.h"
 #include "common/StringUtil.h"
 #include "pcsx2/Config.h"
 #include "pcsx2/Counters.h"
@@ -989,6 +990,8 @@ void fifo_free(void* ptr, size_t size, size_t repeat)
 #else
 
 #include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 void* vmalloc(size_t size, bool code)
@@ -1467,8 +1470,7 @@ void GSApp::SetConfigDir()
 	// we need to initialize the ini folder later at runtime than at theApp init, as
 	// core settings aren't populated yet, thus we do populate it if needed either when
 	// opening GS settings or init -- govanify
-	wxString iniName(L"GS.ini");
-	m_ini = EmuFolders::Settings.Combine(iniName).GetFullPath().ToUTF8();
+	m_ini = Path::Combine(EmuFolders::Settings, "GS.ini");
 }
 
 std::string GSApp::GetConfigS(const char* entry)

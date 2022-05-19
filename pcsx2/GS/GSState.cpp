@@ -20,6 +20,7 @@
 
 #include <algorithm> // clamp
 #include <cfloat> // FLT_MAX
+#include <fstream>
 #include <iomanip> // Dump Verticles
 
 int GSState::s_n = 0;

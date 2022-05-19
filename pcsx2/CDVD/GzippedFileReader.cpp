@@ -14,7 +14,6 @@
 */
 
 #include "PrecompiledHeader.h"
-#include <wx/stdpaths.h>
 #include <fstream>
 #include "common/FileSystem.h"
 #include "common/StringUtil.h"
@@ -104,6 +103,7 @@ static void WriteIndexToFile(Access* index, const char* filename)
 	}
 }
 
+#if 0
 static wxString INDEX_TEMPLATE_KEY(L"$(f)");
 // template:
 // must contain one and only one instance of '$(f)' (without the quotes)
@@ -143,6 +143,7 @@ static wxString ApplyTemplate(const std::string& name, const wxDirName& base,
 
 	return tem;
 }
+#endif
 
 /*
 static void TestTemplate(const wxDirName &base, const wxString &fname, bool canEndWithKey)
@@ -173,6 +174,7 @@ static void TestTemplate(const wxDirName &base, const wxString &fname, bool canE
 
 static std::string iso2indexname(const std::string& isoname)
 {
+#if 0
 #ifndef PCSX2_CORE
 	//testTemplate(isoname);
 	wxDirName appRoot = // TODO: have only one of this in PCSX2. Right now have few...
@@ -182,6 +184,11 @@ static std::string iso2indexname(const std::string& isoname)
 #endif
 	//TestTemplate(appRoot, isoname, false);
 	return StringUtil::wxStringToUTF8String(ApplyTemplate("gzip index", appRoot, EmuConfig.GzipIsoIndexTemplate, isoname, false));
+#else
+	//FIXME
+	abort();
+	return {};
+#endif
 }
 
 GzippedFileReader::GzippedFileReader(void)
