@@ -28,13 +28,7 @@
 // Welcome wxWidgets to the party! How about no? Only for the old UI.
 
 #ifndef PCSX2_CORE
-#include <wx/gdicmn.h>
-#include <wx/gdiobj.h>
-#include <wx/string.h>
-#include <wx/tokenzr.h>
-#include <wx/intl.h>
-#include <wx/log.h>
-#include <wx/filename.h>
+#include <wx/wx.h>
 
 // pthreadsw32 is not needed when compiling PCSX2-Qt.
 #include <pthread.h>
@@ -72,7 +66,7 @@
 #include <sys/stat.h>
 
 // We use fmt a fair bit now.
-#include "fmt/core.h"
+#include <fmt/core.h>
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // Begin Pcsx2 Includes: Add items here that are local to Pcsx2 but stay relatively
@@ -82,9 +76,10 @@
 #include "PCSX2Base.h"
 
 #include "common/Console.h"
-#include "common/MemcpyFast.h"
 #include "common/General.h"
+#include "common/MemcpyFast.h"
 #include "common/emitter/tools.h"
+#include "common/emitter/x86_intrin.h"
 
 // --------------------------------------------------------------------------------------
 //  Compiler/OS specific macros and defines 
