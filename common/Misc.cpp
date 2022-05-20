@@ -14,6 +14,7 @@
  */
 
 #include "General.h"
+#include "emitter/x86_intrin.h"
 
 static u32 PAUSE_TIME = 0;
 

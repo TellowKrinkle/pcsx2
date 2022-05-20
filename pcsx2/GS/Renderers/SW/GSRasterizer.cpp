@@ -18,6 +18,7 @@
 #include "GSRasterizer.h"
 #include "GS/GSExtra.h"
 #include "PerformanceMetrics.h"
+#include "common/emitter/x86_intrin.h"
 #include "common/StringUtil.h"
 
 #define ENABLE_DRAW_STATS 0

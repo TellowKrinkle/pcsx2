@@ -17,6 +17,7 @@
 
 #include "PCSX2Base.h"
 #include <cassert>
+#include <cstdlib>
 
 /// Table for storing swizzling of blocks within a page
 struct alignas(64) GSBlockSwizzleTable

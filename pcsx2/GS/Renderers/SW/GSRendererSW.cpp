@@ -15,6 +15,7 @@
 
 #include "GSRendererSW.h"
 #include "GS/GSGL.h"
+#include "common/emitter/x86_intrin.h"
 
 #define LOG 0
 
