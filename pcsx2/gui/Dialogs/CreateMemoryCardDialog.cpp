@@ -13,12 +13,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "ConfigurationDialog.h"
 #include "System.h"
 #include "gui/MSWstuff.h"
 
 #include "MemoryCardFile.h"
+
+#include "common/MemcpyFast.h"
 //#include <wx/filepicker.h>
 #include <wx/ffile.h>
 

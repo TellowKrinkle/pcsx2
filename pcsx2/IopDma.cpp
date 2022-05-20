@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "R3000A.h"
 #include "Common.h"
 #include "SPU2/spu2.h"

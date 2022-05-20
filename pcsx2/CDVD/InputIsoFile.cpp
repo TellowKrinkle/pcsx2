@@ -14,9 +14,9 @@
  */
 
 
-#include "PrecompiledHeader.h"
 #include "IsoFileFormats.h"
 #include "common/Assertions.h"
+#include "common/Console.h"
 #include "common/Exceptions.h"
 #include "Config.h"
 

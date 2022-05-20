@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "DriveList.h"
 #include "MainFrame.h"
 #include "CDVD/CDVDdiscReader.h"

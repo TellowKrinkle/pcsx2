@@ -13,8 +13,8 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "ExpressionParser.h"
+#include <cstdlib>
 #include <ctype.h>
 #include <string.h>
 #include <stdio.h>

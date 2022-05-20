@@ -16,6 +16,7 @@
 #pragma once
 
 #include "GS/Renderers/Common/GSTexture.h"
+#include <atomic>
 
 class GSTextureSW final : public GSTexture
 {

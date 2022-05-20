@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "gui/AppCoreThread.h"
 #include "System.h"
 #include "MemoryCardFile.h"

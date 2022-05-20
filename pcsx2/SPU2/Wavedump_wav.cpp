@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "Global.h"
 #ifdef __POSIX__
 #include "WavFile.h"

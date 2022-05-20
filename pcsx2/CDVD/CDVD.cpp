@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "R3000A.h"
 #include "Common.h"
 #include "IopHw.h"
@@ -24,6 +23,7 @@
 #include <memory>
 
 #include "common/FileSystem.h"
+#include "common/MemcpyFast.h"
 #include "common/Path.h"
 #include "common/StringUtil.h"
 #include "common/Threading.h"

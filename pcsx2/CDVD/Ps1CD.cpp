@@ -13,14 +13,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "Ps1CD.h"
 #include "R3000A.h"
 #include "Common.h"
-
-#include "Ps1CD.h"
 #include "CDVD.h"
 #include "IopHw.h"
 #include "IopDma.h"
+#include "common/MemcpyFast.h"
 
 //THIS ALL IS FOR THE CDROM REGISTERS HANDLING
 

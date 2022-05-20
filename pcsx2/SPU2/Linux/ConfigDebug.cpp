@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "SPU2/Global.h"
 #include "Dialogs.h"
 #include "Config.h"

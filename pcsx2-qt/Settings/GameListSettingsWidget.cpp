@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include <QtCore/QAbstractTableModel>
 #include <QtCore/QDebug>
 #include <QtCore/QSettings>

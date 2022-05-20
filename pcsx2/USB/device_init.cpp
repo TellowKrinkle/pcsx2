@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "deviceproxy.h"
 #include "usb-eyetoy/usb-eyetoy-webcam.h"
 #include "usb-hid/usb-hid.h"

@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "common/Assertions.h"
 #include "Host.h"
 #include "HostSettings.h"

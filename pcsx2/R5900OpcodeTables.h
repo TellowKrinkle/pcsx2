@@ -15,7 +15,9 @@
 #ifndef _R5900_OPCODETABLES_H
 #define _R5900_OPCODETABLES_H
 
-#include "common/Pcsx2Defs.h"
+#include "PCSX2Base.h"
+
+#include <string>
 
 enum Syscall : u8
 {

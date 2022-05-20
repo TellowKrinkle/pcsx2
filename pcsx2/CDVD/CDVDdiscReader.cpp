@@ -13,11 +13,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "CDVDdiscReader.h"
 #include "CDVD/CDVD.h"
 
+#include <array>
+#include <atomic>
 #include <condition_variable>
+#include <cstring>
 #include <mutex>
 #include <thread>
 

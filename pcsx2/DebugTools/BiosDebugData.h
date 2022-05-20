@@ -14,8 +14,9 @@
  */
 
 #pragma once
-#include "common/Pcsx2Types.h"
+#include "PCSX2Base.h"
 #include "ps2/BiosTools.h"
+#include <vector>
 
 struct EEInternalThread { // internal struct
 	u32 prev;

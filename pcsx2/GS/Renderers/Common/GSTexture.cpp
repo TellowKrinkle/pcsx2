@@ -13,10 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "GSTexture.h"
 #include "GSDevice.h"
 #include "GS/GSPng.h"
+#include "common/Console.h"
 #include <bitset>
 
 GSTexture::GSTexture()

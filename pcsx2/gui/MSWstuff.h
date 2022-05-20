@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include <wx/string.h>
+
 // FIXME: Missing some includes.
 extern void MSW_SetWindowAfter( WXWidget hwnd, WXWidget hwndAfter );
 extern void MSW_OutputDebugString( const wxString& text );

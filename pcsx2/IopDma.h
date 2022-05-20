@@ -13,7 +13,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once 
+#pragma once
+
+#include "PCSX2Base.h"
 
 extern void psxDma2(u32 madr, u32 bcr, u32 chcr);
 extern void psxDma3(u32 madr, u32 bcr, u32 chcr);

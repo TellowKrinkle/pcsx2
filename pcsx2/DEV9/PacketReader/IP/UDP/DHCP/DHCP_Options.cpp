@@ -13,10 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include "DHCP_Options.h"
 #include "DEV9/PacketReader/NetLib.h"
+
+#include "common/Console.h"
 
 namespace PacketReader::IP::UDP::DHCP
 {

@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "R3000A.h"
 #include "IopHw.h"
 #include "IopDma.h"
@@ -28,6 +27,8 @@
 #ifndef DISABLE_RECORDING
 #	include "Recording/InputRecording.h"
 #endif
+
+#include "common/MemcpyFast.h"
 
 _sio sio;
 _mcd mcds[2][4];

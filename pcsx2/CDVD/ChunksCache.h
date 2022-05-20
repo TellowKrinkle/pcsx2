@@ -16,6 +16,7 @@
 #pragma once
 
 #include "zlib_indexed.h"
+#include <list>
 
 #define CLAMP(val, minval, maxval) (std::min(maxval, std::max(minval, val)))
 

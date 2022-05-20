@@ -13,9 +13,9 @@
 *  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "PrecompiledHeader.h"
 #include "common/Assertions.h"
 #include "common/RedtapeWindows.h"
+#include <wx/defs.h>
 
 // VK values without MS constants. see - https://msdn.microsoft.com/en-us/library/windows/desktop/dd375731%28v=vs.85%29.aspx
 #define PX_VK_A 0x41

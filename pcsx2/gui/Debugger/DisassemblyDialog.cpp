@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include "gui/App.h"
 #include "gui/MainFrame.h"
 #include "gui/PathDefs.h"

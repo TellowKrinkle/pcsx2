@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "common/PrecompiledHeader.h"
-
 #include "common/GL/Program.h"
 #include "common/Assertions.h"
 #include "common/Console.h"

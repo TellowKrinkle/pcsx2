@@ -13,18 +13,17 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "Config.h"
+#include "GS.h"
+#include "HostDisplay.h"
+#include "CDVD/CDVDaccess.h"
+#include "MemoryCardFile.h"
 
 #include "common/FileSystem.h"
 #include "common/Path.h"
 #include "common/SettingsInterface.h"
 #include "common/SettingsWrapper.h"
 #include "common/StringUtil.h"
-#include "Config.h"
-#include "GS.h"
-#include "HostDisplay.h"
-#include "CDVD/CDVDaccess.h"
-#include "MemoryCardFile.h"
 
 #ifndef PCSX2_CORE
 #include "gui/AppConfig.h"

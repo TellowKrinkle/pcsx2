@@ -12,20 +12,16 @@
  *  You should have received a copy of the GNU General Public License along with PCSX2.
  *  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#include "PrecompiledHeader.h"
-
-#include <chrono>
-#include <vector>
-
-#include "common/Timer.h"
-#include "common/Threading.h"
-
 #include "PerformanceMetrics.h"
 #include "System.h"
 
 #include "GS.h"
 #include "MTVU.h"
+
+#include "common/Timer.h"
+#include "common/Threading.h"
+#include <chrono>
+#include <vector>
 
 #ifdef PCSX2_CORE
 #include "VMManager.h"

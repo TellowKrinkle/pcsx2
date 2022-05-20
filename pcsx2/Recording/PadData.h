@@ -17,6 +17,9 @@
 
 #ifndef DISABLE_RECORDING
 
+#include "PCSX2Base.h"
+#include <wx/string.h>
+
 class PadData
 {
 public:

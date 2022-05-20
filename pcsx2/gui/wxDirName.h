@@ -17,9 +17,8 @@
 
 #include "common/Pcsx2Defs.h"
 
-#include <wx/filename.h>
-
 #include "ghc/filesystem.h"
+#include <wx/filename.h>
 
 namespace fs = ghc::filesystem;
 

@@ -15,9 +15,10 @@
 
 #pragma once
 
-#include <wx/wx.h>
-#include "common/SafeArray.h"
 #include "gui/wxGuiTools.h"
+#include "common/SafeArray.h"
+#include <wx/wx.h>
+#include <vector>
 
 // --------------------------------------------------------------------------------------
 //  RadioPanelItem

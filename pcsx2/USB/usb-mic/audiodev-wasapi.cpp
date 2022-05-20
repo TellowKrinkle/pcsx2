@@ -15,15 +15,15 @@
 
 // Used OBS as example
 
-#include "PrecompiledHeader.h"
+#include "audiodev-wasapi.h"
+#include "USB/Win32/Config_usb.h"
+#include "USB/Win32/resource_usb.h"
+#include "common/Console.h"
 #include <assert.h>
 #include <propsys.h>
 #include <typeinfo>
 #include <functiondiscoverykeys_devpkey.h>
 #include <process.h>
-#include "audiodev-wasapi.h"
-#include "USB/Win32/Config_usb.h"
-#include "USB/Win32/resource_usb.h"
 
 #define SafeRelease(x) \
 	if (x)             \

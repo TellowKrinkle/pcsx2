@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "SPU2/Config.h"
 #if !defined(_WIN32) // BSD, Macos
 #include "SPU2/Linux/Config.h"

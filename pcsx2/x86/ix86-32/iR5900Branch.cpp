@@ -16,8 +16,6 @@
 
 // recompiler reworked to add dynamic linking zerofrog(@gmail.com) Jan06
 
-#include "PrecompiledHeader.h"
-
 #include "Common.h"
 #include "R5900OpcodeTables.h"
 #include "iR5900.h"

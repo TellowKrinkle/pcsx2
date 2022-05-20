@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "Common.h"
 
 #include "Counters.h"
@@ -24,6 +23,7 @@
 #include "Config.h"
 
 #include "common/FileSystem.h"
+#include "common/MemcpyFast.h"
 #include "common/Path.h"
 
 #include "fmt/core.h"

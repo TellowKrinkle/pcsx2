@@ -98,6 +98,9 @@ Comments) 1950 to 1952 in the files http://tools.ietf.org/html/rfc1950
 #ifndef __ZLIB_INDEXED_H__
 #define __ZLIB_INDEXED_H__
 
+#include "PCSX2Base.h"
+
+#include "common/FileSystem.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -106,8 +109,6 @@ Comments) 1950 to 1952 in the files http://tools.ietf.org/html/rfc1950
 #else
 #include <zlib/zlib.h>
 #endif
-
-#include "common/FileSystem.h"
 
 #define local static
 

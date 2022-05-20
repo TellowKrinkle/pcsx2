@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QMessageBox>
 #include <algorithm>
@@ -26,6 +24,7 @@
 #include "SettingWidgetBinder.h"
 #include "SettingsDialog.h"
 
+#include "common/Console.h"
 #include "common/StringUtil.h"
 #include "pcsx2/PAD/Host/PAD.h"
 

@@ -14,6 +14,13 @@
  */
 
 #pragma once
+#include "Config.h"
+
+#include "PacketReader/IP/IP_Address.h"
+#include "InternalServers/DHCP_Server.h"
+#include "InternalServers/DNS_Logger.h"
+#include "InternalServers/DNS_Server.h"
+
 #include <stdlib.h>
 #include <string>
 
@@ -30,13 +37,6 @@
 #include <sys/types.h>
 #include <ifaddrs.h>
 #endif
-
-#include "Config.h"
-
-#include "PacketReader/IP/IP_Address.h"
-#include "InternalServers/DHCP_Server.h"
-#include "InternalServers/DNS_Logger.h"
-#include "InternalServers/DNS_Server.h"
 
 struct ConfigDEV9;
 

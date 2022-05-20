@@ -13,11 +13,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "../qemu-usb/vl.h"
 #include "../shared/inifile_usb.h"
 #include "usb-printer.h"
 #include "gui/AppConfig.h"
+#include "common/Console.h"
 
 #ifndef O_BINARY
 	#define O_BINARY 0

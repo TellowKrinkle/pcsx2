@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include <jpgd/jpge.h>
 #include "videodev.h"
 #include "cam-windows.h"
@@ -23,6 +21,7 @@
 
 #include "USB/Win32/Config_usb.h"
 #include "USB/Win32/resource_usb.h"
+#include "common/Console.h"
 
 namespace usb_eyetoy
 {

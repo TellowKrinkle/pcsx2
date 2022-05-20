@@ -16,14 +16,15 @@
 #ifndef __CDVD_DISC_READER_H__
 #define __CDVD_DISC_READER_H__
 
+#include "PCSX2Base.h"
 
 #if defined(_WIN32)
-#define NOMINMAX
 #include <windows.h>
 #endif
 
+#include <memory>
 #include <mutex>
-#include <array>
+#include <vector>
 
 struct track
 {

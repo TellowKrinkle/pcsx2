@@ -13,14 +13,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "GSLzma.h"
+#include "GSDump.h"
 
 #include "common/AlignedMalloc.h"
+#include "common/Console.h"
 #include "common/FileSystem.h"
 #include "common/StringUtil.h"
-
-#include "GSDump.h"
-#include "GSLzma.h"
 
 using namespace GSDumpTypes;
 

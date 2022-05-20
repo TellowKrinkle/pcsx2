@@ -16,6 +16,7 @@
 #ifndef __R3000A_H__
 #define __R3000A_H__
 
+#include "PCSX2Base.h"
 #include <stdio.h>
 
 union GPRRegs {

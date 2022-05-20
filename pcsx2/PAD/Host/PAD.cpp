@@ -1,4 +1,4 @@
-﻿/*  PCSX2 - PS2 Emulator for PCs
+/*  PCSX2 - PS2 Emulator for PCs
  *  Copyright (C) 2002-2021  PCSX2 Dev Team
  *
  *  PCSX2 is free software: you can redistribute it and/or modify it under the terms
@@ -13,18 +13,17 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
-#include "common/StringUtil.h"
-#include "common/SettingsInterface.h"
+#include "PAD/Host/PAD.h"
+#include "PAD/Host/Global.h"
+#include "PAD/Host/KeyStatus.h"
+#include "PAD/Host/StateManagement.h"
 
 #include "Frontend/InputManager.h"
 #include "HostSettings.h"
 
-#include "PAD/Host/Global.h"
-#include "PAD/Host/PAD.h"
-#include "PAD/Host/KeyStatus.h"
-#include "PAD/Host/StateManagement.h"
+#include "common/Console.h"
+#include "common/StringUtil.h"
+#include "common/SettingsInterface.h"
 
 const u32 revision = 3;
 const u32 build = 0; // increase that with each version

@@ -13,9 +13,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "UDP_FixedPort.h"
+#include "DEV9/PacketReader/IP/UDP/UDP_Packet.h"
 
 #include "common/Assertions.h"
+#include "common/Console.h"
 
 #ifdef __POSIX__
 #define SOCKET_ERROR -1
@@ -30,9 +32,6 @@
 #else
 #include <unistd.h>
 #endif
-
-#include "UDP_FixedPort.h"
-#include "DEV9/PacketReader/IP/UDP/UDP_Packet.h"
 
 using namespace PacketReader;
 using namespace PacketReader::IP;

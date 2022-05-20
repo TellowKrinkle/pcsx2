@@ -21,7 +21,12 @@
 // not supported, and typically all logs are written to disk (ASCII), thus making the
 // ASCII versions the more efficient option.
 
-#include "PrecompiledHeader.h"
+#include "R3000A.h"
+#include "iR5900.h"
+#include "System.h"
+#include "DebugTools/Debug.h"
+
+#include "fmt/core.h"
 
 #ifndef _WIN32
 #include <sys/time.h>
@@ -29,13 +34,6 @@
 
 #include <cstdarg>
 #include <ctype.h>
-
-#include "R3000A.h"
-#include "iR5900.h"
-#include "System.h"
-#include "DebugTools/Debug.h"
-
-#include "fmt/core.h"
 
 using namespace R5900;
 

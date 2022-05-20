@@ -22,6 +22,7 @@
 #include <condition_variable>
 #include <functional>
 #include <mutex>
+#include <thread>
 
 template <class T, int CAPACITY>
 class GSJobQueue final

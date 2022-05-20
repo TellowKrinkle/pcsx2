@@ -14,14 +14,15 @@
  */
 
 
-#include "PrecompiledHeader.h"
 #include "common/Assertions.h"
 #include "common/Exceptions.h"
 
 #include "IsoFS.h"
 #include "IsoFile.h"
 
+#include <climits>
 #include <cstdio>
+#include <cstring>
 
 IsoFile::IsoFile(SectorSource& reader, const std::string_view& filename)
 	: internalReader(reader)

@@ -14,14 +14,15 @@
  */
 
 
-#include "PrecompiledHeader.h"
 #include "IsoFileFormats.h"
+#include "common/Console.h"
 #include "common/Exceptions.h"
 #include "common/FileSystem.h"
 #include "common/StringUtil.h"
 
 #include "fmt/core.h"
 
+#include <algorithm>
 #include <errno.h>
 
 OutputIsoFile::OutputIsoFile()

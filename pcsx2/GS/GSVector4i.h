@@ -14,6 +14,7 @@
  */
 
 #include "common/Assertions.h"
+#include <cstring>
 
 class alignas(16) GSVector4i
 {

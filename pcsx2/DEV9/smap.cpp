@@ -13,7 +13,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "smap.h"
+#include "net.h"
+#include "pcap_io.h"
 
 #ifdef _WIN32
 #include "common/RedtapeWindows.h"
@@ -25,10 +27,6 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include <mutex>
-
-#include "smap.h"
-#include "net.h"
-#include "pcap_io.h"
 
 bool has_link = true;
 volatile bool fireIntR = false;

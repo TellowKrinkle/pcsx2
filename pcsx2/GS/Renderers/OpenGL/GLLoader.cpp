@@ -13,11 +13,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "GLLoader.h"
 #include "GS/GS.h"
-#include <unordered_set>
 #include "Host.h"
+#include "common/Console.h"
+#include <unordered_set>
 
 namespace GLExtension
 {

@@ -12,6 +12,11 @@
  */
 
 #include "USB/platcompat.h"
+#if defined(_WIN32) && !defined(HAVE_SSIZE_T)
+#include <type_traits>
+typedef std::make_signed<size_t>::type ssize_t;
+#define HAVE_SSIZE_T
+#endif
 
 #ifndef IOV_H
 #define IOV_H

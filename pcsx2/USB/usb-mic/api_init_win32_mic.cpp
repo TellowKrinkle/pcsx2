@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "audiodeviceproxy.h"
 #include "audiodev-noop.h"
 #include "audiodev-wasapi.h"

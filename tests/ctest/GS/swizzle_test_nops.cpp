@@ -15,7 +15,6 @@
 
 // This file defines functions that are linked to by files used in swizzle tests but not actually used in swizzle tests, in order to make linkers happy
 
-#include "PrecompiledHeader.h"
 #include "GSBlock.h"
 #include "GSClut.h"
 #include "GSLocalMemory.h"

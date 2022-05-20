@@ -13,14 +13,14 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "FW.h"
 #include "IopDma.h"
 #include "R3000A.h"
+#include "common/Console.h"
+#include <cstring>
 #include <stdlib.h>
 #include <string>
 using namespace std;
-
-#include "FW.h"
 
 u8 phyregs[16];
 s8* fwregs;

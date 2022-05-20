@@ -13,9 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "newVif_UnpackSSE.h"
 #include "fmt/core.h"
+
+#include <cinttypes>
 
 #define xMOV8(regX, loc)   xMOVSSZX(regX, loc)
 #define xMOV16(regX, loc)  xMOVSSZX(regX, loc)

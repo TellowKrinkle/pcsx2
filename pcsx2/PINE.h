@@ -28,14 +28,16 @@
 #define PINE_EMULATOR_NAME "pcsx2"
 
 #include "gui/PersistentThread.h"
-#include "gui/SysThreads.h"
 #include <string>
 #ifdef _WIN32
 #include <WinSock2.h>
 #include <windows.h>
+#undef Yield
 #endif
 
 using namespace Threading;
+
+class SysCoreThread;
 
 class PINEServer : public pxThread
 {

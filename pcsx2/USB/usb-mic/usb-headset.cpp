@@ -24,10 +24,10 @@
 
 // Most stuff is based on Qemu 1.7 USB soundcard passthrough code.
 
-#include "PrecompiledHeader.h"
 #include "USB/qemu-usb/vl.h"
 #include "USB/qemu-usb/desc.h"
 #include "USB/shared/inifile_usb.h"
+#include "common/Console.h"
 #include <assert.h>
 
 #include "audio.h"

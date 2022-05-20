@@ -14,15 +14,19 @@
  */
 
 #pragma once
+#include "DEV9/SimpleQueue.h"
+#include "DEV9/ThreadSafeMap.h"
+#include "DEV9/Sessions/BaseSession.h"
+#include "DEV9/PacketReader/IP/ICMP/ICMP_Packet.h"
+
 #include <atomic>
 #include <chrono>
 #include <mutex>
 #include <vector>
 
-#include "DEV9/SimpleQueue.h"
-#include "DEV9/ThreadSafeMap.h"
-#include "DEV9/Sessions/BaseSession.h"
-#include "DEV9/PacketReader/IP/ICMP/ICMP_Packet.h"
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 namespace Sessions
 {

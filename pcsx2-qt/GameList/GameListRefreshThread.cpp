@@ -13,14 +13,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include "common/ProgressCallback.h"
 #include "common/Timer.h"
 #include "pcsx2/Frontend/GameList.h"
 
 #include "GameListRefreshThread.h"
 
+#include <QtCore/QDebug>
 #include <QtWidgets/QMessageBox>
 
 // Limit UI update times to 4 per second, so we don't spend longer redrawing the UI than scanning

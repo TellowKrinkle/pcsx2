@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "rawinput.h"
 #include "USB/Win32/Config_usb.h"
 #include "USB/qemu-usb/input-keymap.h"

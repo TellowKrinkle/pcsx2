@@ -21,6 +21,7 @@
 #define GL_BUFFER_0    (0)
 
 #include "glad.h"
+#include <string>
 
 namespace GLExtension
 {

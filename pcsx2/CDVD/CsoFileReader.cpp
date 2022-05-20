@@ -13,10 +13,9 @@
 *  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "PrecompiledHeader.h"
 #include "AsyncFileReader.h"
 #include "CsoFileReader.h"
-#include "common/Pcsx2Types.h"
+#include "common/Console.h"
 #include "common/FileSystem.h"
 #include "common/StringUtil.h"
 #ifdef __POSIX__

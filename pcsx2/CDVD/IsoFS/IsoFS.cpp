@@ -13,13 +13,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-#include "PrecompiledHeader.h"
-
 #include "IsoFS.h"
 #include "IsoFile.h"
 
 #include "common/Assertions.h"
+#include "common/Console.h"
 #include "common/Exceptions.h"
 #include "common/FileSystem.h"
 #include "common/Path.h"

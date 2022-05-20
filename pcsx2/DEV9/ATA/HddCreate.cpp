@@ -13,11 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
+#include "HddCreate.h"
+#include "common/Console.h"
 #include <fstream>
 #include <fmt/format.h>
-#include "HddCreate.h"
 
 void HddCreate::Start()
 {

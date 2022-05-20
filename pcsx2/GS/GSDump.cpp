@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "GSDump.h"
 #include "GSExtra.h"
 #include "GSState.h"

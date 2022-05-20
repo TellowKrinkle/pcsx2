@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-#include "PrecompiledHeader.h"
 #include "Common.h"
 
 #include <float.h>
@@ -25,6 +23,8 @@
 #include "GS.h"
 #include "CDVD/CDVD.h"
 #include "ps2/BiosTools.h"
+
+#include "common/MemcpyFast.h"
 
 GS_VideoMode gsVideoMode = GS_VideoMode::Uninitialized;
 bool gsIsInterlaced = false;

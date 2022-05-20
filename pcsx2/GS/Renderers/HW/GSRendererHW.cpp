@@ -13,11 +13,12 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "GSRendererHW.h"
 #include "GSTextureReplacements.h"
 #include "GS/GSGL.h"
 #include "Host.h"
+#include "common/Console.h"
+#include <cmath>
 
 GSRendererHW::GSRendererHW()
 	: GSRenderer()

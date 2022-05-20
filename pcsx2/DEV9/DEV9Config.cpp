@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include "common/StringUtil.h"
 #include "ghc/filesystem.h"
 #include <wx/fileconf.h>

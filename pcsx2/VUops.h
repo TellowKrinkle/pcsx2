@@ -38,6 +38,8 @@ struct _VURegsNum {
 	int cycles;
 };
 
+typedef void FnType_Void();
+typedef FnType_Void* Fnptr_Void;
 typedef void FnType_VuRegsN(_VURegsNum *VUregsn);
 typedef FnType_VuRegsN* Fnptr_VuRegsN;
 

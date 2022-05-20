@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include <QtCore/QDateTime>
 #include <QtGui/QCloseEvent>
 #include <QtWidgets/QFileDialog>
@@ -24,6 +22,7 @@
 #include <QtWidgets/QStyleFactory>
 
 #include "common/Assertions.h"
+#include "common/Console.h"
 #include "common/FileSystem.h"
 
 #include "pcsx2/CDVD/CDVDaccess.h"

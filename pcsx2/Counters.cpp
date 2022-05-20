@@ -13,12 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-#include "PrecompiledHeader.h"
-
-#include <time.h>
-#include <cmath>
-
 #include "Common.h"
 #include "R3000A.h"
 #include "Counters.h"
@@ -31,6 +25,10 @@
 
 #include "ps2/HwInternal.h"
 #include "Sio.h"
+
+#include "common/MemcpyFast.h"
+#include <time.h>
+#include <cmath>
 
 #ifndef PCSX2_CORE
 #include "gui/App.h"

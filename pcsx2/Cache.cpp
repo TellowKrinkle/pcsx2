@@ -14,10 +14,11 @@
  */
 
 
-#include "PrecompiledHeader.h"
 #include "Common.h"
 #include "Cache.h"
 #include "vtlb.h"
+
+#include "common/MemcpyFast.h"
 
 using namespace R5900;
 using namespace vtlb_private;

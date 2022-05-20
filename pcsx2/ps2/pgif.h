@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include "PCSX2Base.h"
+#include "MemoryTypes.h"
+
 //HW Registers
 union tPGIF_CTRL
 {

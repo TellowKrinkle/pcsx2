@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "gui/CheckedStaticBox.h"
 
 CheckedStaticBox::CheckedStaticBox(wxWindow* parent, int orientation, const wxString& title)

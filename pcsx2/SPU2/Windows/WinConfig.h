@@ -24,6 +24,7 @@
 #include <initguid.h>
 #include <tchar.h>
 #include <VersionHelpers.h>
+#include <wx/string.h>
 
 #include "resource.h"
 

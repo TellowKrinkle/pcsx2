@@ -13,16 +13,14 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
-#include "common/StringUtil.h"
-
-#include <cmath>
-
 #include "SPU2/Global.h"
 #include "SPU2/Host/Config.h"
 #include "SPU2/Host/Dialogs.h"
 #include "HostSettings.h"
+
+#include "common/Console.h"
+#include "common/StringUtil.h"
+#include <cmath>
 
 int AutoDMAPlayRate[2] = {0, 0};
 

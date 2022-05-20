@@ -18,8 +18,6 @@
 
 /*  This code was based on the FPSE v0.08 Mdec decoder*/
 
-#include "PrecompiledHeader.h"
-
 #include <stdio.h>
 #include <string.h>
 #include "Common.h"

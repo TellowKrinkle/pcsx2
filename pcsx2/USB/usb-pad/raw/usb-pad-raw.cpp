@@ -13,10 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "USB/USB.h"
 #include "USB/Win32/Config_usb.h"
 #include "usb-pad-raw.h"
+#include "common/Console.h"
 
 namespace usb_pad
 {

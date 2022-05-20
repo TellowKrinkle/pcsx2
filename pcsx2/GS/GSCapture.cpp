@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "GSCapture.h"
 #include "GSPng.h"
 #include "GSUtil.h"

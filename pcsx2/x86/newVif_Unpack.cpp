@@ -17,11 +17,12 @@
 // authors: cottonvibes(@gmail.com)
 //			Jake.Stine (@gmail.com)
 
-#include "PrecompiledHeader.h"
 #include "Common.h"
 #include "Vif_Dma.h"
 #include "newVif.h"
 #include "MTVU.h"
+
+#include "common/MemcpyFast.h"
 
 alignas(16) nVifStruct nVif[2];
 

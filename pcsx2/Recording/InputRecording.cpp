@@ -13,29 +13,28 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
-#include "common/StringUtil.h"
-#include "SaveState.h"
-#include "Counters.h"
-#include "SaveState.h"
-
 #ifndef DISABLE_RECORDING
+
+#include "InputRecording.h"
+#include "InputRecordingControls.h"
+#include "Utilities/InputRecordingLogger.h"
 
 #include "gui/App.h"
 #include "gui/AppSaveStates.h"
 #include "DebugTools/Debug.h"
 #include "GameDatabase.h"
 
-#include "InputRecording.h"
-#include "InputRecordingControls.h"
-#include "Utilities/InputRecordingLogger.h"
-
 #include "gui/AppSaveStates.h"
 
 #include <fmt/format.h>
 
 #endif
+
+#include "SaveState.h"
+#include "Counters.h"
+#include "SaveState.h"
+
+#include "common/StringUtil.h"
 
 void SaveStateBase::InputRecordingFreeze()
 {

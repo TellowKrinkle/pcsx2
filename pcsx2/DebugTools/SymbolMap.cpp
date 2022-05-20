@@ -13,11 +13,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "common/FileSystem.h"
 
 #include "SymbolMap.h"
 #include <algorithm>
+#include <cstring>
 
 SymbolMap R5900SymbolMap;
 SymbolMap R3000SymbolMap;

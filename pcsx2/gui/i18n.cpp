@@ -13,11 +13,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "i18n.h"
 #include "AppConfig.h"
 #include "StringHelpers.h"
 #include "wxGuiTools.h"
+#include "common/Console.h"
 #include "common/SafeArray.h"
 #include <memory>
 

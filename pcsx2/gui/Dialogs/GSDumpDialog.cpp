@@ -13,13 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "gui/Dialogs/ModalPopups.h"
 #include "gui/App.h"
 #include "gui/AppCommon.h"
 #include "gui/MSWstuff.h"
-
-#include "gui/Dialogs/ModalPopups.h"
-
 
 #include "gui/EmbeddedImage.h"
 #include "common/FileSystem.h"

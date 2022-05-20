@@ -13,9 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "BiosDebugData.h"
 #include "Memory.h"
+
+#include <vector>
 
 std::vector<EEThread> getEEThreads()
 {

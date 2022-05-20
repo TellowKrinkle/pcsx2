@@ -14,7 +14,6 @@
  */
 
 
-#include "PrecompiledHeader.h"
 #include "R3000A.h"
 #include "Common.h"
 
@@ -29,6 +28,8 @@
 #include "IopDma.h"
 #include "CDVD/Ps1CD.h"
 #include "CDVD/CDVD.h"
+
+#include "common/MemcpyFast.h"
 
 using namespace R3000A;
 

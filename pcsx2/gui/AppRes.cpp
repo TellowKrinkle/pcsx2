@@ -13,14 +13,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "MainFrame.h"
-
-#include <wx/zipstrm.h>
-#include <wx/wfstream.h>
-#include <wx/imaglist.h>
-#include <memory>
-
 #include "MSWstuff.h"
 
 #include "gui/EmbeddedImage.h"
@@ -37,6 +30,11 @@
 #include "gui/Resources/AppIcon16.h"
 #include "gui/Resources/AppIcon32.h"
 #include "gui/Resources/AppIcon64.h"
+
+#include <wx/zipstrm.h>
+#include <wx/wfstream.h>
+#include <wx/imaglist.h>
+#include <memory>
 
 RecentIsoList::RecentIsoList(int firstIdForMenuItems_or_wxID_ANY)
 {

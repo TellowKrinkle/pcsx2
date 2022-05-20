@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include "PCSX2Base.h"
+
 namespace PacketReader::NetLib
 {
 	void WriteByte08(u8* data, int* index, u8 value);

@@ -15,7 +15,6 @@
 
 // TODO: JIT Draw* (flags: depth, texture, color (+iip), scissor)
 
-#include "PrecompiledHeader.h"
 #include "GSRasterizer.h"
 #include "GS/GSExtra.h"
 #include "PerformanceMetrics.h"

@@ -13,13 +13,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #ifndef DISABLE_RECORDING
 
-#include "DebugTools/Debug.h"
-
 #include "Recording/PadData.h"
+
+#include "DebugTools/Debug.h"
 
 void PadData::UpdateControllerData(u16 bufIndex, u8 const& bufVal)
 {

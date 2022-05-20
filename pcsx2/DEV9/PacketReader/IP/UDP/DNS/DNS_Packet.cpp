@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include "DNS_Packet.h"
 #include "DEV9/PacketReader/NetLib.h"
 

@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "CtrlRegisterList.h"
 #include "DebugTools/Debug.h"
 #include "common/BitCast.h"

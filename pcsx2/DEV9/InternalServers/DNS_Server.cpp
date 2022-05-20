@@ -13,12 +13,17 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "DNS_Server.h"
+#include "DEV9/PacketReader/IP/UDP/UDP_Packet.h"
+#include "DEV9/PacketReader/IP/UDP/DNS/DNS_Packet.h"
+
+#include "DEV9/DEV9.h"
 
 #include <chrono>
 #include <thread>
 
 #ifdef _WIN32
+#include <windows.h>
 #include <ws2tcpip.h>
 #elif defined(__POSIX__)
 //Note that getaddrinfo_a() exists which allows asynchronous operation
@@ -32,12 +37,6 @@
 #if defined(__FreeBSD__)
 #include <netinet/in.h>
 #endif
-
-#include "DNS_Server.h"
-#include "DEV9/PacketReader/IP/UDP/UDP_Packet.h"
-#include "DEV9/PacketReader/IP/UDP/DNS/DNS_Packet.h"
-
-#include "DEV9/DEV9.h"
 
 using namespace PacketReader;
 using namespace PacketReader::IP;

@@ -13,16 +13,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-#include "PrecompiledHeader.h"
 #include "SaveState.h"
-
-#include "common/FileSystem.h"
-#include "common/Path.h"
-#include "common/SafeArray.inl"
-#include "common/ScopedGuard.h"
-#include "common/StringUtil.h"
-#include "common/ZipHelpers.h"
 
 #include "ps2/BiosTools.h"
 #include "COP0.h"
@@ -42,6 +33,13 @@
 #include "SPU2/spu2.h"
 #include "USB/USB.h"
 #include "PAD/Gamepad.h"
+
+#include "common/FileSystem.h"
+#include "common/MemcpyFast.h"
+#include "common/SafeArray.inl"
+#include "common/ScopedGuard.h"
+#include "common/StringUtil.h"
+#include "common/ZipHelpers.h"
 
 #ifndef PCSX2_CORE
 #include "gui/App.h"

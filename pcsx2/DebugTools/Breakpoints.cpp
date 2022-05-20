@@ -13,11 +13,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "Breakpoints.h"
 #include "SymbolMap.h"
 #include "MIPSAnalyst.h"
-#include <cstdio>
 #include "R5900.h"
 #include "System.h"
 

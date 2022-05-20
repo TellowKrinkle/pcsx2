@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include "PCSX2Base.h"
+
 #include <memory>
 #include <string>
 #include <vector>

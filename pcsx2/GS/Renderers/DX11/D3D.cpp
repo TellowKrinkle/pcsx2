@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "GS/Renderers/DX11/D3D.h"
 #include "GS/GSExtra.h"
 

@@ -13,7 +13,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "pcap_io.h"
+#include "DEV9.h"
+#include "net.h"
 
 #include "common/Assertions.h"
 #include <memory>
@@ -35,9 +37,7 @@
 
 #include <stdio.h>
 #include <stdarg.h>
-#include "pcap_io.h"
-#include "DEV9.h"
-#include "net.h"
+
 #ifndef PCAP_NETMASK_UNKNOWN
 #define PCAP_NETMASK_UNKNOWN 0xffffffff
 #endif

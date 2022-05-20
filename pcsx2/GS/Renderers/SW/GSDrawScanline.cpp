@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "GSDrawScanline.h"
 #include "GSTextureCacheSW.h"
 

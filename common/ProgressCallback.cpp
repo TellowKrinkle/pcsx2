@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include "Assertions.h"
 #include "ProgressCallback.h"
 #include "StringUtil.h"

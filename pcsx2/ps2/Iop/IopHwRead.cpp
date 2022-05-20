@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-#include "PrecompiledHeader.h"
 #include "IopHw_Internal.h"
 #include "Sif.h"
 #include "Sio.h"

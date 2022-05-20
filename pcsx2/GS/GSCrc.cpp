@@ -13,10 +13,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "GSCrc.h"
 #include "GSExtra.h"
 #include "GS.h"
+
+#include <algorithm>
 
 const CRC::Game CRC::m_games[] =
 {

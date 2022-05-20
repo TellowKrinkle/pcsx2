@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "common/PrecompiledHeader.h"
-
 #define VMA_IMPLEMENTATION 1
 
 #include "common/Vulkan/Loader.h"

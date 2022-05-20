@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "System.h"
 #include "gui/App.h"
 #include "gui/MSWstuff.h"

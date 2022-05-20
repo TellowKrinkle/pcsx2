@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #if !defined(_WIN32_WINNT)
 #define _WIN32_WINNT 0x0502
 #endif
@@ -30,6 +28,7 @@
 #include "usb-pad-raw.h"
 #include "raw-config-res.h"
 #include <strsafe.h>
+#include "common/Console.h"
 
 extern HINSTANCE hInst;
 #define MSG_PRESS_ESC(wnd) SendDlgItemMessageW(wnd, IDC_STATIC_CAP, WM_SETTEXT, 0, (LPARAM)L"Capturing, press ESC to cancel")

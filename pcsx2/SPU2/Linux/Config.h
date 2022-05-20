@@ -16,6 +16,7 @@
 #ifndef CONFIG_H_INCLUDED
 #define CONFIG_H_INCLUDED
 
+#include "PCSX2Base.h"
 #include <string>
 #include <wx/fileconf.h>
 

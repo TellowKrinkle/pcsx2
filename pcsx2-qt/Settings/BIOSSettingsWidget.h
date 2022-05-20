@@ -17,6 +17,7 @@
 #include <QtCore/QDir>
 #include <QtCore/QString>
 #include <QtCore/QPair>
+#include <QtCore/QThread>
 #include <QtCore/QVector>
 #include <QtWidgets/QWidget>
 #include <string>

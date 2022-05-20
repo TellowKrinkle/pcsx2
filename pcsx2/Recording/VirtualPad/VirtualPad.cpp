@@ -13,18 +13,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #ifndef DISABLE_RECORDING
-
-#include <math.h>
-
-#include "gui/App.h"
-#include "gui/MSWstuff.h"
-#include "gui/EmbeddedImage.h"
-#include "wx/dcbuffer.h"
-#include "wx/display.h"
-#include "wx/spinctrl.h"
 
 #include "Recording/VirtualPad/VirtualPad.h"
 #include "Recording/VirtualPad/VirtualPadResources.h"
@@ -49,6 +38,13 @@
 #include "Recording/VirtualPad/img/trianglePressed.h"
 #include "Recording/VirtualPad/img/upPressed.h"
 
+#include "gui/App.h"
+#include "gui/MSWstuff.h"
+#include "gui/EmbeddedImage.h"
+#include <wx/dcbuffer.h>
+#include <wx/display.h>
+#include <wx/spinctrl.h>
+#include <math.h>
 
 VirtualPad::VirtualPad(wxWindow* parent, int controllerPort, AppConfig::InputRecordingOptions& options)
 	: wxFrame(parent, wxID_ANY, wxEmptyString)

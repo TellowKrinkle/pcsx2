@@ -7,13 +7,13 @@
  * This code is licenced under the LGPL.
  */
 
-#include "PrecompiledHeader.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "USB/qemu-usb/vl.h"
 #include "USB/qemu-usb/desc.h"
 #include "usb-msd.h"
+#include "common/Console.h"
 
 #define le32_to_cpu(x) (x)
 #define cpu_to_le32(x) (x)

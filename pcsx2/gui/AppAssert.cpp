@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "App.h"
 #include "common/Threading.h"
 #include "StringHelpers.h"

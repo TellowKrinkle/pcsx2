@@ -19,7 +19,7 @@
 #include <cerrno>
 #include <cassert>
 
-#include "PrecompiledHeader.h"
+#include "common/Console.h"
 #include "common/WindowInfo.h"
 #include "USB.h"
 #include "qemu-usb/USBinternal.h"

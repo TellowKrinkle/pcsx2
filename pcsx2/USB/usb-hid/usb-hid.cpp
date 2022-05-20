@@ -23,12 +23,12 @@
  * THE SOFTWARE.
  */
 
-#include "PrecompiledHeader.h"
 #include "USB/deviceproxy.h"
 #include "hidproxy.h"
 #include "USB/qemu-usb/desc.h"
 #include "usb-hid.h"
 #include "USB/shared/inifile_usb.h"
+#include "common/Console.h"
 
 #define CONTAINER_OF(p, type, field) ((type*)((char*)p - ((ptrdiff_t) & ((type*)0)->field)))
 

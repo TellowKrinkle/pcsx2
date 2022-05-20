@@ -13,7 +13,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "PersistentThread.h"
+#include "common/EventSource.inl"
+#include "common/General.h"
 
 #ifdef __linux__
 #include <signal.h> // for pthread_kill, which is in pthread.h on w32-pthreads
@@ -28,9 +30,6 @@
 #include <mach/thread_act.h>
 #endif
 
-#include "PersistentThread.h"
-#include "common/EventSource.inl"
-#include "common/General.h"
 #include <wx/app.h>
 
 using namespace Threading;

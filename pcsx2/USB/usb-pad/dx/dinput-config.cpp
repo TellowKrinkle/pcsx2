@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #pragma warning(push)
 // floats to int
 #pragma warning(disable : 4244)

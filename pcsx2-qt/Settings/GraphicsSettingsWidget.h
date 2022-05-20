@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include "common/PCSX2Defs.h"
 #include <QtWidgets/QWidget>
 
 #include "ui_GraphicsSettingsWidget.h"

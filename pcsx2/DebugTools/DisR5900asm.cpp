@@ -13,17 +13,14 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-#include "PrecompiledHeader.h"
-
-#ifdef __linux__
-#include <cstdarg>
-#endif
-
 #include "Debug.h"
 #include "R5900.h"
 #include "DisASM.h"
 #include "R5900OpcodeTables.h"
+
+#ifdef __linux__
+#include <cstdarg>
+#endif
 
 // Allow to print register content when you print dissassembler info
 // Note only a subset of the opcodes are supported. It is intended as a cheap debugger

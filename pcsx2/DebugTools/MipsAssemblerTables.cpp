@@ -13,8 +13,8 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "MipsAssemblerTables.h"
+#include <cstdlib>
 
 /* Placeholders for encoding
 

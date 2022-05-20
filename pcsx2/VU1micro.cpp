@@ -17,7 +17,6 @@
 // This module contains code shared by both the dynarec and interpreter versions
 // of the VU0 micro.
 
-#include "PrecompiledHeader.h"
 #include "Common.h"
 #include <cmath>
 #include "VUmicro.h"

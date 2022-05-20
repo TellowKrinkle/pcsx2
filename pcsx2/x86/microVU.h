@@ -17,12 +17,6 @@
 //#define mVUlogProg // Dumps MicroPrograms to \logs\*.html
 //#define mVUprofileProg // Shows opcode statistics in console
 
-class AsciiFile;
-using namespace x86Emitter;
-
-#include <deque>
-#include <algorithm>
-#include <memory>
 #include "Common.h"
 #include "VU.h"
 #include "MTVU.h"
@@ -31,11 +25,17 @@ using namespace x86Emitter;
 #include "iR5900.h"
 #include "R5900OpcodeTables.h"
 #include "System/RecTypes.h"
-#include "common/emitter/x86emitter.h"
 #include "microVU_Misc.h"
 #include "microVU_IR.h"
 #include "microVU_Profiler.h"
+#include "common/emitter/x86emitter.h"
 #include "common/Perf.h"
+#include <deque>
+#include <algorithm>
+#include <memory>
+
+class AsciiFile;
+using namespace x86Emitter;
 
 struct microBlockLink
 {

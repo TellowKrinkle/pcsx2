@@ -13,10 +13,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "Global.h"
 #include "common/Assertions.h"
-
+#include <cstring>
 
 StereoOut32 StereoOut32::Empty(0, 0);
 

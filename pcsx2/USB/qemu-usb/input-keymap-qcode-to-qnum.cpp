@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "input-keymap.h"
 
 //TODO how much does std::map kill perf if any?

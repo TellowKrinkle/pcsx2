@@ -13,11 +13,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-#include "PrecompiledHeader.h"
 #include "Common.h"
 #include "VUmicro.h"
 #include "MTVU.h"
+
+#include "common/MemcpyFast.h"
 
 alignas(16) VURegs vuRegs[2];
 

@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include <QtWidgets/QApplication>
 #include <cstdlib>
 #include <csignal>
@@ -26,6 +24,7 @@
 #include "CDVD/CDVD.h"
 #include "Frontend/GameList.h"
 
+#include "common/Console.h"
 #include "common/CrashHandler.h"
 
 static void PrintCommandLineVersion()

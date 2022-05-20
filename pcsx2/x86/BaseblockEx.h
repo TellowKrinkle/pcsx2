@@ -15,8 +15,10 @@
 
 #pragma once
 
-#include <map> // used by BaseBlockEx
+#include "PCSX2Base.h"
 #include "common/Assertions.h"
+#include <map> // used by BaseBlockEx
+#include <cstring>
 
 // Every potential jump point in the PS2's addressable memory has a BASEBLOCK
 // associated with it. So that means a BASEBLOCK for every 4 bytes of PS2

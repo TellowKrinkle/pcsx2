@@ -20,8 +20,6 @@
 //   unless it can make them nicely compact.  Calling the C versions will
 //   suffice.
 
-#include "PrecompiledHeader.h"
-
 #include "Common.h"
 #include "R5900OpcodeTables.h"
 #include "iR5900.h"

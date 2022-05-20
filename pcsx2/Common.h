@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include "common/Pcsx2Defs.h"
+#include "PCSX2Base.h"
 
 static const u32 BIAS = 2;				// Bus is half of the actual ps2 speed
 static const u32 PS2CLK = 294912000;	//hz	/* 294.912 mhz */

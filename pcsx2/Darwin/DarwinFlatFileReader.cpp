@@ -13,9 +13,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "AsyncFileReader.h"
+#include "common/Console.h"
 #include "common/FileSystem.h"
+#include <fcntl.h>
+#include <unistd.h>
 
 // The aio module has been reported to cause issues with FreeBSD 10.3, so let's
 // disable it for 10.3 and earlier and hope FreeBSD 11 and onwards is fine.

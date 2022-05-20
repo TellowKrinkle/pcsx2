@@ -13,18 +13,16 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #ifndef DISABLE_RECORDING
+
+#include "InputRecordingControls.h"
+#include "InputRecording.h"
+#include "Utilities/InputRecordingLogger.h"
 
 #include "Counters.h"
 #include "DebugTools/Debug.h"
 #include "MemoryTypes.h"
 #include "gui/MainFrame.h"
-
-#include "InputRecording.h"
-#include "InputRecordingControls.h"
-#include "Utilities/InputRecordingLogger.h"
 
 InputRecordingControls g_InputRecordingControls;
 

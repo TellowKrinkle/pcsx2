@@ -13,27 +13,23 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
-#include <chrono>
-#include <cmath>
-#include <deque>
-#include <mutex>
-
-#include "fmt/core.h"
-
-#include "common/StringUtil.h"
-#include "imgui.h"
-
+#include "ImGuiManager.h"
 #include "Config.h"
 #include "Counters.h"
-#include "Frontend/ImGuiManager.h"
 #include "GS.h"
 #include "GS/GS.h"
 #include "Host.h"
 #include "HostDisplay.h"
 #include "IconsFontAwesome5.h"
 #include "PerformanceMetrics.h"
+
+#include "common/StringUtil.h"
+#include "fmt/core.h"
+#include "imgui.h"
+#include <chrono>
+#include <cmath>
+#include <deque>
+#include <mutex>
 
 #ifdef PCSX2_CORE
 #include "VMManager.h"

@@ -19,8 +19,6 @@
 // This module contains (most!) stuff which is directly related to SPU2 emulation.
 // Contents should be cross-platform compatible whenever possible.
 
-
-#include "PrecompiledHeader.h"
 #include "Global.h"
 #include "Dma.h"
 #include "IopDma.h"
@@ -29,6 +27,8 @@
 #include "IopHw.h"
 
 #include "spu2.h" // needed until I figure out a nice solution for irqcallback dependencies.
+
+#include "common/Console.h"
 
 s16* spu2regs = nullptr;
 s16* _spu2mem = nullptr;

@@ -13,19 +13,19 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "TCP_Session.h"
 
 #include <algorithm>
+#include <climits>
 
 #ifdef __POSIX__
 #define SOCKET_ERROR -1
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #define SD_RECEIVE SHUT_RD
 #endif
-
-#include "TCP_Session.h"
 
 using namespace PacketReader;
 using namespace PacketReader::IP;

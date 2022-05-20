@@ -14,7 +14,7 @@
  */
 
 #pragma once
-#include "common/Pcsx2Defs.h"
+#include "PCSX2Base.h"
 
 namespace Ps2MemSize
 {

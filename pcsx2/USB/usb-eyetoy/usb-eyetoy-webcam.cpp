@@ -13,12 +13,12 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "videodeviceproxy.h"
 #include "usb-eyetoy-webcam.h"
 #include "ov519.h"
 #include "USB/qemu-usb/desc.h"
 #include "USB/shared/inifile_usb.h"
+#include "common/Console.h"
 
 namespace usb_eyetoy
 {

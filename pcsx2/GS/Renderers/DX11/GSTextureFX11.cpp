@@ -13,10 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "GSDevice11.h"
 #include "GS/resource.h"
 #include "GS/GSTables.h"
+#include <algorithm>
 
 bool GSDevice11::CreateTextureFX()
 {

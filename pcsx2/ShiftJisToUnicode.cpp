@@ -13,9 +13,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "Common.h"
-
 
 static const char     NumBytes[256] = {
 	1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,

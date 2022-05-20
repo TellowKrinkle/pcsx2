@@ -26,8 +26,6 @@
 //	have been forced to inline since it won't bloat the program and gets rid of
 //	some call overhead.
 
-#include "PrecompiledHeader.h"
-
 #include "Common.h"
 #include "IPU/IPU.h"
 #include "Mpeg.h"

@@ -17,6 +17,8 @@
 
 #ifndef DISABLE_RECORDING
 
+#include "PCSX2Base.h"
+
 class InputRecordingControls
 {
 public:

@@ -17,11 +17,12 @@
 // authors: cottonvibes(@gmail.com)
 //			Jake.Stine (@gmail.com)
 
-#include "PrecompiledHeader.h"
 #include "newVif_UnpackSSE.h"
 #include "MTVU.h"
 #include "common/Perf.h"
 #include "fmt/core.h"
+
+#include <cinttypes>
 
 static void recReset(int idx)
 {

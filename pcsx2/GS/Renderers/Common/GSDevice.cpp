@@ -13,10 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "GSDevice.h"
 #include "GS/GSGL.h"
 #include "GS/GS.h"
+#include <cmath>
 
 const char* shaderName(ShaderConvert value)
 {

@@ -13,7 +13,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "GSDeviceVK.h"
 #include "common/Vulkan/Builders.h"
 #include "common/Vulkan/Context.h"
 #include "common/Vulkan/ShaderCache.h"
@@ -22,12 +22,12 @@
 #include "common/Align.h"
 #include "common/ScopedGuard.h"
 #include "GS.h"
-#include "GSDeviceVK.h"
 #include "GS/GSGL.h"
 #include "GS/GSPerfMon.h"
 #include "GS/GSUtil.h"
 #include "Host.h"
 #include "HostDisplay.h"
+#include <cinttypes>
 #include <sstream>
 #include <limits>
 

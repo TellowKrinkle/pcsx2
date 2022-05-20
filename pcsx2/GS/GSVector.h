@@ -13,7 +13,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "PCSX2Base.h"
 #include "GSIntrin.h"
 
 #pragma once

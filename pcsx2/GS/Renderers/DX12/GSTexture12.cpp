@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "GSTexture12.h"
 #include "GSDevice12.h"
 #include "common/Assertions.h"
@@ -25,6 +24,7 @@
 #include "D3D12MemAlloc.h"
 #include "GS/GSPerfMon.h"
 #include "GS/GSGL.h"
+#include <cinttypes>
 
 GSTexture12::GSTexture12(Type type, Format format, D3D12::Texture texture)
 	: m_texture(std::move(texture))

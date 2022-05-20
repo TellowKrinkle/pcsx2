@@ -15,8 +15,9 @@
 
 // clang-format off
 
-#include "PrecompiledHeader.h"
 #include "GSTables.h"
+
+#include <array>
 
 template <int Width, int Height>
 static constexpr GSSizedBlockSwizzleTable<Height, Width> makeSwizzleTable(const u8 (&arr)[Height][Width]) {

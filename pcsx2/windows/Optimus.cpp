@@ -13,8 +13,6 @@
 *  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "PrecompiledHeader.h"
-
 #ifdef _WIN32
 #include "common/RedtapeWindows.h"
 

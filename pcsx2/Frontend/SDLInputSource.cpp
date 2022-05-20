@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "Frontend/SDLInputSource.h"
 #include "Frontend/InputManager.h"
 #include "Host.h"

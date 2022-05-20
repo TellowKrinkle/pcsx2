@@ -13,14 +13,12 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-#include "PrecompiledHeader.h"
-#include <time.h>
-
 #include "iR3000A.h"
 #include "IopMem.h"
 #include "IopDma.h"
 #include "IopGte.h"
+
+#include <time.h>
 
 using namespace x86Emitter;
 

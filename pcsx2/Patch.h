@@ -35,9 +35,10 @@
 // - The 6 widescreen patches are 6 pnach-style patch lines loaded either from cheats_ws folder or from cheats_ws.zip
 
 
-#include "common/Pcsx2Defs.h"
+#include "PCSX2Base.h"
 #include "SysForwardDefs.h"
 #include "GameDatabase.h"
+#include "common/Console.h"
 #include <string>
 #include <string_view>
 

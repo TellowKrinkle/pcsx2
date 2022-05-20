@@ -13,10 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "GSDrawScanlineCodeGenerator.h"
 #include "GSDrawScanlineCodeGenerator.all.h"
 #include "GSDrawScanline.h"
+#include "common/Console.h"
 #include <fstream>
 #include <map>
 #include <mutex>

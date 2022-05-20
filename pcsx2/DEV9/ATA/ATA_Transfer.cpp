@@ -13,12 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
-#include "common/Assertions.h"
-
 #include "ATA.h"
 #include "DEV9/DEV9.h"
+
+#include "common/Assertions.h"
 
 void ATA::IO_Thread()
 {

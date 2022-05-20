@@ -13,7 +13,8 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "ICMP_Session.h"
+#include "DEV9/PacketReader/NetLib.h"
 
 #ifdef _WIN32
 #include "common/RedtapeWindows.h"
@@ -39,9 +40,6 @@
 #endif
 #include <unistd.h>
 #endif
-
-#include "ICMP_Session.h"
-#include "DEV9/PacketReader/NetLib.h"
 
 using namespace PacketReader;
 using namespace PacketReader::IP;

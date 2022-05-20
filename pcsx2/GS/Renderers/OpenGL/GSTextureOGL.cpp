@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-#include <limits.h>
 #include "GSTextureOGL.h"
 #include "GLState.h"
 #include "GS/GSPerfMon.h"

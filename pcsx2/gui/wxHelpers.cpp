@@ -13,16 +13,15 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "gui/wxGuiTools.h"
+#include "gui/IniInterface.h"
+#include "gui/pxStaticText.h"
 
+#include "common/General.h"
+#include "common/Threading.h"
 #include <wx/cshelp.h>
 #include <wx/tooltip.h>
 #include <wx/spinctrl.h>
-#include "common/General.h"
-#include "common/Threading.h"
-#include "gui/IniInterface.h"
-#include "gui/wxGuiTools.h"
-#include "gui/pxStaticText.h"
 
 using namespace pxSizerFlags;
 

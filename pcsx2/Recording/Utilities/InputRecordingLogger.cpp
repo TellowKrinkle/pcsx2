@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include "InputRecordingLogger.h"
 
 #include "DebugTools/Debug.h"

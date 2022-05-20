@@ -15,7 +15,9 @@
 
 #pragma once
 
-#include "PrecompiledHeader.h"
+#include "PCSX2Base.h"
+
+#include <string>
 
 struct GSSetting
 {

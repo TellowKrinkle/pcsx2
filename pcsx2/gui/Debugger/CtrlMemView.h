@@ -14,10 +14,11 @@
  */
 
 #pragma once
-#include <wx/wx.h>
-
 #include "DebugTools/DebugInterface.h"
 #include "DebugTools/DisassemblyManager.h"
+
+#include <wx/wx.h>
+#include <stack>
 
 class CtrlMemView: public wxWindow
 {

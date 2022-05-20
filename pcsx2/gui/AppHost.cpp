@@ -13,7 +13,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "gui/AppHost.h"
+#include "gui/App.h"
+#include "gui/pxEvents.h"
 
 #include "common/Console.h"
 #include "common/FileSystem.h"
@@ -27,10 +29,6 @@
 
 #include "common/Assertions.h"
 #include "Frontend/ImGuiManager.h"
-
-#include "gui/App.h"
-#include "gui/AppHost.h"
-#include "gui/pxEvents.h"
 
 #include <atomic>
 #include <mutex>

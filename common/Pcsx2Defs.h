@@ -188,6 +188,9 @@ static const int __pagesize = PCSX2_PAGESIZE;
 #endif
 
 #define ASSERT assert
+#ifndef NOMINMAX
+	#define NOMINMAX // Disables other libs inclusion of their own min/max macros (we use std instead)
+#endif
 
 //////////////////////////////////////////////////////////////////////////////////////////
 // Safe deallocation macros -- checks pointer validity (non-null) when needed, and sets
@@ -328,4 +331,12 @@ static constexpr s64 _4gb = _1gb * 4;
 #ifdef _MSC_VER
 #pragma warning(disable: 4244) // warning C4244: 'initializing': conversion from 'uptr' to 'uint', possible loss of data
 #pragma warning(disable: 4267) // warning C4267: 'initializing': conversion from 'size_t' to 'uint', possible loss of data
+#endif
+
+#if !defined(PCSX2_CORE) && defined(_WIN32)
+// This deals with a mode_t redefinition conflict. The mode_t doesn't seem to be
+// used anywhere in w32pthreads, so I've chosen to use the wxWidgets mode_t
+// (I think it's unsigned int vs signed int)
+typedef int mode_t;
+#define HAVE_MODE_T
 #endif

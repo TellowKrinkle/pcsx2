@@ -13,19 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-#include "common/Assertions.h"
-#include "common/StringUtil.h"
-
-#ifdef __POSIX__
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <net/if.h>
-#ifdef __linux__
-#include <sys/ioctl.h>
-#endif
-#endif
-
 #include "sockets.h"
 #include "DEV9.h"
 
@@ -39,6 +26,18 @@
 #include "PacketReader/IP/ICMP/ICMP_Packet.h"
 #include "PacketReader/IP/TCP/TCP_Packet.h"
 #include "PacketReader/IP/UDP/UDP_Packet.h"
+
+#include "common/Assertions.h"
+#include "common/StringUtil.h"
+
+#ifdef __POSIX__
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <net/if.h>
+#ifdef __linux__
+#include <sys/ioctl.h>
+#endif
+#endif
 
 using namespace Sessions;
 using namespace PacketReader;

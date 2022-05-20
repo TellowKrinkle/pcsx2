@@ -34,8 +34,6 @@ BIOS
 0xBFC00000 - 0xBFFFFFFF un-cached
 */
 
-#include "PrecompiledHeader.h"
-
 #include "IopHw.h"
 #include "GS.h"
 #include "VUmicro.h"
@@ -47,6 +45,7 @@ BIOS
 #include "SPU2/spu2.h"
 
 #include "common/AlignedMalloc.h"
+#include "common/MemcpyFast.h"
 #include "common/PageFaultSource.h"
 
 #ifdef PCSX2_CORE

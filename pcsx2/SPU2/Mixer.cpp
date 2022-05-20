@@ -13,13 +13,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "Global.h"
 #include "common/Assertions.h"
+#include "interpolate_table.h"
+
+#include <cassert>
 
 void ADMAOutLogWrite(void* lpData, u32 ulSize);
-
-#include "interpolate_table.h"
 
 static const s32 tbl_XA_Factor[16][2] =
 	{

@@ -16,6 +16,7 @@
 #pragma once
 
 #include "MemoryTypes.h"
+#include <string>
 
 extern uptr *psxMemWLUT;
 extern const uptr *psxMemRLUT;

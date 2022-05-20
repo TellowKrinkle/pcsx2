@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #ifndef DISABLE_RECORDING
 
 #include "NewRecordingFrame.h"

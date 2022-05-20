@@ -13,13 +13,14 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "GSState.h"
 #include "GSGL.h"
 #include "GSUtil.h"
+#include "common/Console.h"
 
 #include <algorithm> // clamp
 #include <cfloat> // FLT_MAX
+#include <cmath>
 #include <fstream>
 #include <iomanip> // Dump Verticles
 

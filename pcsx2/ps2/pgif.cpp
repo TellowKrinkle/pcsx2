@@ -14,10 +14,9 @@
 *  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "PrecompiledHeader.h"
+#include "ps2/pgif.h"
 #include "ps2/Iop/IopHw_Internal.h"
 #include "ps2/HwInternal.h"
-#include "ps2/pgif.h"
 #include "IopHw.h"
 #include "IopDma.h"
 #include "Common.h"

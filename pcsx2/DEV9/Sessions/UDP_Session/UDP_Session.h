@@ -14,6 +14,8 @@
  */
 
 #pragma once
+#include "UDP_BaseSession.h"
+
 #include <atomic>
 #include <chrono>
 #ifdef _WIN32
@@ -22,8 +24,6 @@
 #define INVALID_SOCKET -1
 #include <sys/socket.h>
 #endif
-
-#include "UDP_BaseSession.h"
 
 namespace Sessions
 {

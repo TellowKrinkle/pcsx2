@@ -13,7 +13,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "DHCP_Server.h"
+#include "DEV9/PacketReader/IP/UDP/UDP_Packet.h"
+#include "DEV9/PacketReader/IP/UDP/DHCP/DHCP_Packet.h"
+
+#include "DEV9/DEV9.h"
 
 #include <algorithm>
 #ifdef __POSIX__
@@ -31,12 +35,6 @@
 #include <net/route.h>
 #endif
 #endif
-
-#include "DHCP_Server.h"
-#include "DEV9/PacketReader/IP/UDP/UDP_Packet.h"
-#include "DEV9/PacketReader/IP/UDP/DHCP/DHCP_Packet.h"
-
-#include "DEV9/DEV9.h"
 
 using namespace PacketReader;
 using namespace PacketReader::IP;

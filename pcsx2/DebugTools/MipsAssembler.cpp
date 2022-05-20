@@ -13,8 +13,8 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "MipsAssembler.h"
+#include <cstring>
 
 // just an empty class, so that it's not necessary to remove all the calls manually
 // will make it easier to update if there are changes later on

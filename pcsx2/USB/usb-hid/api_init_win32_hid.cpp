@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "hidproxy.h"
 #include "raw/rawinput.h"
 #include "noop.h"

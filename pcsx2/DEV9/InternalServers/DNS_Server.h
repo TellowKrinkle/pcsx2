@@ -14,19 +14,15 @@
  */
 
 #pragma once
-#include <atomic>
-#include <unordered_map>
-#include <functional>
-
-#ifdef _WIN32
-#include <minwinbase.h>
-#endif
-
 #include "DEV9/SimpleQueue.h"
 
 #include "DEV9/PacketReader/IP/IP_Packet.h"
 #include "DEV9/PacketReader/IP/UDP/UDP_Packet.h"
 #include "DEV9/PacketReader/IP/UDP/DNS/DNS_Packet.h"
+
+#include <atomic>
+#include <unordered_map>
+#include <functional>
 
 #ifdef _WIN32
 #include <winsock2.h>

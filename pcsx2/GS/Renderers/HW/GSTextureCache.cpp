@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "GSTextureCache.h"
 #include "GSTextureReplacements.h"
 #include "GSRendererHW.h"
@@ -21,7 +20,9 @@
 #include "GS/GSIntrin.h"
 #include "GS/GSUtil.h"
 #include "common/Align.h"
+#include "common/Console.h"
 #include "common/HashCombine.h"
+#include <cmath>
 
 #define XXH_STATIC_LINKING_ONLY 1
 #define XXH_INLINE_ALL 1

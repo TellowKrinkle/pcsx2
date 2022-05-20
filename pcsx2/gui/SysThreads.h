@@ -19,8 +19,6 @@
 
 #include "common/emitter/tools.h"
 #include "PersistentThread.h"
-#include "PINE.h"
-
 
 using namespace Threading;
 
@@ -170,6 +168,8 @@ protected:
 	//   systemsToTearDown - a bitmask of systems to call Open functions on.
 	virtual void OnResumeInThread(SystemsMask systemsToReinstate) = 0;
 };
+
+class PINEServer;
 
 // --------------------------------------------------------------------------------------
 //  SysCoreThread class

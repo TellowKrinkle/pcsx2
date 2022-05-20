@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "Common.h"
 
 #include "IPU.h"
@@ -24,6 +23,7 @@
 #include <limits.h>
 #include "Config.h"
 
+#include "common/MemcpyFast.h"
 #include "common/MemsetFast.inl"
 
 // the BP doesn't advance and returns -1 if there is no data to be read

@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include "PCSX2Base.h"
+
 #ifdef _WIN32
 #	include <Windows.h>
 #	undef Yield

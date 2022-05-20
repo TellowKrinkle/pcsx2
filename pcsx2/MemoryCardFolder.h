@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include "MemoryCardFile.h"
+
 #include <map>
 #include <string>
 #include <string_view>

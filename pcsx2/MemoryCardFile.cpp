@@ -13,17 +13,18 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "MemoryCardFile.h"
+#include "MemoryCardFolder.h"
+
+#include "common/Console.h"
 #include "common/FileSystem.h"
+#include "common/MemcpyFast.h"
 #include "common/SafeArray.inl"
 #include "common/Path.h"
 #include "common/StringUtil.h"
 
 #include <array>
 #include <chrono>
-
-#include "MemoryCardFile.h"
-#include "MemoryCardFolder.h"
 
 #include "System.h"
 #include "Config.h"

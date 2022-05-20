@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "DebuggerLists.h"
 #include "BreakpointWindow.h"
 #include "DebugEvents.h"

@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include "EmuThread.h"
 #include "QtHost.h"
 #include "Settings/ControllerSettingsDialog.h"

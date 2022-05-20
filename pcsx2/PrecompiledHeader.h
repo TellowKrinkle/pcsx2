@@ -24,18 +24,8 @@
 
 #include "common/Pcsx2Defs.h"
 
-#define NOMINMAX		// Disables other libs inclusion of their own min/max macros (we use std instead)
-
 //////////////////////////////////////////////////////////////////////////////////////////
 // Welcome wxWidgets to the party! How about no? Only for the old UI.
-
-#if !defined(PCSX2_CORE) && defined(_WIN32)
-// This deals with a mode_t redefinition conflict. The mode_t doesn't seem to be
-// used anywhere in w32pthreads, so I've chosen to use the wxWidgets mode_t
-// (I think it's unsigned int vs signed int)
-#include <wx/filefn.h>
-#define HAVE_MODE_T
-#endif
 
 #ifndef PCSX2_CORE
 #include <wx/gdicmn.h>
@@ -95,9 +85,6 @@
 #include "common/MemcpyFast.h"
 #include "common/General.h"
 #include "common/emitter/tools.h"
-
-typedef void FnType_Void();
-typedef FnType_Void* Fnptr_Void;
 
 // --------------------------------------------------------------------------------------
 //  Compiler/OS specific macros and defines 

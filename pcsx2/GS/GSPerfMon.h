@@ -15,6 +15,9 @@
 
 #pragma once
 
+#include "PCSX2Base.h"
+#include <ctime>
+
 class GSPerfMon
 {
 public:

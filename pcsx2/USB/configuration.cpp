@@ -13,12 +13,12 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "deviceproxy.h"
 #include "configuration.h"
 #include "shared/inifile_usb.h"
 #include "platcompat.h"
 #include "Config.h"
+#include "common/Console.h"
 #include "common/Path.h"
 #include "common/StringUtil.h"
 #include "gui/StringHelpers.h"

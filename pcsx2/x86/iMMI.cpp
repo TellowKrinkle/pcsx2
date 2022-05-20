@@ -19,8 +19,6 @@
 *                                                        *
 *********************************************************/
 
-#include "PrecompiledHeader.h"
-
 #include "Common.h"
 #include "R5900OpcodeTables.h"
 #include "iR5900.h"

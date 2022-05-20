@@ -13,14 +13,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "Common.h"
-
-#include <list>
-
 #include "Gif_Unit.h"
 #include "Counters.h"
 #include "Config.h"
+
+#include "common/MemcpyFast.h"
+#include <list>
 
 using namespace Threading;
 using namespace R5900;

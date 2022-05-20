@@ -13,10 +13,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include "NetLib.h"
 
+#include <cstring>
 #ifdef _WIN32
 #include "winsock.h"
 #else

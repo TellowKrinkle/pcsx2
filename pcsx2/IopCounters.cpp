@@ -18,7 +18,6 @@
 // event test, so instead of using the iopTestIntc we just set the 0x1070 flags directly.
 // The EventText function will pick it up.
 
-#include "PrecompiledHeader.h"
 #include "IopCounters.h"
 #include "R3000A.h"
 #include "Common.h"
@@ -29,6 +28,7 @@
 #include "IopDma.h"
 #include "CDVD/CDVD.h"
 
+#include "common/MemcpyFast.h"
 #include <math.h>
 
 /* Config.PsxType == 1: PAL:

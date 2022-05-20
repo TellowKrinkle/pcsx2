@@ -13,10 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include "TCP_Session.h"
 
+#include <climits>
+#include <thread>
 #ifdef _WIN32
 #include "common/RedtapeWindows.h"
 #include <winsock2.h>

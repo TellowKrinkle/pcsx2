@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include <QtWidgets/QInputDialog>
 #include <QtWidgets/QMessageBox>
 #include <limits>

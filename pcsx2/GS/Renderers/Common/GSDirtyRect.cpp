@@ -13,8 +13,8 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "GSDirtyRect.h"
+#include <climits>
 
 GSDirtyRect::GSDirtyRect() :
 	r(GSVector4i::zero()),

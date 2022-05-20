@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include <QtGui/QDrag>
 #include <QtWidgets/QInputDialog>
 #include <QtWidgets/QMenu>

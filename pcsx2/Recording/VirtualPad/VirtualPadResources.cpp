@@ -13,14 +13,12 @@
 *  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "PrecompiledHeader.h"
-
 #ifndef DISABLE_RECORDING
-
-#include <wx/spinctrl.h>
 
 #include "Recording/VirtualPad/VirtualPadResources.h"
 #include "Recording/PadData.h"
+
+#include <wx/spinctrl.h>
 
 wxCommandEvent VirtualPadElement::ConstructEvent(wxEventTypeTag<wxCommandEvent> eventType, wxWindow* obj)
 {

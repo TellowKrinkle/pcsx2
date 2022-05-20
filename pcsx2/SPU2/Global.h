@@ -15,7 +15,9 @@
 
 #pragma once
 
-#define NOMINMAX
+#include "PCSX2Base.h"
+
+#include <algorithm>
 
 extern bool psxmode;
 
@@ -29,8 +31,6 @@ namespace soundtouch
 {
 	class SoundTouch;
 }
-
-#include "PrecompiledHeader.h"
 
 //////////////////////////////////////////////////////////////////////////
 // Override Win32 min/max macros with the STL's type safe and macro

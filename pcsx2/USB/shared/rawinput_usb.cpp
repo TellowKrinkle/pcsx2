@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "rawinput_usb.h"
 #include <cstdio>
 #include <vector>
@@ -21,6 +20,7 @@
 #include <mutex>
 #include "USB/platcompat.h"
 #include "PAD/Windows/WndProcEater.h"
+#include "common/Console.h"
 
 extern HINSTANCE hInst;
 

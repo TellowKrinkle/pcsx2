@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "CtrlMemSearch.h"
 #include "DebugTools/Debug.h"
 #include "gui/AppConfig.h"

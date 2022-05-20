@@ -13,9 +13,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "Global.h"
 #include <array>
+#include <cassert>
 
 __forceinline s32 V_Core::RevbGetIndexer(s32 offset)
 {

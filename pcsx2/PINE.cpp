@@ -13,9 +13,15 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #ifndef PCSX2_CORE
+
+#include "PINE.h"
+#include "Common.h"
+#include "Memory.h"
+#include "gui/AppSaveStates.h"
+#include "gui/AppCoreThread.h"
+#include "gui/SysThreads.h"
+#include "svnrev.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,14 +41,6 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #endif
-
-#include "Common.h"
-#include "Memory.h"
-#include "gui/AppSaveStates.h"
-#include "gui/AppCoreThread.h"
-#include "gui/SysThreads.h"
-#include "svnrev.h"
-#include "PINE.h"
 
 PINEServer::PINEServer(SysCoreThread* vm, unsigned int slot)
 	: pxThread("PINE_Server")

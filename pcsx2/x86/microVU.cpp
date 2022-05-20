@@ -15,7 +15,6 @@
 
 // Micro VU recompiler! - author: cottonvibes(@gmail.com)
 
-#include "PrecompiledHeader.h"
 #include "microVU.h"
 
 #include "common/AlignedMalloc.h"

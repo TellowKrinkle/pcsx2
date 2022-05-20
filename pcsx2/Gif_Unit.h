@@ -14,7 +14,6 @@
  */
 
 #pragma once
-#include <deque>
 #include "Gif.h"
 #include "Vif.h"
 #include "GS.h"
@@ -22,6 +21,8 @@
 
 // FIXME common path ?
 #include "common/boost_spsc_queue.hpp"
+#include "common/MemcpyFast.h"
+#include <deque>
 
 struct GS_Packet;
 extern void Gif_MTGS_Wait(bool isMTVU);

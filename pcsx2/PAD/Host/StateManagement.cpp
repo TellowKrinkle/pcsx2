@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include "PAD/Host/StateManagement.h"
 #include "PAD/Host/KeyStatus.h"
 #include "Frontend/InputManager.h"

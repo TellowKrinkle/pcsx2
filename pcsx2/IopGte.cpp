@@ -13,10 +13,6 @@
 *  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "PrecompiledHeader.h"
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <math.h>
 #include "IopGte.h"
 #include "R3000A.h"
 #include "IopMem.h"

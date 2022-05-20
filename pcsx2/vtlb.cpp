@@ -28,14 +28,13 @@
 	vtlb/vmap supports mapping to either of these locations, or some other (externaly) specified address.
 */
 
-#include "PrecompiledHeader.h"
-
 #include "Common.h"
 #include "vtlb.h"
 #include "COP0.h"
 #include "Cache.h"
 #include "R5900Exceptions.h"
 
+#include "common/MemcpyFast.h"
 #include "common/MemsetFast.inl"
 
 #include "fmt/core.h"

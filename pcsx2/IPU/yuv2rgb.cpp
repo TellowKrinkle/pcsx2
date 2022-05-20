@@ -17,8 +17,6 @@
 // IPU-correct yuv conversions by Pseudonym
 // SSE2 Implementation by Pseudonym
 
-#include "PrecompiledHeader.h"
-
 #include "Common.h"
 #include "IPU.h"
 #include "yuv2rgb.h"

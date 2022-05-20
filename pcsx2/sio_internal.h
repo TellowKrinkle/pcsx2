@@ -16,6 +16,8 @@
 #pragma once
 #include "IopSio2.h"
 
+#include "common/MemcpyFast.h"
+
 // sio_internal.h -- contains defines and structs used by sio and sio2, which
 // are of little or no use to the rest of the world.
 

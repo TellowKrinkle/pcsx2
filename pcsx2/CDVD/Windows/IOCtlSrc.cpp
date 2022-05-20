@@ -26,6 +26,7 @@
 #include <ntddscsi.h>
 #pragma warning(pop)
 
+#include <array>
 #include <cstddef>
 #include <cstdlib>
 #include <stdexcept>

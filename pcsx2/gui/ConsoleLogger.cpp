@@ -13,10 +13,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "ConsoleLogger.h"
 #include "App.h"
 #include "MainFrame.h"
-#include "ConsoleLogger.h"
 #include "MSWstuff.h"
 #include "Host.h"
 #include "IniInterface.h"

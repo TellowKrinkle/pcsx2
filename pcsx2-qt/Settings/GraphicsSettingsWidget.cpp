@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include "GraphicsSettingsWidget.h"
 #include "QtUtils.h"
 #include "SettingWidgetBinder.h"

@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "DEV9/DEV9.h"
 #include "USB/USB.h"
 #include "IopHw.h"

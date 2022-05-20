@@ -20,6 +20,7 @@
 #include "CompressedFileReader.h"
 #include <memory>
 #include <string>
+#include <vector>
 
 enum isoType
 {

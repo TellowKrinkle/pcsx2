@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #if 0
 #include "common/StringUtil.h"
 #include "SPU2/Host/Config.h"

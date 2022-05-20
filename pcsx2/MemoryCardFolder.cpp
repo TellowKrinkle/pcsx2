@@ -13,11 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-#include "common/SafeArray.inl"
-
-#include "MemoryCardFile.h"
 #include "MemoryCardFolder.h"
+
+#include "common/Console.h"
+#include "common/SafeArray.inl"
 
 #include "System.h"
 #include "Config.h"

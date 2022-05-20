@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "vl.h"
 
 /* compute with 96 bit intermediate result: (a*b)/c */

@@ -13,9 +13,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "usb-pad.h"
 #include "lg/lg_ff.h"
+#include "common/Console.h"
 
 namespace usb_pad
 {

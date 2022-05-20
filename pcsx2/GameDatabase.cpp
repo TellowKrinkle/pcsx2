@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include "GameDatabase.h"
 #include "Host.h"
 #include "Patch.h"

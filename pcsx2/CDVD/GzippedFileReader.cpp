@@ -13,14 +13,15 @@
 *  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "PrecompiledHeader.h"
-#include <fstream>
-#include "common/FileSystem.h"
-#include "common/StringUtil.h"
+#include "GzippedFileReader.h"
 #include "Config.h"
 #include "ChunksCache.h"
-#include "GzippedFileReader.h"
 #include "zlib_indexed.h"
+
+#include "common/Console.h"
+#include "common/FileSystem.h"
+#include "common/StringUtil.h"
+#include <fstream>
 
 #define CLAMP(val, minval, maxval) (std::min(maxval, std::max(minval, val)))
 

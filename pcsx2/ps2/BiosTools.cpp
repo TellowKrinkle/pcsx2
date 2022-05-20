@@ -13,18 +13,15 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
-#include <cstdio>
-#include <cstring>
+#include "BiosTools.h"
+#include "Common.h"
+#include "Config.h"
 
 #include "common/FileSystem.h"
 #include "common/Path.h"
 #include "common/StringUtil.h"
-
-#include "Common.h"
-#include "BiosTools.h"
-#include "Config.h"
+#include <cstdio>
+#include <cstring>
 
 static constexpr u32 MIN_BIOS_SIZE = 4 * _1mb;
 static constexpr u32 MAX_BIOS_SIZE = 8 * _1mb;

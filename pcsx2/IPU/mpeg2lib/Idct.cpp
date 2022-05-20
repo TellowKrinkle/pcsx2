@@ -26,8 +26,6 @@
 // should probably upgrade to.  They use their own raw-style intrinsics and not the intel
 // compiler-integrated ones.
 
-#include "PrecompiledHeader.h"
-
 #include "Common.h"
 #include "IPU/IPU.h"
 #include "Mpeg.h"

@@ -15,6 +15,9 @@
 
 #pragma once
 
+#include "PCSX2Base.h"
+#include <string>
+
 // Number of stereo samples per SndOut block.
 // All drivers must work in units of this size when communicating with
 // SndOut.

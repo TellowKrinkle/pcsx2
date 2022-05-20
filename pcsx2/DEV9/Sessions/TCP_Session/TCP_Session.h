@@ -14,6 +14,10 @@
  */
 
 #pragma once
+#include "PCSX2Base.h"
+#include "DEV9/SimpleQueue.h"
+#include "DEV9/Sessions/BaseSession.h"
+#include "DEV9/PacketReader/IP/TCP/TCP_Packet.h"
 #include <atomic>
 #include <chrono>
 #include <mutex>
@@ -24,10 +28,6 @@
 #elif defined(__POSIX__)
 #define INVALID_SOCKET -1
 #endif
-
-#include "DEV9/SimpleQueue.h"
-#include "DEV9/Sessions/BaseSession.h"
-#include "DEV9/PacketReader/IP/TCP/TCP_Packet.h"
 
 namespace Sessions
 {

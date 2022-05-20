@@ -21,7 +21,6 @@
 #include <mach/thread_act.h>
 #include <mach/mach_port.h>
 
-#include "common/PrecompiledHeader.h"
 #include "common/Threading.h"
 
 // Note: assuming multicore is safer because it forces the interlocked routines to use

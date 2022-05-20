@@ -13,10 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "Frontend/InputManager.h"
 #include "Frontend/InputSource.h"
 #include "PAD/Host/PAD.h"
+#include "common/Console.h"
 #include "common/StringUtil.h"
 #include "common/Timer.h"
 #include "VMManager.h"

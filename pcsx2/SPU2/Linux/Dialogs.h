@@ -18,6 +18,7 @@
 
 #include "SPU2/Global.h"
 #include "SPU2/Config.h"
+#include <wx/string.h>
 
 namespace DebugConfig
 {

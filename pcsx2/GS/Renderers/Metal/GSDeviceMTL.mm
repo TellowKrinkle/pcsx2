@@ -13,12 +13,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-#include "GSMetalCPPAccessible.h"
 #include "GSDeviceMTL.h"
+#include "GSMetalCPPAccessible.h"
 #include "GSTextureMTL.h"
 #include "GS/GSPerfMon.h"
 #include "HostDisplay.h"
+
+#include "common/Console.h"
 #include <imgui.h>
 
 #ifdef __APPLE__

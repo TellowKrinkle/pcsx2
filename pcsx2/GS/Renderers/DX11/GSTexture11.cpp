@@ -13,9 +13,8 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-#include "GSDevice11.h"
 #include "GSTexture11.h"
+#include "GSDevice11.h"
 #include "GS/GSPng.h"
 #include "GS/GSPerfMon.h"
 

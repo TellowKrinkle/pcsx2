@@ -13,10 +13,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "SPU2/Global.h"
 #include "Dialogs.h"
+#include "common/Console.h"
 #include "common/StringUtil.h"
+#include <wx/string.h>
 
 #ifdef PCSX2_DEVBUILD
 static const int LATENCY_MAX = 3000;

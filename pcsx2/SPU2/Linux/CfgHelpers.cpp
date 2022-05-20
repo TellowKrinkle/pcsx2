@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #include "Config.h"
 #include "Dialogs.h"
 #include "pcsx2/Config.h"

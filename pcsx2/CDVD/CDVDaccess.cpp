@@ -13,8 +13,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-#include "PrecompiledHeader.h"
+#include "IsoFS/IsoFS.h"
+#include "IsoFS/IsoFSCDVD.h"
+#include "IsoFileFormats.h"
 
 #define ENABLE_TIMESTAMPS
 
@@ -23,11 +24,8 @@
 #include <exception>
 #include <memory>
 
-#include "IsoFS/IsoFS.h"
-#include "IsoFS/IsoFSCDVD.h"
-#include "IsoFileFormats.h"
-
 #include "common/Assertions.h"
+#include "common/Console.h"
 #include "common/Exceptions.h"
 #include "common/FileSystem.h"
 #include "common/Path.h"

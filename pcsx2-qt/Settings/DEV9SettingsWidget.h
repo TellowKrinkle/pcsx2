@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include <QtCore/QSortFilterProxyModel>
 #include <QtWidgets/QWidget>
 #include <QtWidgets/QItemDelegate>
 #include <QtGui/QStandardItemModel>

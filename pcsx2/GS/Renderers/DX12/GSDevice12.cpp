@@ -13,7 +13,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "GS.h"
+#include "GSDevice12.h"
+#include "GS/GSGL.h"
+#include "GS/GSPerfMon.h"
+#include "GS/GSUtil.h"
+#include "Host.h"
+#include "HostDisplay.h"
 #include "common/D3D12/Builders.h"
 #include "common/D3D12/Context.h"
 #include "common/D3D12/ShaderCache.h"
@@ -22,13 +28,7 @@
 #include "common/ScopedGuard.h"
 #include "common/StringUtil.h"
 #include "D3D12MemAlloc.h"
-#include "GS.h"
-#include "GSDevice12.h"
-#include "GS/GSGL.h"
-#include "GS/GSPerfMon.h"
-#include "GS/GSUtil.h"
-#include "Host.h"
-#include "HostDisplay.h"
+#include <cinttypes>
 #include <sstream>
 #include <limits>
 

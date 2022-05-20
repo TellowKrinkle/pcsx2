@@ -18,6 +18,7 @@
 #include "Mixer.h"
 #include "SndOut.h"
 #include "Global.h"
+#include <cstdio>
 
 // --------------------------------------------------------------------------------------
 //  SPU2 Memory Indexers

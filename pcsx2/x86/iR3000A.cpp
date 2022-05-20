@@ -17,9 +17,6 @@
 // and added reg caching, const propagation, block analysis Jun06
 // zerofrog(@gmail.com)
 
-
-#include "PrecompiledHeader.h"
-
 #include "iR3000A.h"
 #include "R3000A.h"
 #include "BaseblockEx.h"
@@ -41,6 +38,7 @@
 
 #include "common/AlignedMalloc.h"
 #include "common/FileSystem.h"
+#include "common/MemcpyFast.h"
 #include "common/Path.h"
 #include "common/Perf.h"
 #include "DebugTools/Breakpoints.h"

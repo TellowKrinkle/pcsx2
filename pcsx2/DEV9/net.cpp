@@ -13,15 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
-#include <chrono>
-#include <thread>
-#include <mutex>
-#if defined(__POSIX__)
-#include <pthread.h>
-#endif
-
 #include "net.h"
 #include "DEV9.h"
 #ifdef _WIN32
@@ -33,6 +24,13 @@
 #include "PacketReader/EthernetFrame.h"
 #include "PacketReader/IP/IP_Packet.h"
 #include "PacketReader/IP/UDP/UDP_Packet.h"
+
+#include <chrono>
+#include <thread>
+#include <mutex>
+#if defined(__POSIX__)
+#include <pthread.h>
+#endif
 
 NetAdapter* nif;
 std::thread rx_thread;

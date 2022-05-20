@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include "PCSX2Base.h"
 #include <map>
 
 class CRC

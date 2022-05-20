@@ -15,6 +15,9 @@
 
 #pragma once
 
+#include "PCSX2Base.h"
+#include <vector>
+
 class GSCodeBuffer
 {
 	std::vector<void*> m_buffers;

@@ -23,7 +23,6 @@
 * THE SOFTWARE.
 */
 
-#include "PrecompiledHeader.h"
 #include "hid.h"
 #include "input-keymap.h"
 

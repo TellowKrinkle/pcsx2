@@ -13,9 +13,8 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include "pcsx2/Frontend/InputManager.h"
+#include <QtCore/QKeyCombination>
 
 struct KeyCodeName
 {

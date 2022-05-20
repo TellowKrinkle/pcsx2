@@ -15,6 +15,9 @@
 
 #pragma once
 
+#include "PCSX2Base.h"
+#include <cstring>
+
 namespace PacketReader::IP
 {
 	class IP_Payload

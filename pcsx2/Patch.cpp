@@ -13,18 +13,14 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #define _PC_ // disables MIPS opcode macros.
+#include "Patch.h"
+#include "Config.h"
 
 #include "common/FileSystem.h"
 #include "common/Path.h"
 #include "common/StringUtil.h"
 #include "common/ZipHelpers.h"
-
-#include "Config.h"
-#include "Patch.h"
-
 #include <memory>
 #include <sstream>
 #include <vector>

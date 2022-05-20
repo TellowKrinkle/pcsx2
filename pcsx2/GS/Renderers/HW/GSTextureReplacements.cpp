@@ -13,18 +13,16 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "GS/Renderers/HW/GSTextureReplacements.h"
+#include "GS/GSLocalMemory.h"
 
 #include "common/AlignedMalloc.h"
+#include "common/Console.h"
 #include "common/HashCombine.h"
 #include "common/FileSystem.h"
 #include "common/Path.h"
 #include "common/StringUtil.h"
 #include "common/ScopedGuard.h"
-
-#include "Config.h"
-#include "GS/GSLocalMemory.h"
-#include "GS/Renderers/HW/GSTextureReplacements.h"
 
 #ifndef PCSX2_CORE
 #include "gui/AppCoreThread.h"

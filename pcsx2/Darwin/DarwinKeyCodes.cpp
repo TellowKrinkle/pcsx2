@@ -13,7 +13,8 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
+#include "PCSX2Base.h"
+#include <wx/defs.h>
 #include <Carbon/Carbon.h>
 
 int TranslateOSXtoWXK(u32 keysym)

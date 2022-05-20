@@ -13,16 +13,17 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-#include "common/StringUtil.h"
-#include "GS/GSState.h"
 #include "GSDeviceOGL.h"
 #include "GLState.h"
+#include "GS/GSState.h"
 #include "GS/GSGL.h"
 #include "GS/GSUtil.h"
 #include "Host.h"
 #include "HostDisplay.h"
+#include "common/Console.h"
+#include "common/StringUtil.h"
 #include <cinttypes>
+#include <cmath>
 #include <fstream>
 #include <sstream>
 

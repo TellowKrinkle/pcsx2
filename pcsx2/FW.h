@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include <stdio.h>
+#include "PCSX2Base.h"
 
 #define FWdefs
 

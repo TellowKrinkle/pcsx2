@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
 #ifndef PCSX2_CORE
 // NOTE: The include order matters - GS.h includes windows.h
 #include "GS/Window/GSwxDialog.h"

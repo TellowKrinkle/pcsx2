@@ -24,11 +24,11 @@
  * THE SOFTWARE.
  */
 
-#include "PrecompiledHeader.h"
 #include "USB/platcompat.h"
 #include "vl.h"
 #include "iov.h"
 //#include "trace.h"
+#include "common/Console.h"
 
 void usb_pick_speed(USBPort* port)
 {

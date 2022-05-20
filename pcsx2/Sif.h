@@ -16,6 +16,8 @@
 #ifndef __SIF_H__
 #define __SIF_H__
 
+#include "common/MemcpyFast.h"
+
 static const int FIFO_SIF_W = 128;
 
 // Despite its name, this is actually the IOP's DMAtag, which itself also contains

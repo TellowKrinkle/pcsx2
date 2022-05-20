@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "PrecompiledHeader.h"
-
 #include "iR5900Analysis.h"
 #include "Memory.h"
 #include "DebugTools/Debug.h"
