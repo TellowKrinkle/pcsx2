@@ -2,40 +2,7 @@ name: 🍎 MacOS Builds
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
-on:
-  push:
-    branches:
-      - master
-    tags:
-      - v*
-  pull_request:
-    branches:
-      - master
-    paths-ignore:
-      - '**/*.md'
-      - '**/*.bat'
-      - '**/*.cmd'
-      - '**/*.props'
-      - '**/*.sln'
-      - '.clang-format'
-      - '.codacy.yaml'
-      - '.github/*'
-      - '.github/workflows/lint-gamedb.yml'
-      - '.github/workflows/linux-workflow.yml'
-      - '.github/workflows/pr-triage.yml'
-      - '.github/workflows/scripts/windows/**'
-      - '.github/workflows/scripts/validation/**'
-      - '.github/workflows/windows-workflow.yml'
-      - '.gitignore'
-      - 'bin/PCSX2_keys.ini.default'
-      - 'build.sh'
-      - 'buildbot.xml'
-      - 'pcsx2/CDVD/Windows/**'
-      - 'pcsx2/DEV9/Win32/**'
-      - 'pcsx2/PAD/Windows/**'
-      - 'pcsx2/SPU2/Windows/**'
-      - 'pcsx2/USB/Win32/**'
-      - 'pcsx2/windows/**'
+on: [push]
 
 jobs:
   build:

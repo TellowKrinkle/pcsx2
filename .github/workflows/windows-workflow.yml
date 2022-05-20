@@ -2,37 +2,7 @@ name: 🖥️ Windows Builds
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
-on:
-  push:
-    branches:
-      - master
-    tags:
-      - v*
-  pull_request:
-    branches:
-      - master
-    paths-ignore:
-      - '**/*.md'
-      - '.clang-format'
-      - '.codacy.yaml'
-      - '.github/*'
-      - '.github/workflows/lint-gamedb.yml'
-      - '.github/workflows/linux-workflow.yml'
-      - '.github/workflows/macos-workflow.yml'
-      - '.github/workflows/scripts/linux/**'
-      - '.github/workflows/scripts/validation/**'
-      - '.gitignore'
-      - 'bin/PCSX2_keys.ini.default'
-      - 'build.sh'
-      - 'buildbot.xml'
-      - 'linux_various/**'
-      - 'mscompile.cmd'
-      - 'pcsx2/CDVD/Linux/**'
-      - 'pcsx2/DEV9/Linux/**'
-      - 'pcsx2/Linux/**'
-      - 'pcsx2/PAD/Linux/**'
-      - 'pcsx2/SPU2/Linux/**'
-      - 'pcsx2/USB/linux/**'
+on: [push]
 
 jobs:
   build:
