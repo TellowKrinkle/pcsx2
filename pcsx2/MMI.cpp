@@ -13,7 +13,8 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
+#include "R5900OpcodeTables.h"
+#include "R5900.h"
 #include "common/MathUtils.h"
 
 namespace R5900 {

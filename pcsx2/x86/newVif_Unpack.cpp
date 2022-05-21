@@ -17,7 +17,7 @@
 // authors: cottonvibes(@gmail.com)
 //			Jake.Stine (@gmail.com)
 
-#include "Common.h"
+#include "Config.h"
 #include "Vif_Dma.h"
 #include "newVif.h"
 #include "MTVU.h"

@@ -15,10 +15,10 @@
 
 #pragma once
 
-#include "Common.h"
 #include "IopHw.h"
+#include "DebugTools/Debug.h"
 
-#include "fmt/core.h"
+#include <fmt/core.h>
 
 namespace IopMemory {
 namespace Internal {

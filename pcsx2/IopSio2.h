@@ -16,6 +16,7 @@
 #ifndef __PSXSIO2_H__
 #define __PSXSIO2_H__
 
+#include "PCSX2Base.h"
 
 #define BUFSIZE	8448
 

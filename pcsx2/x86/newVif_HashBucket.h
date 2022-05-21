@@ -15,9 +15,10 @@
 
 #pragma once
 
-#include <array>
-#include "fmt/core.h"
 #include "common/AlignedMalloc.h"
+#include "common/Console.h"
+#include <fmt/core.h>
+#include <array>
 
 // nVifBlock - Ordered for Hashing; the 'num' and 'upkType' fields are
 //             used as the hash bucket selector.

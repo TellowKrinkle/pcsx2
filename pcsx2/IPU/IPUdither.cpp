@@ -13,11 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
-
-#include "IPU.h"
-#include "IPUdma.h"
-#include "yuv2rgb.h"
 #include "mpeg2lib/Mpeg.h"
 
 void ipu_dither_reference(const macroblock_rgb32 &rgb32, macroblock_rgb16 &rgb16, int dte);

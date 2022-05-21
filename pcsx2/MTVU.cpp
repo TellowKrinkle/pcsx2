@@ -13,9 +13,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
 #include "MTVU.h"
 #include "newVif.h"
+#include "Dmac.h"
 #include "Gif_Unit.h"
 #include "common/Threading.h"
 #include <thread>

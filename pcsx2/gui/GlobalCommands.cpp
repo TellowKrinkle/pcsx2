@@ -32,6 +32,7 @@
 #include "Dump.h"
 #include "DebugTools/Debug.h"
 #include "R3000A.h"
+#include "R5900.h"
 #include "SPU2/spu2.h"
 #include "gui/Dialogs/ModalPopups.h"
 

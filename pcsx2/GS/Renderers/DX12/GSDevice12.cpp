@@ -25,6 +25,7 @@
 #include "common/D3D12/ShaderCache.h"
 #include "common/D3D12/Util.h"
 #include "common/Align.h"
+#include "common/Console.h"
 #include "common/ScopedGuard.h"
 #include "common/StringUtil.h"
 #include "D3D12MemAlloc.h"

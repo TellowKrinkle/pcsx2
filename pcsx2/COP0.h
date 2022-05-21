@@ -16,6 +16,8 @@
 #ifndef __COP0_H__
 #define __COP0_H__
 
+#include "PCSX2Base.h"
+
 extern void WriteCP0Status(u32 value);
 extern void WriteCP0Config(u32 value);
 extern void cpuUpdateOperationMode();

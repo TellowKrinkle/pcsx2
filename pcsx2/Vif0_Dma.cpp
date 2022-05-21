@@ -13,10 +13,12 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
 #include "Vif_Dma.h"
+#include "Common.h"
+#include "Dmac.h"
 #include "VUmicro.h"
 #include "newVif.h"
+#include "DebugTools/Debug.h"
 
 u32 g_vif0Cycles = 0;
 

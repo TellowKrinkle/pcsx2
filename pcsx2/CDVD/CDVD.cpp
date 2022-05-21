@@ -13,8 +13,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "CDVD.h"
 #include "R3000A.h"
-#include "Common.h"
+#include "R5900.h"
 #include "IopHw.h"
 #include "IopDma.h"
 
@@ -22,6 +23,7 @@
 #include <ctime>
 #include <memory>
 
+#include "DebugTools/Debug.h"
 #include "common/FileSystem.h"
 #include "common/MemcpyFast.h"
 #include "common/Path.h"
@@ -29,7 +31,6 @@
 #include "common/Threading.h"
 
 #include "Ps1CD.h"
-#include "CDVD.h"
 #include "CDVD_internal.h"
 #include "IsoFileFormats.h"
 

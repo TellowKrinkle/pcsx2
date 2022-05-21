@@ -13,10 +13,12 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
-#include "R3000A.h"
 #include "Counters.h"
 #include "IopCounters.h"
+#include "Common.h"
+#include "Dmac.h"
+#include "Memory.h"
+#include "R3000A.h"
 
 #include "GS.h"
 #include "VUmicro.h"
@@ -26,6 +28,7 @@
 #include "ps2/HwInternal.h"
 #include "Sio.h"
 
+#include "DebugTools/Debug.h"
 #include "common/MemcpyFast.h"
 #include <time.h>
 #include <cmath>

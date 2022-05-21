@@ -17,6 +17,7 @@
 #define __IR5900_H__
 
 #include "common/emitter/x86emitter.h"
+#include "Config.h"
 #include "R5900.h"
 #include "VU.h"
 #include "iCore.h"

@@ -19,6 +19,7 @@
 #include "CDVD/CDVDaccess.h"
 #include "MemoryCardFile.h"
 
+#include "common/Console.h"
 #include "common/FileSystem.h"
 #include "common/Path.h"
 #include "common/SettingsInterface.h"

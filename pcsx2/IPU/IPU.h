@@ -16,8 +16,9 @@
 #pragma once
 
 #include "IPU_Fifo.h"
-#include "IPUdma.h"
-#include "Common.h"
+#include "Memory.h"
+#include "common/Assertions.h"
+#include "common/StringUtil.h"
 
 #define ipumsk( src ) ( (src) & 0xff )
 #define ipucase( src ) case ipumsk(src)

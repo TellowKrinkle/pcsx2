@@ -15,7 +15,6 @@
 
 #pragma once
 
-#include "Common.h"
 #include "Gif.h"
 #include "GS/GS.h"
 #include <atomic>

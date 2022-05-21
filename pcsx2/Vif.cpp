@@ -13,14 +13,16 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
 #include "Vif.h"
 #include "Vif_Dma.h"
 #include "newVif.h"
+#include "Dmac.h"
 #include "GS.h"
 #include "Gif.h"
+#include "Memory.h"
 #include "MTVU.h"
 #include "Gif_Unit.h"
+#include "DebugTools/Debug.h"
 
 alignas(16) vifStruct vif0, vif1;
 

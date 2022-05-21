@@ -17,7 +17,6 @@
 #include "IopHw.h"
 #include "IopDma.h"
 
-#include "Common.h"
 #include "Sio.h"
 #include "sio_internal.h"
 #include "PAD/Gamepad.h"
@@ -28,6 +27,7 @@
 #	include "Recording/InputRecording.h"
 #endif
 
+#include "DebugTools/Debug.h"
 #include "common/MemcpyFast.h"
 
 _sio sio;

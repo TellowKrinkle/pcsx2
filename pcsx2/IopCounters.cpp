@@ -27,7 +27,7 @@
 #include "IopHw.h"
 #include "IopDma.h"
 #include "CDVD/CDVD.h"
-
+#include "DebugTools/Debug.h"
 #include "common/MemcpyFast.h"
 #include <math.h>
 

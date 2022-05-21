@@ -13,12 +13,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "IopDma.h"
 #include "R3000A.h"
-#include "Common.h"
 #include "SPU2/spu2.h"
 #include "IopCounters.h"
 #include "IopHw.h"
-#include "IopDma.h"
 
 #include "Sif.h"
 #include "DEV9/DEV9.h"

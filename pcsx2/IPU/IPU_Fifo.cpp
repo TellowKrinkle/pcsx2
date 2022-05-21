@@ -13,10 +13,12 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
 #include "IPU.h"
 #include "IPU/IPUdma.h"
+#include "Dmac.h"
+#include "R5900.h"
 #include "mpeg2lib/Mpeg.h"
+#include "DebugTools/Debug.h"
 #include "common/MemcpyFast.h"
 
 alignas(16) IPU_Fifo ipu_fifo;

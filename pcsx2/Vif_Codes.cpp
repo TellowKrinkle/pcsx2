@@ -13,13 +13,14 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
+#include "Dmac.h"
 #include "GS.h"
 #include "Gif_Unit.h"
 #include "Vif_Dma.h"
 #include "newVif.h"
 #include "VUmicro.h"
 #include "MTVU.h"
+#include "DebugTools/Debug.h"
 
 #define vifOp(vifCodeName) _vifT int vifCodeName(int pass, const u32* data)
 #define pass1 if (pass == 0)

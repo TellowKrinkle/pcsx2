@@ -24,7 +24,7 @@
 #include "R5900OpcodeTables.h"
 #include "IopBios.h"
 #include "IopHw.h"
-#include "Common.h"
+#include "System.h"
 
 #include <time.h>
 
@@ -42,6 +42,7 @@
 #include "common/Path.h"
 #include "common/Perf.h"
 #include "DebugTools/Breakpoints.h"
+#include "DebugTools/Debug.h"
 
 #ifndef PCSX2_CORE
 #include "gui/SysThreads.h"

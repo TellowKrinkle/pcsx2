@@ -16,6 +16,7 @@
 #include "MainFrame.h"
 #include "GSFrame.h"
 #include "Saveslots.h"
+#include "R5900.h"
 
 // General Notes:
 //  * It's very important that we re-discover menu items by ID every time we change them,

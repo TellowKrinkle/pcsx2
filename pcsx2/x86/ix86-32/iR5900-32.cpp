@@ -13,13 +13,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
+#include "iR5900.h"
+
 #include "Memory.h"
 #include "R3000A.h"
-
+#include "R5900.h"
 #include "R5900Exceptions.h"
 #include "R5900OpcodeTables.h"
-#include "iR5900.h"
 #include "iR5900Analysis.h"
 #include "BaseblockEx.h"
 #include "System/RecTypes.h"
@@ -38,6 +38,7 @@
 #include "Elfheader.h"
 
 #include "DebugTools/Breakpoints.h"
+#include "DebugTools/Debug.h"
 #include "Patch.h"
 
 #include "common/AlignedMalloc.h"

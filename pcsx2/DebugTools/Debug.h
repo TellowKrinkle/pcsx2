@@ -17,7 +17,6 @@
 
 #include "common/TraceLog.h"
 #include "Config.h"
-#include "Memory.h"
 
 extern FILE *emuLog;
 extern std::string emuLogName;

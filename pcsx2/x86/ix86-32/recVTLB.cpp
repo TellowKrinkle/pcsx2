@@ -13,12 +13,15 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
 #include "vtlb.h"
 
+#include "Config.h"
+#include "Hw.h"
 #include "iCore.h"
 #include "iR5900.h"
+#include "Memory.h"
 #include "common/Perf.h"
+#include <cassert>
 
 using namespace vtlb_private;
 using namespace x86Emitter;

@@ -13,12 +13,12 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
 #include "common/FileSystem.h"
 #include "common/StringUtil.h"
 
 #include "GS.h"			// for sending game crc to mtgs
 #include "Elfheader.h"
+#include "DebugTools/Debug.h"
 #include "DebugTools/SymbolMap.h"
 
 #ifndef PCSX2_CORE

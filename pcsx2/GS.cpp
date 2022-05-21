@@ -13,10 +13,14 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
+#include "GS.h"
 #include "Gif_Unit.h"
+#include "Dmac.h"
+#include "Hw.h"
+#include "Memory.h"
 #include "Counters.h"
 #include "Config.h"
+#include "DebugTools/Debug.h"
 
 #include "common/MemcpyFast.h"
 #include <list>

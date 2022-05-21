@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
-
 #include "Gif_Unit.h"
 #include "Vif_Dma.h"
 #include "MTVU.h"

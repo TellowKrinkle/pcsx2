@@ -14,12 +14,14 @@
  */
 
 #include "Common.h"
-
+#include "Dmac.h"
 #include "GS.h"
 #include "Gif_Unit.h"
+#include "Memory.h"
 #include "Vif_Dma.h"
 
 #include "iR5900.h"
+#include "DebugTools/Debug.h"
 
 // A three-way toggle used to determine if the GIF is stalling (transferring) or done (finished).
 // Should be a gifstate_t rather then int, but I don't feel like possibly interfering with savestates right now.

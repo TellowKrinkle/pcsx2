@@ -13,8 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
-
 #include <list>
 
 #include "common/ScopedGuard.h"

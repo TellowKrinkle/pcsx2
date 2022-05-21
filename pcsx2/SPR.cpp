@@ -13,11 +13,15 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
-
 #include "SPR.h"
-#include "VUmicro.h"
+#include "Common.h"
+#include "Config.h"
+#include "Dmac.h"
+#include "Memory.h"
 #include "MTVU.h"
+#include "SaveState.h"
+#include "VUmicro.h"
+#include "DebugTools/Debug.h"
 
 static bool spr0finished = false;
 static bool spr1finished = false;

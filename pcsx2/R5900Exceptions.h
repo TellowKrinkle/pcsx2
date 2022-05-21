@@ -15,7 +15,9 @@
 
 #pragma once
 
-#include "fmt/core.h"
+#include "R5900.h"
+
+#include <fmt/core.h>
 
 // --------------------------------------------------------------------------------------
 //  BaseR5900Exception

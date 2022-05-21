@@ -21,10 +21,12 @@
 #include "Counters.h"
 #include "GS.h"
 #include "GS/GS.h"
+#include "Hw.h"
 #include "MainFrame.h"
 #include "MSWstuff.h"
 #include "PAD/Gamepad.h"
 #include "PerformanceMetrics.h"
+#include "DebugTools/Debug.h"
 #include "common/StringUtil.h"
 
 #include "gui/Dialogs/ModalPopups.h"

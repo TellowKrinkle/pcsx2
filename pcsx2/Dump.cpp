@@ -13,12 +13,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
-
 #include "Counters.h"
 #include "iCore.h"
 #include "iR5900.h"
 #include "IPU/IPU.h"
+#include "DebugTools/Debug.h"
 #include "DebugTools/SymbolMap.h"
 #include "Config.h"
 

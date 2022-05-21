@@ -13,12 +13,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
 #include "VUops.h"
 #include "GS.h"
 #include "Gif_Unit.h"
 #include "MTVU.h"
-
+#include "DebugTools/Debug.h"
 #include <cmath>
 u32 laststall = 0;
 //Lower/Upper instructions can use that..

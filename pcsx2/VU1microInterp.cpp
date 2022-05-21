@@ -13,9 +13,8 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
-
 #include "VUmicro.h"
+#include "Dmac.h"
 #include "GS.h"
 #include "Gif_Unit.h"
 #include "MTVU.h"

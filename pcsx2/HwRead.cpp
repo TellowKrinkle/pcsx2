@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
 #include "Hardware.h"
 #include "IopHw.h"
 #include "ps2/HwInternal.h"

@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
 #include "R5900OpcodeTables.h"
 #include "iR5900.h"
 

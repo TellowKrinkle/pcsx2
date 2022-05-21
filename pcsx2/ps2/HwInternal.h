@@ -16,6 +16,7 @@
 #pragma once
 
 #include "Hw.h"
+#include "SingleRegisterTypes.h"
 
 // --------------------------------------------------------------------------------------
 //  IsPageFor() / iswitch() / icase()   [macros!]

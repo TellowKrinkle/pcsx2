@@ -28,12 +28,15 @@
 	vtlb/vmap supports mapping to either of these locations, or some other (externaly) specified address.
 */
 
-#include "Common.h"
 #include "vtlb.h"
 #include "COP0.h"
 #include "Cache.h"
+#include "Config.h"
+#include "Memory.h"
 #include "R5900Exceptions.h"
+#include "System.h"
 
+#include "common/Console.h"
 #include "common/MemcpyFast.h"
 #include "common/MemsetFast.inl"
 

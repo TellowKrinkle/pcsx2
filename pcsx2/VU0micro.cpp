@@ -17,10 +17,9 @@
 // This module contains code shared by both the dynarec and interpreter versions
 // of the VU0 micro.
 
-#include "Common.h"
 #include "VUmicro.h"
-
-#include <cmath>
+#include "common/emitter/x86_intrin.h"
+#include "DebugTools/Debug.h"
 
 using namespace R5900;
 

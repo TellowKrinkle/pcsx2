@@ -13,10 +13,14 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
-#include "IPU.h"
 #include "IPU/IPUdma.h"
+#include "Common.h"
+#include "Dmac.h"
+#include "IPU.h"
 #include "mpeg2lib/Mpeg.h"
+#include "R5900.h"
+#include "SaveState.h"
+#include "DebugTools/Debug.h"
 
 IPUStatus IPU1Status;
 

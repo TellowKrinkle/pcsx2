@@ -13,11 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
+#include "R5900.h"
 
 #include "common/StringUtil.h"
 #include "ps2/BiosTools.h"
-#include "R5900.h"
 #include "R3000A.h"
 #include "ps2/pgif.h" // pgif init
 #include "VUmicro.h"

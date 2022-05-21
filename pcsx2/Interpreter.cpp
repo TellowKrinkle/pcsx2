@@ -13,10 +13,9 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
-
 #include "R5900OpcodeTables.h"
 #include "R5900Exceptions.h"
+#include "Memory.h"
 #ifndef PCSX2_CORE
 #include "gui/SysThreads.h"
 #else
@@ -26,6 +25,7 @@
 #include "Elfheader.h"
 
 #include "DebugTools/Breakpoints.h"
+#include "DebugTools/Debug.h"
 
 #include <float.h>
 

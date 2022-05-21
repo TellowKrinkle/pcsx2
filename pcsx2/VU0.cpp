@@ -22,14 +22,13 @@
  -Bug Fixes!!!
 */
 
-#include "Common.h"
-
-#include <cmath>
-
 #include "R5900OpcodeTables.h"
 #include "VUmicro.h"
 #include "Vif_Dma.h"
+#include "Memory.h"
 #include "MTVU.h"
+#include "DebugTools/Debug.h"
+#include <cmath>
 
 #define _Ft_ _Rt_
 #define _Fs_ _Rd_

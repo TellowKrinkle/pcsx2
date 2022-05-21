@@ -15,11 +15,12 @@
 
 
 #include "R3000A.h"
-#include "Common.h"
 #include "Config.h"
 
+#include "R5900.h"
 #include "R5900OpcodeTables.h"
 #include "DebugTools/Breakpoints.h"
+#include "DebugTools/Debug.h"
 #include "IopBios.h"
 #include "IopHw.h"
 

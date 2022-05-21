@@ -14,8 +14,8 @@
  */
 
 #include "newVif_UnpackSSE.h"
-#include "fmt/core.h"
-
+#include "System.h"
+#include <fmt/core.h>
 #include <cinttypes>
 
 #define xMOV8(regX, loc)   xMOVSSZX(regX, loc)

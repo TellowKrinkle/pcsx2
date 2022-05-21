@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include "IPU/IPU.h"
+
 // the IPU is fixed to 16 byte strides (128-bit / QWC resolution):
 static const uint decoder_stride = 16;
 

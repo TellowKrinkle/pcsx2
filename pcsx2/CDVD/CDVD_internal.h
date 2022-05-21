@@ -16,6 +16,8 @@
 #ifndef __CDVD_INTERNAL_H__
 #define __CDVD_INTERNAL_H__
 
+#include "Common.h"
+
 /*
 Interrupts - values are flag bits.
 

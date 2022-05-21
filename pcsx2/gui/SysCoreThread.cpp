@@ -13,7 +13,6 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
 #include "gui/App.h"
 #include "IopBios.h"
 #include "R5900.h"
@@ -27,6 +26,7 @@ extern WindowInfo g_gs_window_info;
 #include "Elfheader.h"
 #include "Patch.h"
 #include "SysThreads.h"
+#include "Memory.h"
 #include "MTVU.h"
 #include "PINE.h"
 #include "FW.h"

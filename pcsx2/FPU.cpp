@@ -13,8 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
-
+#include "R5900OpcodeTables.h"
+#include "R5900.h"
+#include "Memory.h"
+#include "DebugTools/Debug.h"
 #include <cmath>
 
 // Helper Macros

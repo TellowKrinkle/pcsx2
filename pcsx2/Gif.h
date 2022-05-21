@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include "MemoryTypes.h"
 #include "common/StringUtil.h"
 
 #define COPY_GS_PACKET_TO_MTGS 0

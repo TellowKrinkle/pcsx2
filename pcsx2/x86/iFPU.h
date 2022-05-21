@@ -16,6 +16,8 @@
 #ifndef __IFPU_H__
 #define __IFPU_H__
 
+#include "PCSX2Base.h"
+
 alignas(16) extern const u32 g_minvals[4];
 alignas(16) extern const u32 g_maxvals[4];
 

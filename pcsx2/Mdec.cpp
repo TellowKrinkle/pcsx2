@@ -18,12 +18,11 @@
 
 /*  This code was based on the FPSE v0.08 Mdec decoder*/
 
-#include <stdio.h>
-#include <string.h>
-#include "Common.h"
-
 #include "Mdec.h"
 #include "IopHw.h"
+#include "DebugTools/Debug.h"
+#include <stdio.h>
+#include <string.h>
 
 struct {
 	u32 command;

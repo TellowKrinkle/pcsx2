@@ -13,10 +13,12 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
 #include "Vif.h"
+#include "Dmac.h"
 #include "Gif_Unit.h"
+#include "Memory.h"
 #include "Vif_Dma.h"
+#include "DebugTools/Debug.h"
 
 static u32 qwctag(u32 mask)
 {

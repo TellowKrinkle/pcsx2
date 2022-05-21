@@ -13,12 +13,8 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
-
-#include <cmath>
-#include <float.h>
-
 #include "VUmicro.h"
+#include "Config.h"
 
 /*****************************************/
 /*          NEW FLAGS                    */ //By asadr. Thnkx F|RES :p

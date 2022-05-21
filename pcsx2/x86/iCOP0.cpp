@@ -20,10 +20,13 @@
 //   unless it can make them nicely compact.  Calling the C versions will
 //   suffice.
 
-#include "Common.h"
+#include "iCOP0.h"
+#include "COP0.h"
 #include "R5900OpcodeTables.h"
 #include "iR5900.h"
-#include "iCOP0.h"
+#include "Dmac.h"
+#include "Memory.h"
+#include "DebugTools/Debug.h"
 
 namespace Interp = R5900::Interpreter::OpcodeImpl::COP0;
 using namespace x86Emitter;

@@ -15,6 +15,9 @@
 
 #pragma once
 
+#include "Hw.h"
+#include "MemoryTypes.h"
+#include "common/Assertions.h"
 #include "common/StringUtil.h"
 
 // Useful enums for some of the fields.

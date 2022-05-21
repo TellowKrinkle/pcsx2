@@ -28,13 +28,14 @@
 #include "MainFrame.h"
 #include "IsoDropTarget.h"
 
+#include "DebugTools/Debug.h"
 #include "Dialogs/ModalPopups.h"
 #include "Dialogs/ConfigurationDialog.h"
 #include "Debugger/DisassemblyDialog.h"
 
 
-#include "fmt/core.h"
-#include "wx/numdlg.h"
+#include <fmt/core.h>
+#include <wx/numdlg.h>
 
 #ifndef DISABLE_RECORDING
 #include "Recording/InputRecording.h"

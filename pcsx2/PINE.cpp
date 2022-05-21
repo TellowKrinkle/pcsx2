@@ -16,7 +16,6 @@
 #ifndef PCSX2_CORE
 
 #include "PINE.h"
-#include "Common.h"
 #include "Memory.h"
 #include "gui/AppSaveStates.h"
 #include "gui/AppCoreThread.h"

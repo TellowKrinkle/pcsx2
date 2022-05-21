@@ -14,8 +14,9 @@
  */
 
 
-#include "Common.h"
 #include "Cache.h"
+#include "DebugTools/Debug.h"
+#include "R5900.h"
 #include "vtlb.h"
 
 #include "common/MemcpyFast.h"

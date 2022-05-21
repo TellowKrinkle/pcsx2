@@ -15,11 +15,12 @@
 
 
 #include "R3000A.h"
-#include "Common.h"
 
+#include "Common.h"
 #include "Sio.h"
 #include "Sif.h"
 #include "DebugTools/Breakpoints.h"
+#include "R5900.h"
 #include "R5900OpcodeTables.h"
 #include "IopSio2.h"
 #include "IopCounters.h"

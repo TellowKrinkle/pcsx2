@@ -21,9 +21,11 @@
 #include "R5900OpcodeTables.h"
 #include "R5900Exceptions.h"
 #include "GS.h"
+#include "Dmac.h"
+#include "Memory.h"
 #include "CDVD/CDVD.h"
 #include "ps2/BiosTools.h"
-
+#include "DebugTools/Debug.h"
 #include "common/MemcpyFast.h"
 
 GS_VideoMode gsVideoMode = GS_VideoMode::Uninitialized;

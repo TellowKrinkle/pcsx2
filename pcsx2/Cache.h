@@ -16,7 +16,7 @@
 #ifndef __CACHE_H__
 #define __CACHE_H__
 
-#include "Common.h"
+#include "MemoryTypes.h"
 #include "SingleRegisterTypes.h"
 
 void resetCache();

@@ -18,8 +18,6 @@
 #include "ConsoleLogger.h"
 #include "MainFrame.h"
 
-#include "Common.h"
-
 #include "GS.h"
 #include "Elfheader.h"
 #include "Saveslots.h"

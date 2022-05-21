@@ -19,6 +19,7 @@
 #ifndef __MDEC_H__
 #define __MDEC_H__
 
+#include "PCSX2Base.h"
 
 // mdec status:
 #define MDEC_BUSY 0x20000000

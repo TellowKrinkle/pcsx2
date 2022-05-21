@@ -13,16 +13,20 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
-
 #include "IPU.h"
 #include "IPUdma.h"
+#include "Dmac.h"
+#include "Hw.h"
+#include "R5900.h"
+#include "SaveState.h"
 #include "yuv2rgb.h"
 #include "mpeg2lib/Mpeg.h"
 
 #include <limits.h>
 #include "Config.h"
+#include "DebugTools/Debug.h"
 
+#include "common/Console.h"
 #include "common/MemcpyFast.h"
 #include "common/MemsetFast.inl"
 

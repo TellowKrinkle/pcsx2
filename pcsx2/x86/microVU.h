@@ -17,7 +17,6 @@
 //#define mVUlogProg // Dumps MicroPrograms to \logs\*.html
 //#define mVUprofileProg // Shows opcode statistics in console
 
-#include "Common.h"
 #include "VU.h"
 #include "MTVU.h"
 #include "GS.h"

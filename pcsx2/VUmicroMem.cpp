@@ -13,9 +13,10 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
 #include "VUmicro.h"
 #include "MTVU.h"
+#include "SaveState.h"
+#include "System.h"
 
 #include "common/MemcpyFast.h"
 

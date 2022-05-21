@@ -18,10 +18,12 @@
 //			Jake.Stine (@gmail.com)
 
 #include "newVif_UnpackSSE.h"
+#include "DebugTools/Debug.h"
 #include "MTVU.h"
+#include "System.h"
 #include "common/Perf.h"
-#include "fmt/core.h"
 
+#include <fmt/core.h>
 #include <cinttypes>
 
 static void recReset(int idx)

@@ -13,7 +13,7 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
+#include "Dmac.h"
 #include "Hardware.h"
 #include "MTVU.h"
 

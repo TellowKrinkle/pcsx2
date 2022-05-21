@@ -15,10 +15,12 @@
 
 #define _PC_	// disables MIPS opcode macros.
 
-#include "R3000A.h"
-#include "Common.h"
 #include "Sif.h"
+#include "Common.h"
 #include "IopHw.h"
+#include "R3000A.h"
+#include "R5900.h"
+#include "Memory.h"
 
 _sif sif2;
 

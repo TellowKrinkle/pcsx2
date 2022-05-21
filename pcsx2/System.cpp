@@ -13,11 +13,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
+#include "System.h"
 #include "R3000A.h"
 #include "VUmicro.h"
 #include "newVif.h"
 #include "MTVU.h"
+#include "Hw.h"
+#include "SaveState.h"
 
 #include "Elfheader.h"
 

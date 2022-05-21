@@ -19,6 +19,7 @@
 #include "IopBios.h"
 #include "IopMem.h"
 
+#include "DebugTools/Debug.h"
 #include <ctype.h>
 #include <string.h>
 #include <sys/stat.h>

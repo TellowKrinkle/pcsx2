@@ -19,7 +19,10 @@
 #include "CDVD.h"
 #include "IopHw.h"
 #include "IopDma.h"
+#include "SaveState.h"
+#include "DebugTools/Debug.h"
 #include "common/MemcpyFast.h"
+#include "common/Threading.h"
 
 //THIS ALL IS FOR THE CDROM REGISTERS HANDLING
 

@@ -13,12 +13,13 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
-
+#include "Dmac.h"
 #include "Gif.h"
 #include "Gif_Unit.h"
+#include "Memory.h"
 #include "Vif.h"
 #include "Vif_Dma.h"
+#include "DebugTools/Debug.h"
 
 //////////////////////////////////////////////////////////////////////////
 /////////////////////////// Quick & dirty FIFO :D ////////////////////////

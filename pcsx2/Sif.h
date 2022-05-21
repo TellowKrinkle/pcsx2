@@ -16,6 +16,8 @@
 #ifndef __SIF_H__
 #define __SIF_H__
 
+#include "Dmac.h"
+#include "DebugTools/Debug.h"
 #include "common/MemcpyFast.h"
 
 static const int FIFO_SIF_W = 128;

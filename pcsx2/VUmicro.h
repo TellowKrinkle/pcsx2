@@ -21,6 +21,7 @@
 
 #include "common/Console.h"
 #include "common/Exceptions.h"
+#include <atomic>
 
 static const uint VU0_MEMSIZE	= 0x1000;		// 4kb
 static const uint VU0_PROGSIZE	= 0x1000;		// 4kb

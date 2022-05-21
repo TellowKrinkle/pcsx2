@@ -14,7 +14,6 @@
  */
 
 #include "R3000A.h"
-#include "Common.h"
 
 #include "iR5900.h"
 #include "Sio.h"
@@ -25,7 +24,7 @@
 #include "IopDma.h"
 #include "CDVD/Ps1CD.h"
 #include "CDVD/CDVD.h"
-
+#include "DebugTools/Debug.h"
 
 // NOTE: Any modifications to read/write fns should also go into their const counterparts
 // found in iPsxHw.cpp.

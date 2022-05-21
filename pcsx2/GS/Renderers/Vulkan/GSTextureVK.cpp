@@ -16,6 +16,7 @@
 #include "GSTextureVK.h"
 #include "GSDeviceVK.h"
 #include "common/Assertions.h"
+#include "common/Console.h"
 #include "common/Vulkan/Builders.h"
 #include "common/Vulkan/Context.h"
 #include "common/Vulkan/Util.h"

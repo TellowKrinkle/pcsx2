@@ -21,6 +21,7 @@
 #include "GS/GSUtil.h"
 #include "Host.h"
 #include "HostDisplay.h"
+#include "common/Console.h"
 #include "common/StringUtil.h"
 #include <fstream>
 #include <sstream>

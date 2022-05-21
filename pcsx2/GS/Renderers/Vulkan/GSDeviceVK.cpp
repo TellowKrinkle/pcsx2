@@ -20,6 +20,7 @@
 #include "common/Vulkan/SwapChain.h"
 #include "common/Vulkan/Util.h"
 #include "common/Align.h"
+#include "common/Console.h"
 #include "common/ScopedGuard.h"
 #include "GS.h"
 #include "GS/GSGL.h"

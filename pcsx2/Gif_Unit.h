@@ -21,6 +21,7 @@
 
 // FIXME common path ?
 #include "common/boost_spsc_queue.hpp"
+#include "common/Console.h"
 #include "common/MemcpyFast.h"
 #include <deque>
 

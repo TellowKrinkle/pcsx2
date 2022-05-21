@@ -14,6 +14,7 @@
  */
 
 #include "IopHw_Internal.h"
+#include "Common.h"
 #include "Sif.h"
 #include "Sio.h"
 #include "FW.h"

@@ -15,11 +15,13 @@
 
 #include "common/AlignedMalloc.h"
 #include "R3000A.h"
-#include "Common.h"
 #include "ps2/pgif.h" // for PSX kernel TTY in iopMemWrite32
 #include "SPU2/spu2.h"
 #include "DEV9/DEV9.h"
+#include "Hw.h"
 #include "IopHw.h"
+#include "Memory.h"
+#include "DebugTools/Debug.h"
 
 uptr *psxMemWLUT = NULL;
 const uptr *psxMemRLUT = NULL;

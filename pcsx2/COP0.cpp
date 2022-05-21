@@ -13,8 +13,14 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
 #include "COP0.h"
+
+#include "Dmac.h"
+#include "R5900.h"
+#include "Memory.h"
+#include "System.h"
+#include "DebugTools/Debug.h"
+#include "common/Console.h"
 
 u32 s_iLastCOP0Cycle = 0;
 u32 s_iLastPERFCycle[2] = { 0, 0 };

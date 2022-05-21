@@ -16,7 +16,6 @@
 
 // Holds instruction tables for the r5900 recompiler
 
-#include "Common.h"
 #include "Memory.h"
 #include "R5900OpcodeTables.h"
 #include "iR5900.h"

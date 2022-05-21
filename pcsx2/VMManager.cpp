@@ -37,6 +37,7 @@
 #include "HostSettings.h"
 #include "IopBios.h"
 #include "MTVU.h"
+#include "Memory.h"
 #include "MemoryCardFile.h"
 #include "Patch.h"
 #include "PerformanceMetrics.h"

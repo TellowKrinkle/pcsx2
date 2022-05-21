@@ -13,10 +13,11 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
+#include "Config.h"
 #include "Vif.h"
 #include "Vif_Dma.h"
 #include "MTVU.h"
+#include "DebugTools/Debug.h"
 
 enum UnpackOffset {
 	OFFSET_X = 0,

@@ -16,6 +16,7 @@
 // Micro VU recompiler! - author: cottonvibes(@gmail.com)
 
 #include "microVU.h"
+#include "Dmac.h"
 
 #include "common/AlignedMalloc.h"
 #include "common/Perf.h"

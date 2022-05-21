@@ -17,10 +17,7 @@
 #include "USB/USB.h"
 #include "IopHw.h"
 #include "IopDma.h"
-#include "Common.h"
 #include "R3000A.h"
-
-using namespace R3000A;
 
 void dev9Interrupt()
 {

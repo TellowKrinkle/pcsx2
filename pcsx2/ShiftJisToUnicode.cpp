@@ -14,6 +14,7 @@
  */
 
 #include "Common.h"
+#include <cstring>
 
 static const char     NumBytes[256] = {
 	1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,

@@ -17,6 +17,7 @@
 #include "GSDevice12.h"
 #include "common/Assertions.h"
 #include "common/Align.h"
+#include "common/Console.h"
 #include "common/D3D12/Builders.h"
 #include "common/D3D12/Context.h"
 #include "common/D3D12/Util.h"

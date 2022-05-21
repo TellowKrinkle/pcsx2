@@ -17,8 +17,6 @@
 // IPU-correct yuv conversions by Pseudonym
 // SSE2 Implementation by Pseudonym
 
-#include "Common.h"
-#include "IPU.h"
 #include "yuv2rgb.h"
 #include "mpeg2lib/Mpeg.h"
 

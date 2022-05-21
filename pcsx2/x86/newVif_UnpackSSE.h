@@ -15,9 +15,8 @@
 
 #pragma once
 
-#include "Common.h"
-#include "Vif_Dma.h"
 #include "newVif.h"
+#include "Vif_Dma.h"
 
 #include "common/emitter/x86_intrin.h"
 

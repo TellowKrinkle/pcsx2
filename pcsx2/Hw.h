@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include "PCSX2Base.h"
+
 namespace EEMemoryMap
 {
 	static const uint RCNT0_Start		= 0x10000000;

@@ -26,11 +26,12 @@
 //	have been forced to inline since it won't bloat the program and gets rid of
 //	some call overhead.
 
-#include "Common.h"
-#include "IPU/IPU.h"
 #include "Mpeg.h"
+#include "Dmac.h"
+#include "IPU/IPU.h"
 #include "Vlc.h"
 
+#include "common/Console.h"
 #include "common/MemsetFast.inl"
 
 const int non_linear_quantizer_scale [] =

@@ -14,9 +14,10 @@
  */
 
 #include "BiosTools.h"
-#include "Common.h"
 #include "Config.h"
+#include "System.h"
 
+#include "common/Console.h"
 #include "common/FileSystem.h"
 #include "common/Path.h"
 #include "common/StringUtil.h"

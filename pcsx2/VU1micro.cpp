@@ -17,10 +17,10 @@
 // This module contains code shared by both the dynarec and interpreter versions
 // of the VU0 micro.
 
-#include "Common.h"
-#include <cmath>
 #include "VUmicro.h"
+#include "Config.h"
 #include "MTVU.h"
+#include "DebugTools/Debug.h"
 
 #ifdef PCSX2_DEBUG
 u32 vudump = 0;

@@ -13,9 +13,12 @@
  *  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Common.h"
 #include "Vif_Dma.h"
 #include "newVif.h"
+#include "Common.h"
+#include "Config.h"
+#include "Dmac.h"
+#include "DebugTools/Debug.h"
 
 //------------------------------------------------------------------
 // VifCode Transfer Interpreter (Vif0/Vif1)
