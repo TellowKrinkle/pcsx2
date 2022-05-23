@@ -30,7 +30,7 @@
 #include "common/StringUtil.h"
 #include "CDVD/CDVD.h"
 
-#include "common/emitter/x86_intrin.h"
+#include <xmmintrin.h>
 
 #ifdef PCSX2_CORE
 #include "GSDumpReplayer.h"

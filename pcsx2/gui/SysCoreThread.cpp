@@ -48,7 +48,7 @@ extern WindowInfo g_gs_window_info;
 #include <wx/msw/wrapwin.h>
 #endif
 
-#include "common/emitter/x86_intrin.h"
+#include <xmmintrin.h>
 
 bool g_CDVDReset = false;
 

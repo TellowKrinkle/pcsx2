@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <immintrin.h>
+#include <emmintrin.h>
 // Can't stick them in structs because it breaks calling convention things, yay
 using r64  = __m128i;
 using r128 = __m128i;

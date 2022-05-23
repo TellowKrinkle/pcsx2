@@ -18,8 +18,6 @@
 #include "newVif.h"
 #include "Vif_Dma.h"
 
-#include "common/emitter/x86_intrin.h"
-
 using namespace x86Emitter;
 
 extern void mergeVectors(xRegisterSSE dest, xRegisterSSE src, xRegisterSSE temp, int xyzw);

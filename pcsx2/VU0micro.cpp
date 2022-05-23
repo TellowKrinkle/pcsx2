@@ -18,8 +18,8 @@
 // of the VU0 micro.
 
 #include "VUmicro.h"
-#include "common/emitter/x86_intrin.h"
 #include "DebugTools/Debug.h"
+#include <emmintrin.h>
 
 using namespace R5900;
 
