@@ -388,13 +388,14 @@ void GSVertexTrace::FMMRoundSprite(void* vertex, int count)
 	const GIFRegTEX0& TEX0 = context->TEX0;
 	const GIFRegTEX1& TEX1 = context->TEX1;
 	bool linear = TEX1.MXL == 0 || TEX1.K <= 0 ? TEX1.IsMagLinear() : TEX1.IsMinLinear();
+	bool adjust_texture = linear && GSConfig.UserHacks_RoundSprite == 2;
 
 	// A PS2 a sprite starting at (0, 0) draws its first point with the equivalent location of (0, 0)
 	// On PC, the first point is in the center, at (0.5, 0.5)
 	// Adjust st by (-0.5, -0.5) * dst/dxy to compensate
 	// (If nearest, assume the game meant exactly those coordinates)
-	GSVector4i st_adjust_base = linear ? GSVector4i(-8) : GSVector4i::zero();
-	GSVector4i minmax_adjust_enable = linear ? GSVector4i(-1) : GSVector4i::zero();
+	GSVector4i st_adjust_base = adjust_texture ? GSVector4i(-8) : GSVector4i::zero();
+	GSVector4i minmax_adjust_enable = adjust_texture ? GSVector4i(-1) : GSVector4i::zero();
 	// Multiplier for converting uv coordinates to st
 	GSVector4 uv_multiplier = GSVector4(1.f/16.f) / GSVector4(1 << TEX0.TW, 1 << TEX0.TH).xyxy();
 

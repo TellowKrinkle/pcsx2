@@ -1284,8 +1284,8 @@ void GSApp::Init()
 	m_gs_generic_list.push_back(GSSetting(1, "Force-Enabled", ""));
 
 	m_gs_hack.push_back(GSSetting(0, "Off", "Default"));
-	m_gs_hack.push_back(GSSetting(1, "Half", ""));
-	m_gs_hack.push_back(GSSetting(2, "Full", ""));
+	m_gs_hack.push_back(GSSetting(1, "Position", ""));
+	m_gs_hack.push_back(GSSetting(2, "Position and Texture", ""));
 
 	m_gs_offset_hack.push_back(GSSetting(0, "Off", "Default"));
 	m_gs_offset_hack.push_back(GSSetting(1, "Normal", "Vertex"));

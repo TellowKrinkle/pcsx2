@@ -824,12 +824,12 @@
          </item>
          <item>
           <property name="text">
-           <string>Half</string>
+           <string>Position</string>
           </property>
          </item>
          <item>
           <property name="text">
-           <string>Full</string>
+           <string>Position and Texture</string>
           </property>
          </item>
         </widget>

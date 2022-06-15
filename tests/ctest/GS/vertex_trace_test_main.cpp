@@ -28,6 +28,7 @@ public:
 		: GSVertexTrace(static_cast<GSState*>(malloc(sizeof(GSState))), false)
 	{
 		const_cast<GSState*>(m_state)->m_context = &context;
+		GSConfig.UserHacks_RoundSprite = 2;
 		context.XYOFFSET.OFX = 1024;
 		context.XYOFFSET.OFY = 1024;
 		context.TEX1.MXL = 0;
