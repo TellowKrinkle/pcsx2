@@ -628,6 +628,9 @@ GSVector4 GSRendererHW::RealignTargetTextureCoordinate(const GSTextureCache::Sou
 	if (GSConfig.UserHacks_HalfPixelOffset <= 1 || GetUpscaleMultiplier() == 1)
 		return GSVector4(0.0f);
 
+	if (GSConfig.UserHacks_RoundSprite == 2 && PRIM->PRIM == GS_SPRITE)
+		return GSVector4(0.0f); // Already handled by RoundSprite
+
 	const GSVertex* v = &m_vertex.buff[0];
 	const GSVector2& scale = tex->m_texture->GetScale();
 	const bool linear = m_vt.IsRealLinear();
@@ -3235,7 +3238,7 @@ void GSRendererHW::DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Sourc
 	//The resulting shifted output aligns better with common blending / corona / blurring effects,
 	//but introduces a few bad pixels on the edges.
 
-	if (rt && rt->OffsetHack_modxy > 1.0f)
+	if (rt && rt->OffsetHack_modxy > 1.0f && !(GSConfig.UserHacks_RoundSprite == 2 && PRIM->PRIM == GS_SPRITE))
 	{
 		ox2 *= rt->OffsetHack_modxy;
 		oy2 *= rt->OffsetHack_modxy;
