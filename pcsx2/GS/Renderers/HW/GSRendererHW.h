@@ -130,9 +130,6 @@ private:
 	void SwSpriteRender();
 	bool CanUseSwSpriteRender();
 
-	template <bool linear>
-	void RoundSpriteOffset();
-
 	void DrawPrims(GSTexture* rt, GSTexture* ds, GSTextureCache::Source* tex);
 
 	void ResetStates();

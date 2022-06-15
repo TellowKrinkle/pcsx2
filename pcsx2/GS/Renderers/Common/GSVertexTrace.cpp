@@ -47,6 +47,25 @@ GSVertexTrace::GSVertexTrace(const GSState* state, bool provoking_vertex_first)
 	InitUpdate(GS_LINE_CLASS);
 	InitUpdate(GS_TRIANGLE_CLASS);
 	InitUpdate(GS_SPRITE_CLASS);
+
+	#define InitFMMRS(tme, fst) \
+		m_fmm_round_sprite[tme][fst][0] = &GSVertexTrace::FMMRoundSprite<tme, fst, 0>; \
+		m_fmm_round_sprite[tme][fst][1] = &GSVertexTrace::FMMRoundSprite<tme, fst, 1>;
+
+	InitFMMRS(0, 0)
+	InitFMMRS(0, 1)
+	InitFMMRS(1, 0)
+	InitFMMRS(1, 1)
+}
+
+void GSVertexTrace::UpdateRoundSprite(void* vertex, int count)
+{
+	m_primclass = GS_SPRITE_CLASS;
+	u32 tme = m_state->PRIM->TME;
+	u32 fst = m_state->PRIM->FST;
+	u32 color = !(m_state->PRIM->TME && m_state->m_context->TEX0.TFX == TFX_DECAL && m_state->m_context->TEX0.TCC);
+	(this->*m_fmm_round_sprite[tme][fst][color])(vertex, count);
+	FinishUpdate(fst, vertex, count);
 }
 
 void GSVertexTrace::Update(const void* vertex, const u32* index, int v_count, int i_count, GS_PRIM_CLASS primclass)
@@ -63,6 +82,11 @@ void GSVertexTrace::Update(const void* vertex, const u32* index, int v_count, in
 
 	(this->*m_fmm[color][fst][tme][iip][primclass])(vertex, index, i_count);
 
+	FinishUpdate(fst, vertex, v_count);
+}
+
+void GSVertexTrace::FinishUpdate(bool fst, const void* vertex, int count)
+{
 	// Potential float overflow detected. Better uses the slower division instead
 	// Note: If Q is too big, 1/Q will end up as 0. 1e30 is a random number
 	// that feel big enough.
@@ -79,7 +103,7 @@ void GSVertexTrace::Update(const void* vertex, const u32* index, int v_count, in
 	// I'm not sure of the cost. In doubt let's do it only when depth is enabled
 	if (m_state->m_context->TEST.ZTE == 1 && m_state->m_context->TEST.ZTST > ZTST_ALWAYS)
 	{
-		CorrectDepthTrace(vertex, v_count);
+		CorrectDepthTrace(vertex, count);
 	}
 
 	if (m_state->PRIM->TME)
@@ -325,6 +349,159 @@ void GSVertexTrace::FindMinMax(const void* vertex, const u32* index, int count)
 
 		m_min.t = tmin * s;
 		m_max.t = tmax * s;
+	}
+	else
+	{
+		m_min.t = GSVector4::zero();
+		m_max.t = GSVector4::zero();
+	}
+
+	if (color)
+	{
+		m_min.c = cmin.u8to32();
+		m_max.c = cmax.u8to32();
+	}
+	else
+	{
+		m_min.c = GSVector4i::zero();
+		m_max.c = GSVector4i::zero();
+	}
+}
+
+template <u32 tme, u32 fst, u32 color>
+void GSVertexTrace::FMMRoundSprite(void* vertex, int count)
+{
+	const GSDrawingContext* context = m_state->m_context;
+
+	GSVector4 tmin = s_minmax.xxxx();
+	GSVector4 tmax = s_minmax.yyyy();
+	GSVector4i cmin = GSVector4i::xffffffff();
+	GSVector4i cmax = GSVector4i::zero();
+
+	GSVector4i pmin = GSVector4i::xffffffff();
+	GSVector4i pmax = GSVector4i::zero();
+
+	GSVertex* RESTRICT v = (GSVertex*)vertex;
+
+	ASSERT(count % 2 == 0);
+
+	const GIFRegTEX0& TEX0 = context->TEX0;
+	const GIFRegTEX1& TEX1 = context->TEX1;
+	bool linear = TEX1.MXL == 0 || TEX1.K <= 0 ? TEX1.IsMagLinear() : TEX1.IsMinLinear();
+
+	// A PS2 a sprite starting at (0, 0) draws its first point with the equivalent location of (0, 0)
+	// On PC, the first point is in the center, at (0.5, 0.5)
+	// Adjust st by (-0.5, -0.5) * dst/dxy to compensate
+	// (If nearest, assume the game meant exactly those coordinates)
+	GSVector4i st_adjust_base = linear ? GSVector4i(-8) : GSVector4i::zero();
+	GSVector4i minmax_adjust_enable = linear ? GSVector4i(-1) : GSVector4i::zero();
+	// Multiplier for converting uv coordinates to st
+	GSVector4 uv_multiplier = GSVector4(1.f/16.f) / GSVector4(1 << TEX0.TW, 1 << TEX0.TH).xyxy();
+
+	for (int i = 0; i < count; i += 2)
+	{
+		GSVertex& v0 = v[i];
+		GSVertex& v1 = v[i + 1];
+
+		if (color)
+		{
+			GSVector4i c1 = GSVector4i::load(v1.RGBAQ.U32[0]);
+			cmin = cmin.min_u8(c1);
+			cmax = cmax.max_u8(c1);
+		}
+
+		GSVector4i xyzf0(v0.m[1]);
+		GSVector4i xyzf1(v1.m[1]);
+
+		GSVector4i xy0 = xyzf0.upl16();
+		GSVector4i z0 = xyzf0.yyyy();
+		GSVector4i xy1 = xyzf1.upl16();
+		GSVector4i z1 = xyzf1.yyyy();
+
+		GSVector4i xydiff = xy1 - xy0;
+		GSVector4i xy = xy0.upl64(xy1);
+		GSVector4i xyoffset = GSVector4i::loadl(&context->XYOFFSET.U64).xyxy();
+		// Round everything up to the nearest whole number
+		// (Since these are the actual positions pixels will be drawn if rendering at native resolution)
+		GSVector4i xy_adjusted = ((xy - xyoffset + 0xf) & ~0xf) + xyoffset;
+		// The amount the point was moved by
+		GSVector4i xy_adjust_amt = xy_adjusted - xy;
+		// Store back the adjusted xy coordinates
+		GSVector4i xy_adjusted_packed = xy_adjusted.pu32();
+		v0.XYZ.U32[0] = xy_adjusted_packed.extract32<0>();
+		v1.XYZ.U32[0] = xy_adjusted_packed.extract32<1>();
+
+		GSVector4i p0 = xy_adjusted.blend16<0xf0>(z0.uph32(xyzf1));
+		GSVector4i p1 = xy_adjusted.uph64(z1.uph32(xyzf1));
+		pmin = pmin.min_u32(p0.min_u32(p1));
+		pmax = pmax.max_u32(p0.max_u32(p1));
+
+		if (tme)
+		{
+			GSVector4 st;
+			GSVector4 stq0 = GSVector4::cast(GSVector4i(v0.m[0]));
+			GSVector4 stq1 = GSVector4::cast(GSVector4i(v1.m[0]));
+			if (!fst)
+			{
+				GSVector4 q = stq1.wwww();
+				st = stq0.upld(stq1) / q;
+			}
+			else
+			{
+				GSVector4i uv0(v0.m[1]);
+				GSVector4i uv1(v1.m[1]);
+				GSVector4 st0 = GSVector4(uv0.uph16());
+				GSVector4 st1 = GSVector4(uv1.uph16());
+
+				st = st0.upld(st1);
+			}
+			GSVector4 stdiff = st.zwzw() - st.xyxy();
+			GSVector4 dst_dxy = stdiff / GSVector4(xydiff.xyxy());
+			// If we shifted the xy right by 0.25 pixels, we should shift st by 0.25 * dst/dxy to compensate
+			GSVector4 st_adjusted = st + GSVector4(st_adjust_base + xy_adjust_amt) * dst_dxy;
+			// While we're at it, we can shrink the bottom right of the minmax in since we know where the pixel centers will be
+			GSVector4i is_bottom_right = xy_adjusted > xy_adjusted.zwxy();
+			GSVector4i minmax_adjust_base = GSVector4i(-16) & is_bottom_right & minmax_adjust_enable; // top left => 0, bottom right => -16
+			GSVector4 minmax = st + GSVector4(minmax_adjust_base + xy_adjust_amt) * dst_dxy;
+			tmin = tmin.min(minmax.xyxy().min(minmax.zwzw()));
+			tmax = tmax.max(minmax.xyxy().max(minmax.zwzw()));
+
+			if (fst)
+			{
+				// We can't store back into uv because the value can go negative
+				// See https://github.com/PCSX2/pcsx2/files/7012926/drakengard.2.decaling.zip for an example
+				st_adjusted *= uv_multiplier;
+			}
+
+			GSVector4 rgbaq = stq1.uph(GSVector4(1.0f)); // [rgba, 1.0, oldq, 1.0], we want to replace q with 1 since we already divided by it
+			v0.m[0] = GSVector4i::cast(st_adjusted.xyxy(rgbaq));
+			v1.m[0] = GSVector4i::cast(st_adjusted.zwxy(rgbaq));
+		}
+	}
+
+	GSVector4 o(context->XYOFFSET);
+	GSVector4 s(1.0f / 16, 1.0f / 16, 2.0f, 1.0f);
+
+	m_min.p = (GSVector4(pmin) - o) * s;
+	m_max.p = (GSVector4(pmax) - o) * s;
+
+	// Fix signed int conversion
+	m_min.p = m_min.p.insert32<0, 2>(GSVector4::load((float)(u32)pmin.extract32<2>()));
+	m_max.p = m_max.p.insert32<0, 2>(GSVector4::load((float)(u32)pmax.extract32<2>()));
+
+	if (tme)
+	{
+		if (fst)
+		{
+			s = GSVector4(1.0f / 16, 1.0f).xxyy();
+		}
+		else
+		{
+			s = GSVector4(1 << TEX0.TW, 1 << TEX0.TH, 1, 1);
+		}
+
+		m_min.t = (tmin * s).upld(GSVector4(1));
+		m_max.t = (tmax * s).upld(GSVector4(1));
 	}
 	else
 	{

@@ -233,6 +233,7 @@ public:
 	int m_options;
 	bool m_nativeres;
 	bool m_mipmap;
+	bool m_is_hw = false;
 	u32 m_dirty_gs_regs;
 	int m_backed_up_ctx;
 

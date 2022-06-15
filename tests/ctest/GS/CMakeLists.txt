@@ -28,3 +28,11 @@ foreach(isa "sse4" "avx" "avx2")
 		)
 	endif()
 endforeach()
+
+add_pcsx2_test(vertex_trace_test
+	vertex_trace_test_main.cpp
+	${GSDir}/GSVector.cpp
+	${GSDir}/Renderers/Common/GSVertexTrace.cpp)
+target_include_directories(vertex_trace_test PRIVATE ${GSDir} ${CMAKE_SOURCE_DIR}/pcsx2 ${CMAKE_SOURCE_DIR}/3rdparty/xbyak)
+target_compile_options(vertex_trace_test PRIVATE ${compile_options_ninsse4})
+target_compile_definitions(vertex_trace_test PRIVATE ${definitions_sse4})

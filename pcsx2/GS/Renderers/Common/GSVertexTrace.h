@@ -45,11 +45,16 @@ protected:
 	static const GSVector4 s_minmax;
 
 	typedef void (GSVertexTrace::*FindMinMaxPtr)(const void* vertex, const u32* index, int count);
+	typedef void (GSVertexTrace::*FMMRoundSpritePtr)(void* vertex, int count);
 
 	FindMinMaxPtr m_fmm[2][2][2][2][4];
+	FMMRoundSpritePtr m_fmm_round_sprite[2][2][2];
 
 	template <GS_PRIM_CLASS primclass, u32 iip, u32 tme, u32 fst, u32 color, bool provoking_vertex_first>
 	void FindMinMax(const void* vertex, const u32* index, int count);
+
+	template <u32 tme, u32 fst, u32 color>
+	void FMMRoundSprite(void* vertex, int count);
 
 public:
 	GS_PRIM_CLASS m_primclass;
@@ -77,6 +82,8 @@ public:
 	virtual ~GSVertexTrace() {}
 
 	void Update(const void* vertex, const u32* index, int v_count, int i_count, GS_PRIM_CLASS primclass);
+	void UpdateRoundSprite(void* vertex, int count);
+	void FinishUpdate(bool fst, const void* vertex, int count);
 
 	bool IsLinear() const { return m_filter.opt_linear; }
 	bool IsRealLinear() const { return m_filter.linear; }

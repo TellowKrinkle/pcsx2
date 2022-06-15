@@ -33,6 +33,7 @@ GSRendererHW::GSRendererHW()
 	, m_userhacks_tcoffset_y(0)
 	, m_lod(GSVector2i(0, 0))
 {
+	m_is_hw = true;
 	m_mipmap = (GSConfig.HWMipmap >= HWMipmapLevel::Basic);
 	SetTCOffset();
 
@@ -1086,131 +1087,6 @@ bool GSRendererHW::CanUseSwSpriteRender()
 	return true;
 }
 
-template <bool linear>
-void GSRendererHW::RoundSpriteOffset()
-{
-//#define DEBUG_U
-//#define DEBUG_V
-#if defined(DEBUG_V) || defined(DEBUG_U)
-	bool debug = linear;
-#endif
-	const size_t count = m_vertex.next;
-	GSVertex* v = &m_vertex.buff[0];
-
-	for (size_t i = 0; i < count; i += 2)
-	{
-		// Performance note: if it had any impact on perf, someone would port it to SSE (AKA GSVector)
-
-		// Compute the coordinate of first and last texels (in native with a linear filtering)
-		const int ox = m_context->XYOFFSET.OFX;
-		const int X0 = v[i].XYZ.X - ox;
-		const int X1 = v[i + 1].XYZ.X - ox;
-		const int Lx = (v[i + 1].XYZ.X - v[i].XYZ.X);
-		const float ax0 = alpha0(Lx, X0, X1);
-		const float ax1 = alpha1(Lx, X0, X1);
-		const u16 tx0 = Interpolate_UV(ax0, v[i].U, v[i + 1].U);
-		const u16 tx1 = Interpolate_UV(ax1, v[i].U, v[i + 1].U);
-#ifdef DEBUG_U
-		if (debug)
-		{
-			fprintf(stderr, "u0:%d and u1:%d\n", v[i].U, v[i + 1].U);
-			fprintf(stderr, "a0:%f and a1:%f\n", ax0, ax1);
-			fprintf(stderr, "t0:%d and t1:%d\n", tx0, tx1);
-		}
-#endif
-
-		const int oy = m_context->XYOFFSET.OFY;
-		const int Y0 = v[i].XYZ.Y - oy;
-		const int Y1 = v[i + 1].XYZ.Y - oy;
-		const int Ly = (v[i + 1].XYZ.Y - v[i].XYZ.Y);
-		const float ay0 = alpha0(Ly, Y0, Y1);
-		const float ay1 = alpha1(Ly, Y0, Y1);
-		const u16 ty0 = Interpolate_UV(ay0, v[i].V, v[i + 1].V);
-		const u16 ty1 = Interpolate_UV(ay1, v[i].V, v[i + 1].V);
-#ifdef DEBUG_V
-		if (debug)
-		{
-			fprintf(stderr, "v0:%d and v1:%d\n", v[i].V, v[i + 1].V);
-			fprintf(stderr, "a0:%f and a1:%f\n", ay0, ay1);
-			fprintf(stderr, "t0:%d and t1:%d\n", ty0, ty1);
-		}
-#endif
-
-#ifdef DEBUG_U
-		if (debug)
-			fprintf(stderr, "GREP_BEFORE %d => %d\n", v[i].U, v[i + 1].U);
-#endif
-#ifdef DEBUG_V
-		if (debug)
-			fprintf(stderr, "GREP_BEFORE %d => %d\n", v[i].V, v[i + 1].V);
-#endif
-
-#if 1
-		// Use rounded value of the newly computed texture coordinate. It ensures
-		// that sampling will remains inside texture boundary
-		//
-		// Note for bilinear: by definition it will never work correctly! A sligh modification
-		// of interpolation migth trigger a discard (with alpha testing)
-		// Let's use something simple that correct really bad case (for a couple of 2D games).
-		// I hope it won't create too much glitches.
-		if (linear)
-		{
-			const int Lu = v[i + 1].U - v[i].U;
-			// Note 32 is based on taisho-mononoke
-			if ((Lu > 0) && (Lu <= (Lx + 32)))
-			{
-				v[i + 1].U -= 8;
-			}
-		}
-		else
-		{
-			if (tx0 <= tx1)
-			{
-				v[i].U = tx0;
-				v[i + 1].U = tx1 + 16;
-			}
-			else
-			{
-				v[i].U = tx0 + 15;
-				v[i + 1].U = tx1;
-			}
-		}
-#endif
-#if 1
-		if (linear)
-		{
-			const int Lv = v[i + 1].V - v[i].V;
-			if ((Lv > 0) && (Lv <= (Ly + 32)))
-			{
-				v[i + 1].V -= 8;
-			}
-		}
-		else
-		{
-			if (ty0 <= ty1)
-			{
-				v[i].V = ty0;
-				v[i + 1].V = ty1 + 16;
-			}
-			else
-			{
-				v[i].V = ty0 + 15;
-				v[i + 1].V = ty1;
-			}
-		}
-#endif
-
-#ifdef DEBUG_U
-		if (debug)
-			fprintf(stderr, "GREP_AFTER %d => %d\n\n", v[i].U, v[i + 1].U);
-#endif
-#ifdef DEBUG_V
-		if (debug)
-			fprintf(stderr, "GREP_AFTER %d => %d\n\n", v[i].V, v[i + 1].V);
-#endif
-	}
-}
-
 void GSRendererHW::Draw()
 {
 	if (s_dump && (s_n >= s_saven))
@@ -1734,22 +1610,6 @@ void GSRendererHW::Draw()
 						v[i + 1].U += 8;
 				}
 			}
-		}
-
-		// Noting to do if no texture is sampled
-		if (PRIM->FST && draw_sprite_tex)
-		{
-			if ((GSConfig.UserHacks_RoundSprite > 1) || (GSConfig.UserHacks_RoundSprite == 1 && !m_vt.IsLinear()))
-			{
-				if (m_vt.IsLinear())
-					RoundSpriteOffset<true>();
-				else
-					RoundSpriteOffset<false>();
-			}
-		}
-		else
-		{
-			; // vertical line in Yakuza (note check m_userhacks_align_sprite_X behavior)
 		}
 	}
 

@@ -1841,7 +1841,17 @@ void GSState::FlushPrim()
 			Console.Warning("GS: Possible invalid draw, Frame PSM %x ZPSM %x", m_context->FRAME.PSM, m_context->ZBUF.PSM);
 		}
 
-		m_vt.Update(m_vertex.buff, m_index.buff, m_vertex.tail, m_index.tail, GSUtil::GetPrimClass(PRIM->PRIM));
+		GIFRegPRIM prim_backup = *PRIM;
+
+		if (m_is_hw && GSConfig.UserHacks_RoundSprite && PRIM->PRIM == GS_SPRITE)
+		{
+			m_vt.UpdateRoundSprite(m_vertex.buff, m_vertex.tail);
+			PRIM->FST = 0; // UpdateRoundSprite always saves back to st
+		}
+		else
+		{
+			m_vt.Update(m_vertex.buff, m_index.buff, m_vertex.tail, m_index.tail, GSUtil::GetPrimClass(PRIM->PRIM));
+		}
 
 		m_context->SaveReg();
 
@@ -1861,6 +1871,7 @@ void GSState::FlushPrim()
 		}
 
 		m_context->RestoreReg();
+		*PRIM = prim_backup;
 
 		g_perfmon.Put(GSPerfMon::Draw, 1);
 		g_perfmon.Put(GSPerfMon::Prim, m_index.tail / GSUtil::GetVertexCount(PRIM->PRIM));
