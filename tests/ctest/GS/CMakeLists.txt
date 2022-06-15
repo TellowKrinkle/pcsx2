@@ -17,9 +17,6 @@ foreach(isa "sse4" "avx" "avx2")
 		${GSDir}/GSTables.h)
 
 	target_include_directories(swizzle_test_${isa} PRIVATE ${GSDir} ${CMAKE_SOURCE_DIR}/pcsx2/ ${CMAKE_SOURCE_DIR}/pcsx2/gui)
-	if(WIN32)
-		target_include_directories(swizzle_test_${isa} PRIVATE ${CMAKE_SOURCE_DIR}/3rdparty)
-	endif()
 
 	target_compile_options(swizzle_test_${isa} PRIVATE ${compile_options_${isa}})
 	target_compile_definitions(swizzle_test_${isa} PRIVATE ${definitions_${isa}})

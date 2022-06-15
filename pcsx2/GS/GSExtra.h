@@ -132,11 +132,7 @@ extern void fifo_free(void* ptr, size_t size, size_t repeat);
 
 // clang-format off
 
-#ifdef __POSIX__
-	#include <zlib.h>
-#else
-	#include <zlib/zlib.h>
-#endif
+#include <zlib.h>
 
 #ifdef _MSC_VER
 	#define ALIGN_STACK(n) alignas(n) int dummy__; (void)dummy__;
