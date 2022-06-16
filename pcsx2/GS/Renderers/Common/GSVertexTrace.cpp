@@ -56,6 +56,41 @@ GSVertexTrace::GSVertexTrace(const GSState* state, bool provoking_vertex_first)
 	InitFMMRS(0, 1)
 	InitFMMRS(1, 0)
 	InitFMMRS(1, 1)
+
+	#define InitTri2Sprite3(IIP, TME, FST, COLOR, Z, FGE) \
+		m_tri2sprite[IIP][TME][FST][COLOR][Z][FGE] = \
+			provoking_vertex_first ? Tri2Sprite<IIP, TME, FST, COLOR, Z, FGE, true> \
+			                       : Tri2Sprite<IIP, TME, FST, COLOR, Z, FGE, false>;
+
+	#define InitTri2Sprite2(IIP, TME, FST, COLOR) \
+		InitTri2Sprite3(IIP, TME, FST, COLOR, 0, 0) \
+		InitTri2Sprite3(IIP, TME, FST, COLOR, 0, 1) \
+		InitTri2Sprite3(IIP, TME, FST, COLOR, 1, 0) \
+		InitTri2Sprite3(IIP, TME, FST, COLOR, 1, 1) \
+
+	#define InitTri2Sprite(IIP, TME) \
+		InitTri2Sprite2(IIP, TME, 0, 0) \
+		InitTri2Sprite2(IIP, TME, 0, 1) \
+		InitTri2Sprite2(IIP, TME, 1, 0) \
+		InitTri2Sprite2(IIP, TME, 1, 1) \
+
+	InitTri2Sprite(0, 0)
+	InitTri2Sprite(0, 1)
+	InitTri2Sprite(1, 0)
+	InitTri2Sprite(1, 1)
+}
+
+bool GSVertexTrace::Tri2Sprite(GSVertex* RESTRICT vout, const GSVertex* RESTRICT vin, const u32* RESTRICT index, int nindex)
+{
+	const GSDrawingContext* context = m_state->m_context;
+	const GIFRegPRIM* PRIM = m_state->PRIM;
+	u32 iip = PRIM->IIP;
+	u32 tme = PRIM->TME;
+	u32 fst = PRIM->FST;
+	u32 color = !(PRIM->TME && context->TEX0.TFX == TFX_DECAL && context->TEX0.TCC);
+	u32 fge = PRIM->FGE;
+	u32 z = context->TEST.ZTST == ZTST_GEQUAL || context->TEST.ZTST == ZTST_GREATER || !context->ZBUF.ZMSK;
+	return m_tri2sprite[iip][tme][fst][color][z][fge](vout, vin, index, nindex);
 }
 
 void GSVertexTrace::UpdateRoundSprite(void* vertex, int count)
@@ -366,6 +401,186 @@ void GSVertexTrace::FindMinMax(const void* vertex, const u32* index, int count)
 		m_min.c = GSVector4i::zero();
 		m_max.c = GSVector4i::zero();
 	}
+}
+
+struct alignas(2) TriangleOrdering
+{
+	// Describes a right triangle laid out in one of the following orientations
+	// b   c | c  b | a     |     a
+	// a     |    a | b   c | c   b
+	u8 a; // Same x as b
+	// b: same x as a, same y as c.  Not stored because we never actually use it
+	u8 c; // Same y as b
+	TriangleOrdering() = default;
+	constexpr TriangleOrdering(u8 a, u8 b, u8 c)
+		: a(a), c(c) {}
+};
+struct ComparisonResult
+{
+	u8 value;
+	u8 FinalCmp() const { return value & 3; }
+	u8 FinalOrder() const { return value >> 2; }
+	constexpr ComparisonResult(u8 final_cmp, u8 final_order)
+		: value(final_cmp | (final_order << 2)) {}
+};
+
+static bool AreTrianglesRight(TriangleOrdering* out_triangle0, TriangleOrdering* out_triangle1,
+                              const GSVertex* RESTRICT vin, const u32* RESTRICT index)
+{
+	static constexpr TriangleOrdering order_lut[6] =
+	{
+		TriangleOrdering(0, 1, 2),
+		TriangleOrdering(0, 2, 1),
+		TriangleOrdering(1, 0, 2),
+		TriangleOrdering(1, 2, 0),
+		TriangleOrdering(2, 0, 1),
+		TriangleOrdering(2, 1, 0),
+	};
+
+	static constexpr ComparisonResult comparison_lut[16] =
+	{
+		ComparisonResult(0, 0), // 0000 => None equal, no sprite possible
+		ComparisonResult(2, 0), // 0001 => x0 = x1, requires y1 = y2
+		ComparisonResult(1, 5), // 0010 => y0 = y1, requires x1 = x2
+		ComparisonResult(2, 0), // 0011 => x0 = x1, y0 = y1, (no area) requires x1 = x2 or y1 = y2
+		ComparisonResult(2, 1), // 0100 => x0 = x2, requires y1 = y2
+		ComparisonResult(2, 0), // 0101 => x0 = x1, x0 = x2, (no area) requires y1 = y2
+		ComparisonResult(0, 4), // 0110 => y0 = y1, x0 = x2, requires nothing
+		ComparisonResult(0, 4), // 0111 => x0 = y1, y0 = y1, x0 = x2, (no area) requires nothing
+		ComparisonResult(1, 3), // 1000 => y0 = y2, requires x1 = x2
+		ComparisonResult(0, 2), // 1001 => x0 = x1, y0 = y2, requires nothing
+		ComparisonResult(1, 3), // 1010 => y0 = y1, y0 = y2, (no area) requires x1 = x2
+		ComparisonResult(0, 2), // 1011 => x0 = x1, y0 = y1, y0 = y2, (unlikely) requires nothing
+		ComparisonResult(2, 1), // 1100 => x0 = x2, y0 = y2, (no area) requires x1 = x2 or y1 = y2
+		ComparisonResult(0, 2), // 1101 => x0 = x1, x0 = x2, y0 = y2, (no area) requires nothing
+		ComparisonResult(0, 4), // 1110 => y0 = y1, x0 = x2, y0 = y2, (no area) requires nothing
+		ComparisonResult(0, 2), // 1111 => x0 = x1, y0 = y1, x0 = x2, y0 = y2, (no area) requires nothing
+	};
+
+	GSVector4i xy0 = GSVector4i(vin[index[0]].m[1]).upl16(); // Triangle 0 vertex 0
+	GSVector4i xy1 = GSVector4i(vin[index[1]].m[1]).upl16(); // Triangle 0 vertex 1
+	GSVector4i xy2 = GSVector4i(vin[index[2]].m[1]).upl16(); // Triangle 0 vertex 2
+	GSVector4i xy3 = GSVector4i(vin[index[3]].m[1]).upl16(); // Triangle 1 vertex 0
+	GSVector4i xy4 = GSVector4i(vin[index[4]].m[1]).upl16(); // Triangle 1 vertex 1
+	GSVector4i xy5 = GSVector4i(vin[index[5]].m[1]).upl16(); // Triangle 1 vertex 2
+
+	int cmp0 = GSVector4::cast(xy0.xyxy().eq32(xy1.upl64(xy2))).mask();
+	int cmp1 = GSVector4::cast(xy3.xyxy().eq32(xy4.upl64(xy5))).mask();
+	int cmp2 = GSVector4::cast(xy1.upl64(xy4).eq32(xy2.upl64(xy5))).mask();
+	if (!cmp0 || !cmp1) // Either triangle 0 or triangle 1 isn't a right triangle
+		return false;
+	ComparisonResult triangle0cmp = comparison_lut[cmp0];
+	ComparisonResult triangle1cmp = comparison_lut[cmp1];
+	int required_cmp2 = triangle0cmp.FinalCmp() | (triangle1cmp.FinalCmp() << 2);
+	if ((cmp2 & required_cmp2) != required_cmp2)
+		return false;
+	// Both t0 and t1 are right triangles!
+	*out_triangle0 = order_lut[triangle0cmp.FinalOrder()];
+	*out_triangle1 = order_lut[triangle1cmp.FinalOrder()];
+	return true;
+}
+
+template <u32 iip, u32 tme, u32 fst, u32 color, u32 z, u32 fge, bool provoking_vertex_first>
+bool GSVertexTrace::Tri2Sprite(GSVertex* RESTRICT vout, const GSVertex* RESTRICT vin, const u32* RESTRICT index, int nindex)
+{
+	for (int i = 0; i < nindex; i += 6, vout += 2)
+	{
+		const u32* t0idx = index + i;
+		const u32* t1idx = t0idx + 3;
+		TriangleOrdering tri0, tri1;
+		if (!AreTrianglesRight(&tri0, &tri1, vin, index + i))
+			return false;
+
+		const GSVertex& v0 = vin[t0idx[0]];
+		const GSVertex& v1 = vin[t0idx[1]];
+		const GSVertex& v2 = vin[t0idx[2]];
+		const GSVertex& v3 = vin[t0idx[3]];
+		const GSVertex& v4 = vin[t0idx[4]];
+		const GSVertex& v5 = vin[t0idx[5]];
+		const GSVertex& t0a = vin[t0idx[tri0.a]];
+		const GSVertex& t0c = vin[t0idx[tri0.c]];
+		const GSVertex& t1a = vin[t1idx[tri1.a]];
+		const GSVertex& t1c = vin[t1idx[tri1.c]];
+		const GSVertex& t0provoking = provoking_vertex_first ? v0 : v2;
+		const GSVertex& t1provoking = provoking_vertex_first ? v3 : v5;
+
+		GSVector4i ok = GSVector4i(-1);
+		// Verify that t0 and t1 have all their other data matching
+		GSVector4i xyzuvfmask_fge = GSVector4i(-1, -1, -1, 0);
+		GSVector4i xyzuvfmask_z   = GSVector4i(-1, 0, -1, -1);
+		GSVector4i stcqmask_color = GSVector4i(-1, -1, 0, -1);
+		GSVector4i stcqmask_q     = GSVector4i(-1, -1, -1, 0);
+		bool needs_q = tme && !fst;
+		if ((iip && fge) || z)
+		{
+			// Sprites don't interpolate, so make sure everything's the same
+			GSVector4i mask = (iip && fge ? xyzuvfmask_fge : GSVector4i(-1)) & (z ? xyzuvfmask_z : GSVector4i(-1));
+			ok &= GSVector4i(v0.m[1]).eq8(GSVector4i(v1.m[1])) | mask;
+			ok &= GSVector4i(v0.m[1]).eq8(GSVector4i(v2.m[1])) | mask;
+			ok &= GSVector4i(v3.m[1]).eq8(GSVector4i(v4.m[1])) | mask;
+			ok &= GSVector4i(v3.m[1]).eq8(GSVector4i(v5.m[1])) | mask;
+		}
+		if ((iip && color) || needs_q)
+		{
+			GSVector4i mask = (iip && color ? stcqmask_color : GSVector4i(-1)) & (needs_q ? stcqmask_q : GSVector4i(-1));
+			ok &= GSVector4i(v0.m[0]).eq8(GSVector4i(v1.m[0])) | mask;
+			ok &= GSVector4i(v0.m[0]).eq8(GSVector4i(v2.m[0])) | mask;
+			ok &= GSVector4i(v3.m[0]).eq8(GSVector4i(v4.m[0])) | mask;
+			ok &= GSVector4i(v3.m[0]).eq8(GSVector4i(v5.m[0])) | mask;
+		}
+		if (fge || z)
+		{
+			GSVector4i mask = (fge ? xyzuvfmask_fge : GSVector4i(-1)) & (z ? xyzuvfmask_z : GSVector4i(-1));
+			ok &= GSVector4i(t0provoking.m[1]).eq8(GSVector4i(t1provoking.m[1])) | mask;
+		}
+		if (color || needs_q)
+		{
+			GSVector4i mask = (color ? stcqmask_color : GSVector4i(-1)) & (needs_q ? stcqmask_q : GSVector4i(-1));
+			ok &= GSVector4i(t0provoking.m[0]).eq8(GSVector4i(t1provoking.m[0])) | mask;
+		}
+
+		// Need to verify that t0a == t1c and t0c == t1a
+		if (tme)
+		{
+			if (fst)
+			{
+				// XY and UV
+				ok &= GSVector4i(t0a.m[1]).eq8(GSVector4i(t1c.m[1])) | GSVector4i(0, -1, 0, -1);
+				ok &= GSVector4i(t0c.m[1]).eq8(GSVector4i(t1a.m[1])) | GSVector4i(0, -1, 0, -1);
+			}
+			else
+			{
+				// XY and ST
+				ok &= GSVector4i(t0a.m[1]).eq8(GSVector4i(t1c.m[1])) | GSVector4i(0, -1, -1, -1);
+				ok &= GSVector4i(t0c.m[1]).eq8(GSVector4i(t1a.m[1])) | GSVector4i(0, -1, -1, -1);
+				ok &= GSVector4i(t0a.m[0]).eq8(GSVector4i(t1c.m[0])) | GSVector4i(0, 0, -1, -1);
+				ok &= GSVector4i(t0c.m[0]).eq8(GSVector4i(t1a.m[0])) | GSVector4i(0, 0, -1, -1);
+			}
+		}
+		else
+		{
+			// XY only
+			ok &= GSVector4i(t0a.m[1]).eq8(GSVector4i(t1c.m[1])) | GSVector4i(0, -1, -1, -1);
+			ok &= GSVector4i(t0c.m[1]).eq8(GSVector4i(t1a.m[1])) | GSVector4i(0, -1, -1, -1);
+		}
+
+		if (!ok.alltrue())
+			return false;
+
+		vout[0].m[0] = t0a.m[0];
+		vout[0].m[1] = t0a.m[1];
+		vout[1].m[0] = t0c.m[0];
+		vout[1].m[1] = t0c.m[1];
+		if (!iip)
+		{
+			// Need to copy provoking vertex values
+			if (color)
+				vout[1].RGBAQ.U32[0] = t0provoking.RGBAQ.U32[0];
+			if (fge)
+				vout[1].FOG = t0provoking.FOG;
+		}
+	}
+	return true;
 }
 
 template <u32 tme, u32 fst, u32 color>

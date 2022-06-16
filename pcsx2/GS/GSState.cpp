@@ -78,6 +78,7 @@ GSState::GSState()
 	memset(&m_v, 0, sizeof(m_v));
 	memset(&m_vertex, 0, sizeof(m_vertex));
 	memset(&m_index, 0, sizeof(m_index));
+	memset(&m_tri2sprite, 0, sizeof(m_tri2sprite));
 
 	m_v.RGBAQ.Q = 1.0f;
 
@@ -145,6 +146,8 @@ GSState::~GSState()
 		_aligned_free(m_vertex.buff);
 	if (m_index.buff)
 		_aligned_free(m_index.buff);
+	if (m_tri2sprite.buff)
+		_aligned_free(m_tri2sprite.buff);
 }
 
 void GSState::Reset(bool hardware_reset)
@@ -1842,6 +1845,37 @@ void GSState::FlushPrim()
 		}
 
 		GIFRegPRIM prim_backup = *PRIM;
+
+		if ((PRIM->PRIM == GS_TRIANGLELIST || PRIM->PRIM == GS_TRIANGLESTRIP || PRIM->PRIM == GS_TRIANGLEFAN) && m_index.tail % 6 == 0)
+		{
+			u32 vcount = m_index.tail / 3;
+			if (m_tri2sprite.len < vcount)
+			{
+				// Grow buffer
+				size_t newlen = std::max<size_t>(m_tri2sprite.len, 32);
+				while (newlen < vcount)
+					newlen <<= 1;
+				GSVertex* newbuf = static_cast<GSVertex*>(_aligned_malloc(newlen * sizeof(GSVertex), 32));
+				memcpy(newbuf, m_tri2sprite.buff, m_tri2sprite.len * sizeof(GSVertex));
+				if (m_tri2sprite.buff)
+					_aligned_free(m_tri2sprite.buff);
+				m_tri2sprite.buff = newbuf;
+				m_tri2sprite.len = newlen;
+			}
+			if (m_vt.Tri2Sprite(m_tri2sprite.buff, m_vertex.buff, m_index.buff, m_index.tail))
+			{
+				PRIM->PRIM = GS_SPRITE;
+				memcpy(m_vertex.buff, m_tri2sprite.buff, vcount * sizeof(GSVertex));
+				GSVector4i indices(0, 1, 2, 3);
+				GSVector4i* begin = reinterpret_cast<GSVector4i*>(m_index.buff);
+				GSVector4i* end = begin + ((vcount + 3) / 4);
+				for (GSVector4i* idx = begin; idx < end; idx++)
+				{
+					*idx = indices;
+					indices += GSVector4i(4);
+				}
+			}
+		}
 
 		if (m_is_hw && GSConfig.UserHacks_RoundSprite && PRIM->PRIM == GS_SPRITE)
 		{

@@ -178,6 +178,12 @@ protected:
 		size_t tail;
 	} m_index;
 
+	struct
+	{
+		GSVertex* buff;
+		size_t len;
+	} m_tri2sprite;
+
 	void UpdateContext();
 	void UpdateScissor();
 

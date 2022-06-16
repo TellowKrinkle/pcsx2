@@ -46,15 +46,20 @@ protected:
 
 	typedef void (GSVertexTrace::*FindMinMaxPtr)(const void* vertex, const u32* index, int count);
 	typedef void (GSVertexTrace::*FMMRoundSpritePtr)(void* vertex, int count);
+	typedef bool (*Tri2SpritePtr)(GSVertex* RESTRICT vout, const GSVertex* RESTRICT vin, const u32* RESTRICT index, int nindex);
 
 	FindMinMaxPtr m_fmm[2][2][2][2][4];
 	FMMRoundSpritePtr m_fmm_round_sprite[2][2][2];
+	Tri2SpritePtr m_tri2sprite[2][2][2][2][2][2];
 
 	template <GS_PRIM_CLASS primclass, u32 iip, u32 tme, u32 fst, u32 color, bool provoking_vertex_first>
 	void FindMinMax(const void* vertex, const u32* index, int count);
 
 	template <u32 tme, u32 fst, u32 color>
 	void FMMRoundSprite(void* vertex, int count);
+
+	template <u32 iip, u32 tme, u32 fst, u32 color, u32 z, u32 fge, bool provoking_vertex_first>
+	static bool Tri2Sprite(GSVertex* RESTRICT vout, const GSVertex* RESTRICT vin, const u32* RESTRICT index, int nindex);
 
 public:
 	GS_PRIM_CLASS m_primclass;
@@ -80,6 +85,8 @@ public:
 public:
 	GSVertexTrace(const GSState* state, bool provoking_vertex_first);
 	virtual ~GSVertexTrace() {}
+
+	bool Tri2Sprite(GSVertex* RESTRICT vout, const GSVertex* RESTRICT vin, const u32* RESTRICT index, int nindex);
 
 	void Update(const void* vertex, const u32* index, int v_count, int i_count, GS_PRIM_CLASS primclass);
 	void UpdateRoundSprite(void* vertex, int count);
