@@ -386,9 +386,7 @@ void GSVertexTrace::FMMRoundSprite(void* vertex, int count)
 	ASSERT(count % 2 == 0);
 
 	const GIFRegTEX0& TEX0 = context->TEX0;
-	const GIFRegTEX1& TEX1 = context->TEX1;
-	bool linear = TEX1.MXL == 0 || TEX1.K <= 0 ? TEX1.IsMagLinear() : TEX1.IsMinLinear();
-	bool adjust_texture = linear && GSConfig.UserHacks_RoundSprite == 2;
+	bool adjust_texture = GSConfig.UserHacks_RoundSprite == 2;
 
 	// A PS2 a sprite starting at (0, 0) draws its first point with the equivalent location of (0, 0)
 	// On PC, the first point is in the center, at (0.5, 0.5)
