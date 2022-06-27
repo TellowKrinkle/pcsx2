@@ -90,8 +90,9 @@ private:
 	u32 InternalBlockSize() const { return m_internalBlockSize ? m_internalBlockSize : m_blocksize; }
 	/// memcpy from internal to external blocks
 	/// `size` is in internal block bytes
+	/// `sub_block_offset` is for internal tracking if a copy ends in the middle of a block.  Start it at zero and keep passing a pointer to the same value.
 	/// Returns the number of external block bytes copied
-	size_t CopyBlocks(void* dst, const void* src, size_t size) const;
+	size_t CopyBlocks(void* dst, const void* src, size_t size, size_t* sub_block_offset) const;
 
 	/// Main loop of read thread
 	void Loop();

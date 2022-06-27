@@ -38,16 +38,43 @@ ThreadedFileReader::~ThreadedFileReader()
 			free(buffer.ptr);
 }
 
-size_t ThreadedFileReader::CopyBlocks(void* dst, const void* src, size_t size) const
+size_t ThreadedFileReader::CopyBlocks(void* dst, const void* src, size_t size, size_t* sub_block_offset) const
 {
 	char* cdst = static_cast<char*>(dst);
 	const char* csrc = static_cast<const char*>(src);
 	const char* cend = csrc + size;
 	if (m_internalBlockSize)
 	{
-		for (; csrc < cend; csrc += m_internalBlockSize, cdst += m_blocksize)
+		if (*sub_block_offset)
+		{
+			// Finish up the incomplete block
+			size_t leftover = m_internalBlockSize - *sub_block_offset;
+			size_t src_amt = std::min(leftover, size);
+			if (*sub_block_offset < m_blocksize)
+			{
+				size_t dst_amt = std::min<size_t>(m_blocksize - *sub_block_offset, src_amt);
+				memcpy(cdst, csrc, dst_amt);
+				cdst += dst_amt;
+			}
+			csrc += src_amt;
+			*sub_block_offset = src_amt == leftover ? 0 : *sub_block_offset + src_amt;
+		}
+		const char* whole_block_end = cend - m_internalBlockSize + 1;
+		for (; csrc < whole_block_end; csrc += m_internalBlockSize, cdst += m_blocksize)
 		{
 			memcpy(cdst, csrc, m_blocksize);
+		}
+		if (csrc != cend)
+		{
+			// Start partial block
+			assert(*sub_block_offset == 0);
+			size_t leftover = cend - csrc;
+			assert(leftover < static_cast<size_t>(m_internalBlockSize));
+			size_t dst_amt = std::min<size_t>(leftover, m_blocksize);
+			memcpy(cdst, csrc, dst_amt);
+			cdst += dst_amt;
+			csrc += leftover;
+			*sub_block_offset = leftover;
 		}
 		return cdst - static_cast<char*>(dst);
 	}
@@ -191,6 +218,7 @@ bool ThreadedFileReader::Decompress(void* target, u64 begin, u32 size)
 	char* write = static_cast<char*>(target);
 	u32 remaining = size;
 	u64 off = begin;
+	size_t sub_block_offset = 0;
 	while (remaining)
 	{
 		Chunk chunk = ChunkForOffset(off);
@@ -204,7 +232,7 @@ bool ThreadedFileReader::Decompress(void* target, u64 begin, u32 size)
 			if (bufsize <= bufoff)
 				return false;
 			u32 len = std::min(bufsize - bufoff, remaining);
-			write += CopyBlocks(write, static_cast<char*>(buf->ptr) + bufoff, len);
+			write += CopyBlocks(write, static_cast<char*>(buf->ptr) + bufoff, len, &sub_block_offset);
 			remaining -= len;
 			off += len;
 		}
@@ -228,6 +256,7 @@ bool ThreadedFileReader::TryCachedRead(void*& buffer, u64& offset, u32& size, co
 	m_amtRead = 0;
 	u64 end = 0;
 	bool allDone = false;
+	size_t sub_block_offset = 0;
 	for (int i = 0; i < static_cast<int>(std::size(m_buffer) * 2); i++)
 	{
 		Buffer& buf = m_buffer[i % std::size(m_buffer)];
@@ -238,7 +267,7 @@ bool ThreadedFileReader::TryCachedRead(void*& buffer, u64& offset, u32& size, co
 		{
 			u32 off = offset - buf.offset;
 			u32 cpysize = std::min(size, bufsize - off);
-			size_t read = CopyBlocks(buffer, static_cast<char*>(buf.ptr) + off, cpysize);
+			size_t read = CopyBlocks(buffer, static_cast<char*>(buf.ptr) + off, cpysize, &sub_block_offset);
 			m_amtRead += read;
 			size -= cpysize;
 			offset += cpysize;
@@ -249,6 +278,13 @@ bool ThreadedFileReader::TryCachedRead(void*& buffer, u64& offset, u32& size, co
 		// Do buffers contain the current and next block?
 		if (end > 0 && buf.offset == end)
 			allDone = true;
+	}
+	if (sub_block_offset && size > 0)
+	{
+		// The next reader won't know about our partial block, so we need go back to the beginning
+		size_t rewind = std::min<size_t>(sub_block_offset, m_blocksize);
+		size += rewind;
+		offset -= rewind;
 	}
 	return allDone;
 }
