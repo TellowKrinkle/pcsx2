@@ -514,6 +514,9 @@ void MatchFinder_Init(CMatchFinder *p)
       #define USE_AVX2
       #define ATTRIB_SSE41 __attribute__((__target__("sse4.1")))
       #define ATTRIB_AVX2 __attribute__((__target__("avx2")))
+    #ifdef _MSC_VER
+      #include <avx2intrin.h> // clang-cl's immintrin.h doesn't have this for some reason
+    #endif
   #elif defined(_MSC_VER)
     #if (_MSC_VER >= 1600)
       #define USE_SATUR_SUB_128
