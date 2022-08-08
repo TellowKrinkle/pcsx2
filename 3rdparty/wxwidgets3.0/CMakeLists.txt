@@ -32,6 +32,7 @@ target_compile_definitions(wx30_buildparams INTERFACE
 target_include_directories(wx30_buildparams INTERFACE include)
 target_precompile_headers(wx30_buildparams INTERFACE <wx/wxprec.h>)
 target_link_libraries(wx30_buildparams INTERFACE wx30_config)
+target_compile_features(wx30_buildparams INTERFACE cxx_std_14)
 
 add_library(wx30_core
 	src/common/accelcmn.cpp
