@@ -54,3 +54,4 @@ add_library(baseclasses
 target_include_directories(baseclasses PUBLIC .)
 target_precompile_headers(baseclasses PRIVATE streams.h)
 target_compile_features(baseclasses PRIVATE cxx_std_14)
+message("CMAKE_CXX14_STANDARD_COMPILE_OPTION: ${CMAKE_CXX14_STANDARD_COMPILE_OPTION}")
