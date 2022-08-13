@@ -434,6 +434,12 @@ inline u32 GSSwizzleInfo::pa(int x, int y, u32 bp, u32 bw) const
 	return GSOffset(*this, bp, bw, 0).pa(x, y);
 }
 
+class Test : public GSAlignedClass<32>
+{
+	typedef void (Test::*yay)();
+	static yay g_yay;
+};
+
 class GSLocalMemory : public GSAlignedClass<32>
 {
 public:
