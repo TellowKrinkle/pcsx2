@@ -71,7 +71,11 @@ add_library(pcsx2-lzma STATIC
 
 target_compile_definitions(pcsx2-lzma PRIVATE _7ZIP_ST)
 
-target_include_directories(pcsx2-lzma PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_include_directories(pcsx2-lzma INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(pcsx2-lzma PUBLIC include)
+if (USE_CLANG_CL)
+	# https://github.com/llvm/llvm-project/issues/53520
+	target_sources(pcsx2-lzma PRIVATE src/LzFindAVX2.c)
+	set_source_files_properties(src/LzFindAVX2.c PROPERTIES COMPILE_FLAGS /arch:AVX2)
+endif()
 
 add_library(LZMA::LZMA ALIAS pcsx2-lzma)

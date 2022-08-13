@@ -514,9 +514,6 @@ void MatchFinder_Init(CMatchFinder *p)
       #define USE_AVX2
       #define ATTRIB_SSE41 __attribute__((__target__("sse4.1")))
       #define ATTRIB_AVX2 __attribute__((__target__("avx2")))
-    #ifdef _MSC_VER
-      #include <avx2intrin.h> // clang-cl's immintrin.h doesn't have this for some reason
-    #endif
   #elif defined(_MSC_VER)
     #if (_MSC_VER >= 1600)
       #define USE_SATUR_SUB_128
@@ -626,7 +623,11 @@ LzFind_SaturSub_128(UInt32 subValue, CLzRef *items, const CLzRef *lim)
 
 
 
-#ifdef USE_AVX2
+#if defined(USE_AVX2) && defined(__clang__) && defined(_MSC_VER)
+
+MY_NO_INLINE void MY_FAST_CALL LzFind_SaturSub_256(UInt32 subValue, CLzRef *items, const CLzRef *lim);
+
+#elif defined(USE_AVX2)
 
 #include <immintrin.h> // avx
 
