@@ -81,7 +81,10 @@ endif()
 #-------------------------------------------------------------------------------
 option(USE_ASAN "Enable address sanitizer")
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+if(MSVC AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+	set(USE_CLANG_CL TRUE)
+	message(STATUS "Building with Clang-CL.")
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
 	set(USE_CLANG TRUE)
 	message(STATUS "Building with Clang/LLVM.")
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
@@ -188,9 +191,9 @@ option(USE_PGO_OPTIMIZE "Enable PGO optimization (use profile)")
 
 # Note1: Builtin strcmp/memcmp was proved to be slower on Mesa than stdlib version.
 # Note2: float operation SSE is impacted by the PCSX2 SSE configuration. In particular, flush to zero denormal.
-if(MSVC)
+if(MSVC AND NOT USE_CLANG_CL)
 	add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:/Zc:externConstexpr>")
-else()
+elseif(NOT MSVC)
 	add_compile_options(-pipe -fvisibility=hidden -pthread -fno-builtin-strcmp -fno-builtin-memcmp -mfpmath=sse)
 
 	# -fno-operator-names should only be for C++ files, not C files.
