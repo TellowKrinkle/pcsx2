@@ -24,7 +24,7 @@
 
 class GSState;
 
-class alignas(32) GSVertexTrace : public GSAlignedClass<32>
+class alignas(32) GSVertexTrace final : public GSAlignedClass<32>
 {
 public:
 	struct Vertex
@@ -74,7 +74,6 @@ public:
 
 public:
 	GSVertexTrace(const GSState* state, bool provoking_vertex_first);
-	virtual ~GSVertexTrace() {}
 
 	void Update(const void* vertex, const u32* index, int v_count, int i_count, GS_PRIM_CLASS primclass);
 

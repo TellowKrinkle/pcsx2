@@ -440,7 +440,7 @@ class Test : public GSAlignedClass<32>
 	static yay g_yay;
 };
 
-class GSLocalMemory : public GSAlignedClass<32>
+class GSLocalMemory final : public GSAlignedClass<32>
 {
 public:
 	typedef u32 (*pixelAddress)(int x, int y, u32 bp, u32 bw);
@@ -524,7 +524,7 @@ protected:
 
 public:
 	GSLocalMemory();
-	virtual ~GSLocalMemory();
+	~GSLocalMemory();
 
 	__forceinline u16* vm16() const { return reinterpret_cast<u16*>(m_vm8); }
 	__forceinline u32* vm32() const { return reinterpret_cast<u32*>(m_vm8); }
