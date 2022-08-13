@@ -3,5 +3,5 @@ add_library(D3D12MemAlloc
 	src/D3D12MemAlloc.cpp
 )
 
-target_include_directories(D3D12MemAlloc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
-
+target_include_directories(D3D12MemAlloc PUBLIC include)
+target_compile_features(D3D12MemAlloc PUBLIC cxx_std_17)
