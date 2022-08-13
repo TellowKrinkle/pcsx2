@@ -14,6 +14,11 @@
 #include <stdio.h>
 #include <dvdmedia.h>
 
+#ifdef __clang__
+// Needed for hacky stuff below (see other ifdef __clang__)
+#include <new>
+#endif
+
 #ifdef DEBUG
 #ifdef UNICODE
 #ifndef _UNICODE
@@ -1233,7 +1238,13 @@ CDisp::CDisp(IUnknown *pUnk)
     hr = pUnk->QueryInterface(IID_IPin, (void **)&pp);
     if(SUCCEEDED(hr))
     {
+#ifdef __clang__
+        // clang-cl doesn't like constructors calling other constructors.  Fun workaround.
+        this->~CDisp();
+        new (this) CDisp(pp);
+#else
         CDisp::CDisp(pp);
+#endif
         pp->Release();
         return;
     }

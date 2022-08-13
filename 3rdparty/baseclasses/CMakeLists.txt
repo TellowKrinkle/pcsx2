@@ -53,7 +53,3 @@ add_library(baseclasses
 )
 target_include_directories(baseclasses PUBLIC .)
 target_precompile_headers(baseclasses PRIVATE streams.h)
-if (USE_CLANG_CL)
-	message("CLANG_CL STD C++17")
-	target_compile_options(baseclasses PRIVATE /std:c++17)
-endif()
