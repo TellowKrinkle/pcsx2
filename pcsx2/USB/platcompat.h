@@ -123,10 +123,10 @@ constexpr std::size_t countof(const T N)
 }
 
 //TODO Idk, used only in desc.h and struct USBDescriptor should be already packed anyway
-#if defined(_WIN32) && !defined(__MINGW32__)
-#define PACK(def, name) __pragma(pack(push, 1)) def name __pragma(pack(pop))
-#elif defined(__clang__)
+#if defined(__clang__)
 #define PACK(def, name) def __attribute__((packed)) name
+#elif defined(_MSC_VER)
+#define PACK(def, name) __pragma(pack(push, 1)) def name __pragma(pack(pop))
 #else
 #define PACK(def, name) def __attribute__((gcc_struct, packed)) name
 #endif
