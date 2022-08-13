@@ -220,7 +220,7 @@ public:
 		ACTUAL_FORWARD_##category(name, a, b, c, d) \
 	}
 
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__clang__) // clang-cl needs to use this side
 	#define FORWARD_(argcount, ...) FORWARD##argcount(__VA_ARGS__)
 	// Gets the macro evaluator to evaluate in the right order
 	#define FORWARD(...) FORWARD_(__VA_ARGS__)
@@ -248,7 +248,7 @@ public:
 #define ADD_ONE_2 3
 #define ADD_ONE_3 4
 
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__clang__)
 	#define SFORWARD(argcount, name, ...) FORWARD(argcount, SSE, name, __VA_ARGS__)
 	#define AFORWARD_(argcount, name, arg1, ...) \
 		SFORWARD(argcount, name, arg1, __VA_ARGS__) \
