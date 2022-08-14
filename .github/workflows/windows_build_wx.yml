@@ -43,6 +43,7 @@ jobs:
       BUILDCACHE_MAX_CACHE_SIZE: 536870912 # 512MB
       BUILDCACHE_DIRECT_MODE: true
       BUILDCACHE_LOG_FILE: ${{ github.workspace }}\buildcache.log
+      BUILDCACHE_DEBUG: 1
 
     steps:
       - name: Checkout Repository
@@ -124,6 +125,11 @@ jobs:
             !./bin/**/*.ipdb
             !./bin/**/*.pdb
             !./bin/**/*.lib
+      - name: Upload Log
+        uses: actions/upload-artifact@v3
+        with:
+          name: Buildcache Log
+          path: ${{ github.workspace }}/buildcache.log
 
       - name: Upload artifact - with symbols
         if: inputs.configuration != 'CMake'
