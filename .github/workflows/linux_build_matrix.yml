@@ -13,9 +13,10 @@ jobs:
     name: "GCC"
     uses: ./.github/workflows/linux_build_wx.yml
     with:
-      jobName: "with LTO"
+      jobName: "LTO and No PCH"
       compiler: gcc
-      cmakeflags: "-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON"
+      cmakeflags: "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON"
+      detail: " nopch lto"
       buildAppImage: true
     secrets: inherit
 
@@ -24,10 +25,9 @@ jobs:
     name: "GCC"
     uses: ./.github/workflows/linux_build_wx.yml
     with:
-      jobName: "No PCH"
+      jobName: "SSE4"
       compiler: gcc
-      cmakeflags: "-DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON"
-      detail: " nopch"
+      cmakeflags: ""
     secrets: inherit
 
   build_gcc_nopch_avx2:
