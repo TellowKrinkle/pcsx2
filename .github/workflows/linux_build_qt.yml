@@ -82,8 +82,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: .ccache
-          key: ${{ inputs.os }} ${{ inputs.platform }} ${{ inputs.compiler }} ${{ inputs.simd }} ${{ inputs.detail }} ccache ${{ steps.ccache_cache_timestamp.outputs.timestamp }}
-          restore-keys: ${{ inputs.os }} ${{ inputs.platform }} ${{ inputs.compiler }} ${{ inputs.simd }} ${{ inputs.detail }} ccache
+          key: ${{ inputs.os }} ${{ inputs.platform }} ${{ inputs.compiler }} ${{ inputs.simd }}${{ inputs.detail }} qt ccache ${{ steps.ccache_cache_timestamp.outputs.timestamp }}
+          restore-keys: ${{ inputs.os }} ${{ inputs.platform }} ${{ inputs.compiler }} ${{ inputs.simd }}${{ inputs.detail }} qt ccache
 
       - name: Install Packages
         env:
@@ -95,7 +95,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/deps
-          key: ${{ inputs.os }} ${{ inputs.platform }} ${{ inputs.gui }} deps ${{ hashFiles('.github/workflows/scripts/linux/build-dependencies-qt.sh') }}
+          key: ${{ inputs.os }} ${{ inputs.platform }} qt deps ${{ hashFiles('.github/workflows/scripts/linux/build-dependencies-qt.sh') }}
 
       - name: Build Dependencies
         if: steps.cache-deps.outputs.cache-hit != 'true'
