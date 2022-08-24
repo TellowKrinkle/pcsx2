@@ -1730,9 +1730,11 @@ else()
 		)
 	endif()
 	target_link_libraries(PCSX2_FLAGS INTERFACE
-		OpenGL::GL
 		PCAP::PCAP
 	)
+endif()
+if(USE_OPENGL AND NOT WIN32)
+	target_link_libraries(PCSX2_FLAGS INTERFACE OpenGL::GL)
 endif()
 
 ### Generate the resources files
