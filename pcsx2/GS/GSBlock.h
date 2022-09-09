@@ -44,7 +44,7 @@ class GSBlock
 	// Loads in two halves instead to reduce shuffle instructions
 	// Especially good for Zen/Zen+, as it's replacing a very expensive vperm2i128
 	template <bool Aligned = true>
-	static void LoadSW128(GSVector8i& a, GSVector8i& b, const void* s0, const void* s1)
+	__forceinline static void LoadSW128(GSVector8i& a, GSVector8i& b, const void* s0, const void* s1)
 	{
 		const GSVector4i* src0 = static_cast<const GSVector4i*>(s0);
 		const GSVector4i* src1 = static_cast<const GSVector4i*>(s1);
@@ -308,7 +308,7 @@ public:
 	}
 
 	template <int alignment, u32 mask>
-	static void WriteColumn32(int y, u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
+	__forceinline static void WriteColumn32(int y, u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
 		switch ((y >> 1) & 3)
 		{
@@ -321,7 +321,7 @@ public:
 	}
 
 	template <int alignment>
-	static void WriteColumn16(int y, u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
+	__forceinline static void WriteColumn16(int y, u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
 		switch ((y >> 1) & 3)
 		{
@@ -334,7 +334,7 @@ public:
 	}
 
 	template <int alignment>
-	static void WriteColumn8(int y, u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
+	__forceinline static void WriteColumn8(int y, u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
 		switch ((y >> 2) & 3)
 		{
@@ -347,7 +347,7 @@ public:
 	}
 
 	template <int alignment>
-	static void WriteColumn4(int y, u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
+	__forceinline static void WriteColumn4(int y, u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
 		switch ((y >> 2) & 3)
 		{
@@ -360,7 +360,7 @@ public:
 	}
 
 	template <int alignment, u32 mask>
-	static void WriteBlock32(u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
+	__forceinline static void WriteBlock32(u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
 		WriteColumn32<0, alignment, mask>(dst, src, srcpitch);
 		src += srcpitch * 2;
@@ -372,7 +372,7 @@ public:
 	}
 
 	template <int alignment>
-	static void WriteBlock16(u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
+	__forceinline static void WriteBlock16(u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
 		WriteColumn16<0, alignment>(dst, src, srcpitch);
 		src += srcpitch * 2;
@@ -384,7 +384,7 @@ public:
 	}
 
 	template <int alignment>
-	static void WriteBlock8(u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
+	__forceinline static void WriteBlock8(u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
 		WriteColumn8<0, alignment>(dst, src, srcpitch);
 		src += srcpitch * 4;
@@ -396,7 +396,7 @@ public:
 	}
 
 	template <int alignment>
-	static void WriteBlock4(u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
+	__forceinline static void WriteBlock4(u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
 		WriteColumn4<0, alignment>(dst, src, srcpitch);
 		src += srcpitch * 4;
@@ -629,7 +629,7 @@ public:
 #endif
 	}
 
-	static void ReadColumn32(int y, const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
+	__forceinline static void ReadColumn32(int y, const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
 		switch ((y >> 1) & 3)
 		{
@@ -641,7 +641,7 @@ public:
 		}
 	}
 
-	static void ReadColumn16(int y, const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
+	__forceinline static void ReadColumn16(int y, const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
 		switch ((y >> 1) & 3)
 		{
@@ -653,7 +653,7 @@ public:
 		}
 	}
 
-	static void ReadColumn8(int y, const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
+	__forceinline static void ReadColumn8(int y, const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
 		switch ((y >> 2) & 3)
 		{
@@ -665,7 +665,7 @@ public:
 		}
 	}
 
-	static void ReadColumn4(int y, const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
+	__forceinline static void ReadColumn4(int y, const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
 		switch ((y >> 2) & 3)
 		{
@@ -677,7 +677,7 @@ public:
 		}
 	}
 
-	static void ReadBlock32(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
+	__forceinline static void ReadBlock32(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
 		ReadColumn32<0>(src, dst, dstpitch);
 		dst += dstpitch * 2;
@@ -688,7 +688,7 @@ public:
 		ReadColumn32<3>(src, dst, dstpitch);
 	}
 
-	static void ReadBlock16(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
+	__forceinline static void ReadBlock16(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
 		ReadColumn16<0>(src, dst, dstpitch);
 		dst += dstpitch * 2;
@@ -699,7 +699,7 @@ public:
 		ReadColumn16<3>(src, dst, dstpitch);
 	}
 
-	static void ReadBlock8(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
+	__forceinline static void ReadBlock8(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
 		ReadColumn8<0>(src, dst, dstpitch);
 		dst += dstpitch * 4;
@@ -710,7 +710,7 @@ public:
 		ReadColumn8<3>(src, dst, dstpitch);
 	}
 
-	static void ReadBlock4(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
+	__forceinline static void ReadBlock4(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
 		ReadColumn4<0>(src, dst, dstpitch);
 		dst += dstpitch * 4;
@@ -1006,7 +1006,7 @@ public:
 	}
 
 	template <bool AEM>
-	static void ExpandBlock16(const u16* RESTRICT src, u8* RESTRICT dst, int dstpitch, const GIFRegTEXA& TEXA) // do not inline, uses too many xmm regs
+	__forceinline static void ExpandBlock16(const u16* RESTRICT src, u8* RESTRICT dst, int dstpitch, const GIFRegTEXA& TEXA)
 	{
 #if _M_SSE >= 0x501
 

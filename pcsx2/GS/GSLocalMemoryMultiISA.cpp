@@ -190,7 +190,7 @@ void GSLocalMemoryFunctions::PopulateFunctions(GSLocalMemory& mem)
 }
 
 template <typename Fn>
-static void foreachBlock(const GSOffset& off, GSLocalMemory& mem, const GSVector4i& r, u8* dst, int dstpitch, int bpp, Fn&& fn)
+__forceinline static void foreachBlock(const GSOffset& off, GSLocalMemory& mem, const GSVector4i& r, u8* dst, int dstpitch, int bpp, Fn&& fn)
 {
 	ASSERT(off.isBlockAligned(r));
 	GSOffset::BNHelper bn = off.bnMulti(r.left, r.top);
