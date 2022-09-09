@@ -54,8 +54,8 @@ class GSBlock
 #endif
 
 public:
-	template <int i, int alignment, u32 mask>
-	__forceinline static void WriteColumn32(u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
+	template <int alignment, u32 mask>
+	__forceinline static void WriteColumn32Internal(int i, u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
 		const u8* RESTRICT s0 = &src[srcpitch * 0];
 		const u8* RESTRICT s1 = &src[srcpitch * 1];
@@ -116,8 +116,8 @@ public:
 #endif
 	}
 
-	template <int i, int alignment>
-	__forceinline static void WriteColumn16(u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
+	template <int alignment>
+	__forceinline static void WriteColumn16Internal(int i, u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
 		const u8* RESTRICT s0 = &src[srcpitch * 0];
 		const u8* RESTRICT s1 = &src[srcpitch * 1];
@@ -183,8 +183,8 @@ public:
 #endif
 	}
 
-	template <int i, int alignment>
-	__forceinline static void WriteColumn8(u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
+	template <int alignment>
+	__forceinline static void WriteColumn8Internal(int i, u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
 		// TODO: read unaligned as WriteColumn32 does and try saving a few shuffles
 
@@ -242,8 +242,8 @@ public:
 #endif
 	}
 
-	template <int i, int alignment>
-	__forceinline static void WriteColumn4(u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
+	template <int alignment>
+	__forceinline static void WriteColumn4Internal(int i, u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
 		//printf("WriteColumn4\n");
 
@@ -307,108 +307,80 @@ public:
 #endif
 	}
 
+public:
 	template <int alignment, u32 mask>
 	__forceinline static void WriteColumn32(int y, u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
-		switch ((y >> 1) & 3)
-		{
-			case 0: WriteColumn32<0, alignment, mask>(dst, src, srcpitch); break;
-			case 1: WriteColumn32<1, alignment, mask>(dst, src, srcpitch); break;
-			case 2: WriteColumn32<2, alignment, mask>(dst, src, srcpitch); break;
-			case 3: WriteColumn32<3, alignment, mask>(dst, src, srcpitch); break;
-			default: __assume(0);
-		}
+		WriteColumn32Internal<alignment, mask>((y >> 1) & 3, dst, src, srcpitch);
 	}
 
 	template <int alignment>
 	__forceinline static void WriteColumn16(int y, u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
-		switch ((y >> 1) & 3)
-		{
-			case 0: WriteColumn16<0, alignment>(dst, src, srcpitch); break;
-			case 1: WriteColumn16<1, alignment>(dst, src, srcpitch); break;
-			case 2: WriteColumn16<2, alignment>(dst, src, srcpitch); break;
-			case 3: WriteColumn16<3, alignment>(dst, src, srcpitch); break;
-			default: __assume(0);
-		}
+		WriteColumn16Internal<alignment>((y >> 1) & 3, dst, src, srcpitch);
 	}
 
 	template <int alignment>
 	__forceinline static void WriteColumn8(int y, u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
-		switch ((y >> 2) & 3)
-		{
-			case 0: WriteColumn8<0, alignment>(dst, src, srcpitch); break;
-			case 1: WriteColumn8<1, alignment>(dst, src, srcpitch); break;
-			case 2: WriteColumn8<2, alignment>(dst, src, srcpitch); break;
-			case 3: WriteColumn8<3, alignment>(dst, src, srcpitch); break;
-			default: __assume(0);
-		}
+		WriteColumn8Internal<alignment>((y >> 2) & 3, dst, src, srcpitch);
 	}
 
 	template <int alignment>
 	__forceinline static void WriteColumn4(int y, u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
-		switch ((y >> 2) & 3)
-		{
-			case 0: WriteColumn4<0, alignment>(dst, src, srcpitch); break;
-			case 1: WriteColumn4<1, alignment>(dst, src, srcpitch); break;
-			case 2: WriteColumn4<2, alignment>(dst, src, srcpitch); break;
-			case 3: WriteColumn4<3, alignment>(dst, src, srcpitch); break;
-			default: __assume(0);
-		}
+		WriteColumn4Internal<alignment>((y >> 2) & 3, dst, src, srcpitch);
 	}
 
 	template <int alignment, u32 mask>
 	__forceinline static void WriteBlock32(u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
-		WriteColumn32<0, alignment, mask>(dst, src, srcpitch);
+		WriteColumn32Internal<alignment, mask>(0, dst, src, srcpitch);
 		src += srcpitch * 2;
-		WriteColumn32<1, alignment, mask>(dst, src, srcpitch);
+		WriteColumn32Internal<alignment, mask>(1, dst, src, srcpitch);
 		src += srcpitch * 2;
-		WriteColumn32<2, alignment, mask>(dst, src, srcpitch);
+		WriteColumn32Internal<alignment, mask>(2, dst, src, srcpitch);
 		src += srcpitch * 2;
-		WriteColumn32<3, alignment, mask>(dst, src, srcpitch);
+		WriteColumn32Internal<alignment, mask>(3, dst, src, srcpitch);
 	}
 
 	template <int alignment>
 	__forceinline static void WriteBlock16(u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
-		WriteColumn16<0, alignment>(dst, src, srcpitch);
+		WriteColumn16Internal<alignment>(0, dst, src, srcpitch);
 		src += srcpitch * 2;
-		WriteColumn16<1, alignment>(dst, src, srcpitch);
+		WriteColumn16Internal<alignment>(1, dst, src, srcpitch);
 		src += srcpitch * 2;
-		WriteColumn16<2, alignment>(dst, src, srcpitch);
+		WriteColumn16Internal<alignment>(2, dst, src, srcpitch);
 		src += srcpitch * 2;
-		WriteColumn16<3, alignment>(dst, src, srcpitch);
+		WriteColumn16Internal<alignment>(3, dst, src, srcpitch);
 	}
 
 	template <int alignment>
 	__forceinline static void WriteBlock8(u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
-		WriteColumn8<0, alignment>(dst, src, srcpitch);
+		WriteColumn8Internal<alignment>(0, dst, src, srcpitch);
 		src += srcpitch * 4;
-		WriteColumn8<1, alignment>(dst, src, srcpitch);
+		WriteColumn8Internal<alignment>(1, dst, src, srcpitch);
 		src += srcpitch * 4;
-		WriteColumn8<2, alignment>(dst, src, srcpitch);
+		WriteColumn8Internal<alignment>(2, dst, src, srcpitch);
 		src += srcpitch * 4;
-		WriteColumn8<3, alignment>(dst, src, srcpitch);
+		WriteColumn8Internal<alignment>(3, dst, src, srcpitch);
 	}
 
 	template <int alignment>
 	__forceinline static void WriteBlock4(u8* RESTRICT dst, const u8* RESTRICT src, int srcpitch)
 	{
-		WriteColumn4<0, alignment>(dst, src, srcpitch);
+		WriteColumn4Internal<alignment>(0, dst, src, srcpitch);
 		src += srcpitch * 4;
-		WriteColumn4<1, alignment>(dst, src, srcpitch);
+		WriteColumn4Internal<alignment>(1, dst, src, srcpitch);
 		src += srcpitch * 4;
-		WriteColumn4<2, alignment>(dst, src, srcpitch);
+		WriteColumn4Internal<alignment>(2, dst, src, srcpitch);
 		src += srcpitch * 4;
-		WriteColumn4<3, alignment>(dst, src, srcpitch);
+		WriteColumn4Internal<alignment>(3, dst, src, srcpitch);
 	}
 
-	template <int i>
-	__forceinline static void ReadColumn32(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
+	__forceinline static void ReadColumn32Internal(int i, const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
 #if _M_SSE >= 0x501
 
@@ -444,8 +416,7 @@ public:
 #endif
 	}
 
-	template <int i>
-	__forceinline static void ReadColumn16(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
+	__forceinline static void ReadColumn16Internal(int i, const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
 #if _M_SSE >= 0x501
 
@@ -483,8 +454,7 @@ public:
 #endif
 	}
 
-	template <int i>
-	__forceinline static void ReadColumn8(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
+	__forceinline static void ReadColumn8Internal(int i, const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
 
 		//for(int j = 0; j < 64; j++) ((u8*)src)[j] = (u8)j;
@@ -554,8 +524,7 @@ public:
 #endif
 	}
 
-	template <int i>
-	__forceinline static void ReadColumn4(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
+	__forceinline static void ReadColumn4Internal(int i, const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
 		//printf("ReadColumn4\n");
 
@@ -631,94 +600,66 @@ public:
 
 	__forceinline static void ReadColumn32(int y, const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
-		switch ((y >> 1) & 3)
-		{
-			case 0: ReadColumn32<0>(src, dst, dstpitch); break;
-			case 1: ReadColumn32<1>(src, dst, dstpitch); break;
-			case 2: ReadColumn32<2>(src, dst, dstpitch); break;
-			case 3: ReadColumn32<3>(src, dst, dstpitch); break;
-			default: __assume(0);
-		}
+		ReadColumn32Internal((y >> 1) & 3, src, dst, dstpitch);
 	}
 
 	__forceinline static void ReadColumn16(int y, const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
-		switch ((y >> 1) & 3)
-		{
-			case 0: ReadColumn16<0>(src, dst, dstpitch); break;
-			case 1: ReadColumn16<1>(src, dst, dstpitch); break;
-			case 2: ReadColumn16<2>(src, dst, dstpitch); break;
-			case 3: ReadColumn16<3>(src, dst, dstpitch); break;
-			default: __assume(0);
-		}
+		ReadColumn16Internal((y >> 1) & 3, src, dst, dstpitch);
 	}
 
 	__forceinline static void ReadColumn8(int y, const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
-		switch ((y >> 2) & 3)
-		{
-			case 0: ReadColumn8<0>(src, dst, dstpitch); break;
-			case 1: ReadColumn8<1>(src, dst, dstpitch); break;
-			case 2: ReadColumn8<2>(src, dst, dstpitch); break;
-			case 3: ReadColumn8<3>(src, dst, dstpitch); break;
-			default: __assume(0);
-		}
+		ReadColumn8Internal((y >> 2) & 3, src, dst, dstpitch);
 	}
 
 	__forceinline static void ReadColumn4(int y, const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
-		switch ((y >> 2) & 3)
-		{
-			case 0: ReadColumn4<0>(src, dst, dstpitch); break;
-			case 1: ReadColumn4<1>(src, dst, dstpitch); break;
-			case 2: ReadColumn4<2>(src, dst, dstpitch); break;
-			case 3: ReadColumn4<3>(src, dst, dstpitch); break;
-			default: __assume(0);
-		}
+		ReadColumn4Internal((y >> 2) & 3, src, dst, dstpitch);
 	}
 
 	__forceinline static void ReadBlock32(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
-		ReadColumn32<0>(src, dst, dstpitch);
+		ReadColumn32Internal(0, src, dst, dstpitch);
 		dst += dstpitch * 2;
-		ReadColumn32<1>(src, dst, dstpitch);
+		ReadColumn32Internal(1, src, dst, dstpitch);
 		dst += dstpitch * 2;
-		ReadColumn32<2>(src, dst, dstpitch);
+		ReadColumn32Internal(2, src, dst, dstpitch);
 		dst += dstpitch * 2;
-		ReadColumn32<3>(src, dst, dstpitch);
+		ReadColumn32Internal(3, src, dst, dstpitch);
 	}
 
 	__forceinline static void ReadBlock16(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
-		ReadColumn16<0>(src, dst, dstpitch);
+		ReadColumn16Internal(0, src, dst, dstpitch);
 		dst += dstpitch * 2;
-		ReadColumn16<1>(src, dst, dstpitch);
+		ReadColumn16Internal(1, src, dst, dstpitch);
 		dst += dstpitch * 2;
-		ReadColumn16<2>(src, dst, dstpitch);
+		ReadColumn16Internal(2, src, dst, dstpitch);
 		dst += dstpitch * 2;
-		ReadColumn16<3>(src, dst, dstpitch);
+		ReadColumn16Internal(3, src, dst, dstpitch);
 	}
 
 	__forceinline static void ReadBlock8(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
-		ReadColumn8<0>(src, dst, dstpitch);
+		ReadColumn8Internal(0, src, dst, dstpitch);
 		dst += dstpitch * 4;
-		ReadColumn8<1>(src, dst, dstpitch);
+		ReadColumn8Internal(1, src, dst, dstpitch);
 		dst += dstpitch * 4;
-		ReadColumn8<2>(src, dst, dstpitch);
+		ReadColumn8Internal(2, src, dst, dstpitch);
 		dst += dstpitch * 4;
-		ReadColumn8<3>(src, dst, dstpitch);
+		ReadColumn8Internal(3, src, dst, dstpitch);
 	}
 
 	__forceinline static void ReadBlock4(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
 	{
-		ReadColumn4<0>(src, dst, dstpitch);
+		ReadColumn4Internal(0, src, dst, dstpitch);
 		dst += dstpitch * 4;
-		ReadColumn4<1>(src, dst, dstpitch);
+		ReadColumn4Internal(1, src, dst, dstpitch);
 		dst += dstpitch * 4;
-		ReadColumn4<2>(src, dst, dstpitch);
+		ReadColumn4Internal(2, src, dst, dstpitch);
 		dst += dstpitch * 4;
-		ReadColumn4<3>(src, dst, dstpitch);
+		ReadColumn4Internal(3, src, dst, dstpitch);
 	}
 
 	__forceinline static void ReadBlock4P(const u8* RESTRICT src, u8* RESTRICT dst, int dstpitch)
