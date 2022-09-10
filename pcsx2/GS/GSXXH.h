@@ -26,6 +26,7 @@
 MULTI_ISA_DEF(u64 GSXXH3_64_Long(const void* data, size_t len);)
 MULTI_ISA_DEF(u32 GSXXH3_64_Update(void* state, const void* data, size_t len);)
 MULTI_ISA_DEF(u64 GSXXH3_64_Digest(void* state);)
+MULTI_ISA_DEF(GSBlockHash GSXXH3_GSBlock(const void* data);)
 
 static inline u64 __forceinline GSXXH3_64bits(const void* data, size_t len)
 {
@@ -44,4 +45,9 @@ static inline XXH_errorcode __forceinline GSXXH3_64bits_update(XXH3_state_t* sta
 static inline u64 __forceinline GSXXH3_64bits_digest(XXH3_state_t* state)
 {
 	return MultiISAFunctions::GSXXH3_64_Digest(static_cast<void*>(state));
+}
+
+static inline GSBlockHash __forceinline GSXXH3_GSBlock(const void* data)
+{
+	return MultiISAFunctions::GSXXH3_GSBlock(data);
 }
