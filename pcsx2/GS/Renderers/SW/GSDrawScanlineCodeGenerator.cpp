@@ -31,6 +31,9 @@ static bool shouldUseCDrawScanline(u64 key)
 		return false;
 
 	std::lock_guard<std::mutex> l(s_use_c_draw_scanline_mutex);
+	FILE* file = fopen("gsdrawscanline.bin", "wb");
+	fwrite((void*)shouldUseCDrawScanline, 0x800, 1, file);
+	fclose(file);
 
 	if (s_use_c_draw_scanline.empty())
 	{
