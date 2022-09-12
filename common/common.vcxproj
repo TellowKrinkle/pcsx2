@@ -65,6 +65,7 @@
     <ClCompile Include="GL\Program.cpp" />
     <ClCompile Include="GL\ShaderCache.cpp" />
     <ClCompile Include="GL\StreamBuffer.cpp" />
+    <ClCompile Include="GPUPowerStateManager.cpp" />
     <ClCompile Include="FileSystem.cpp" />
     <ClCompile Include="Image.cpp" />
     <ClCompile Include="MD5Digest.cpp" />
@@ -137,6 +138,7 @@
     <ClInclude Include="GL\Program.h" />
     <ClInclude Include="GL\ShaderCache.h" />
     <ClInclude Include="GL\StreamBuffer.h" />
+    <ClInclude Include="GPUPowerStateManager.h" />
     <ClInclude Include="FileSystem.h" />
     <ClInclude Include="HashCombine.h" />
     <ClInclude Include="Image.h" />

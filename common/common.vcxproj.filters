@@ -100,8 +100,11 @@
     <ClCompile Include="GL\StreamBuffer.cpp">
       <Filter>Source Files\GL</Filter>
     </ClCompile>
+    <ClCompile Include="GPUPowerStateManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="FileSystem.cpp">
-      <Filter>Source Files\GL</Filter>
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="StringUtil.cpp">
       <Filter>Source Files</Filter>
@@ -217,6 +220,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="General.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GPUPowerStateManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="emitter\implement\group1.h">

@@ -19,6 +19,7 @@ target_sources(common PRIVATE
 	Exceptions.cpp
 	FastJmp.cpp
 	FileSystem.cpp
+	GPUPowerStateManager.cpp
 	Image.cpp
 	Misc.cpp
 	MD5Digest.cpp
@@ -68,6 +69,7 @@ target_sources(common PRIVATE
 	FastJmp.h
 	FileSystem.h
 	General.h
+	GPUPowerStateManager.h
 	HashCombine.h
 	Image.h
 	LRUCache.h
