@@ -4,6 +4,7 @@
 #include "common/Align.h"
 #include "common/Assertions.h"
 #include "common/Console.h"
+#include "common/GPUPowerStateManager.h"
 #include "common/ScopedGuard.h"
 #include "common/Vulkan/Builders.h"
 #include "common/Vulkan/Context.h"
@@ -59,6 +60,7 @@ VulkanHostDisplay::~VulkanHostDisplay()
 		Vulkan::ShaderCache::Destroy();
 		Vulkan::Context::Destroy();
 	}
+	GPUPowerStateManager::shared.Reset();
 }
 
 HostDisplay::RenderAPI VulkanHostDisplay::GetRenderAPI() const
@@ -287,6 +289,7 @@ bool VulkanHostDisplay::CreateRenderDevice(
 		return false;
 	}
 
+	GPUPowerStateManager::shared.SetUpForGPU(g_vulkan_context->GetDeviceName());
 	// NOTE: This is assigned afterwards, because some platforms can modify the window info (e.g. Metal).
 	m_window_info = m_swap_chain ? m_swap_chain->GetWindowInfo() : local_wi;
 	m_vsync_mode = vsync;

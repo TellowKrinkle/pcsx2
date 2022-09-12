@@ -21,6 +21,7 @@
 #include "PerformanceMetrics.h"
 #include "pcsx2/Config.h"
 #include "common/FileSystem.h"
+#include "common/GPUPowerStateManager.h"
 #include "common/Path.h"
 #include "common/StringUtil.h"
 #include "common/Timer.h"
@@ -639,6 +640,7 @@ void GSRenderer::VSync(u32 field, bool registers_written)
 	}
 	g_gs_device->RestoreAPIState();
 	PerformanceMetrics::Update(registers_written, fb_sprite_frame);
+	GPUPowerStateManager::shared.FramePassed();
 
 	// snapshot
 	// wx is dumb and call this from the UI thread...

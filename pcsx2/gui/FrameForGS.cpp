@@ -26,6 +26,7 @@
 #include "MSWstuff.h"
 #include "PAD/Gamepad.h"
 #include "PerformanceMetrics.h"
+#include "common/GPUPowerStateManager.h"
 #include "common/StringUtil.h"
 
 #include "gui/Dialogs/ModalPopups.h"
@@ -581,6 +582,7 @@ void GSPanel::CoreThread_OnSuspended()
 {
 	m_coreRunning = false;
 	UpdateScreensaver();
+	GPUPowerStateManager::shared.DisableForcedHighPowerState();
 }
 
 void GSPanel::AppStatusEvent_OnSettingsApplied()

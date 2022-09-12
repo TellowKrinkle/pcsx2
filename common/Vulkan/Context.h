@@ -83,6 +83,7 @@ namespace Vulkan
 		__fi VkInstance GetVulkanInstance() const { return m_instance; }
 		__fi VkPhysicalDevice GetPhysicalDevice() const { return m_physical_device; }
 		__fi VkDevice GetDevice() const { return m_device; }
+		__fi const std::string& GetDeviceName() const { return m_device_name; }
 		__fi VmaAllocator GetAllocator() const { return m_allocator; }
 		__fi VkQueue GetGraphicsQueue() const { return m_graphics_queue; }
 		__fi u32 GetGraphicsQueueFamilyIndex() const { return m_graphics_queue_family_index; }
@@ -225,7 +226,7 @@ namespace Vulkan
 		bool SetEnableGPUTiming(bool enabled);
 
 	private:
-		Context(VkInstance instance, VkPhysicalDevice physical_device);
+		Context(VkInstance instance, VkPhysicalDevice physical_device, std::string device_name);
 
 		union RenderPassCacheKey
 		{
@@ -295,6 +296,7 @@ namespace Vulkan
 		VkPhysicalDevice m_physical_device = VK_NULL_HANDLE;
 		VkDevice m_device = VK_NULL_HANDLE;
 		VmaAllocator m_allocator = VK_NULL_HANDLE;
+		std::string m_device_name;
 
 		VkCommandBuffer m_current_command_buffer = VK_NULL_HANDLE;
 

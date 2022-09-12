@@ -21,6 +21,7 @@
 #include "GSTextureMTL.h"
 #include "GS/GSPerfMon.h"
 #include "HostDisplay.h"
+#include "common/GPUPowerStateManager.h"
 #include <imgui.h>
 
 #ifdef __APPLE__
@@ -950,6 +951,7 @@ bool GSDeviceMTL::DownloadTexture(GSTexture* src, const GSVector4i& rect, GSText
 	[cmdbuf popDebugGroup];
 
 	FlushEncoders();
+	GPUPowerStateManager::shared.EnableForcedHighPowerState();
 	[cmdbuf waitUntilCompleted];
 
 	out_map.bits = static_cast<u8*>([m_texture_download_buf contents]);

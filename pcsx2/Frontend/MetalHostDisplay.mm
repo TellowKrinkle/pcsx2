@@ -17,6 +17,7 @@
 #include "MetalHostDisplay.h"
 #include "GS/Renderers/Metal/GSMetalCPPAccessible.h"
 #include "GS/Renderers/Metal/GSDeviceMTL.h"
+#include "common/GPUPowerStateManager.h"
 #include <imgui.h>
 
 #ifdef __APPLE__
@@ -147,6 +148,7 @@ bool MetalHostDisplay::CreateRenderDevice(const WindowInfo& wi, std::string_view
 			AttachSurfaceOnMainThread();
 		});
 		SetVSync(vsync);
+		GPUPowerStateManager::shared.SetUpForGPU([[m_dev.dev name] UTF8String]);
 		return true;
 	}
 	else
@@ -167,6 +169,7 @@ void MetalHostDisplay::DestroyRenderSurface()
 		return;
 	OnMainThread([this]{ DetachSurfaceOnMainThread(); });
 	m_layer = nullptr;
+	GPUPowerStateManager::shared.Reset();
 }
 
 bool MetalHostDisplay::ChangeRenderWindow(const WindowInfo& wi)

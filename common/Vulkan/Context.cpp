@@ -39,9 +39,10 @@ enum : u32
 
 namespace Vulkan
 {
-	Context::Context(VkInstance instance, VkPhysicalDevice physical_device)
+	Context::Context(VkInstance instance, VkPhysicalDevice physical_device, std::string device_name)
 		: m_instance(instance)
 		, m_physical_device(physical_device)
+		, m_device_name(std::move(device_name))
 	{
 		// Read device physical memory properties, we need it for allocating buffers
 		vkGetPhysicalDeviceProperties(physical_device, &m_device_properties);
@@ -342,7 +343,7 @@ namespace Vulkan
 			return false;
 		}
 
-		g_vulkan_context.reset(new Context(instance, gpus[gpu_index]));
+		g_vulkan_context.reset(new Context(instance, gpus[gpu_index], std::move(gpu_names[gpu_index])));
 
 		if (enable_debug_utils)
 			g_vulkan_context->EnableDebugUtils();

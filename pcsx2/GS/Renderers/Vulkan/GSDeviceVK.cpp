@@ -20,6 +20,7 @@
 #include "common/Vulkan/SwapChain.h"
 #include "common/Vulkan/Util.h"
 #include "common/Align.h"
+#include "common/GPUPowerStateManager.h"
 #include "common/ScopedGuard.h"
 #include "GS.h"
 #include "GSDeviceVK.h"
@@ -461,6 +462,7 @@ bool GSDeviceVK::DownloadTexture(GSTexture* src, const GSVector4i& rect, GSTextu
 		}
 	}
 
+	GPUPowerStateManager::shared.EnableForcedHighPowerState();
 	ExecuteCommandBuffer(true);
 
 	// invalidate cpu cache before reading
