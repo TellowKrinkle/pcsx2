@@ -261,6 +261,7 @@ TEST(CodegenTests, AVX256Test)
 	CODEGEN_TEST_64(xVPOR(ymm0, ymm1, ymm2), "c5 f5 eb c2");
 	CODEGEN_TEST_64(xVPXOR(ymm0, ymm1, ymm2), "c5 f5 ef c2");
 
+	CODEGEN_TEST_64(xVPMOVMSKB(eax, ymm1), "c5 fd d7 c1");
 	CODEGEN_TEST_64(xVMOVMSKPS(eax, ymm1), "c5 fc 50 c1");
 	CODEGEN_TEST_64(xVMOVMSKPD(eax, ymm1), "c5 fd 50 c1");
 }
