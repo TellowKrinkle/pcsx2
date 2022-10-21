@@ -257,33 +257,83 @@ static __ri bool ipuPACK(tIPU_CMD_CSC csc)
 __fi void ipu_csc(macroblock_8& mb8, macroblock_rgb32& rgb32, int sgn)
 {
 	int i;
-	u8* p = (u8*)&rgb32;
+	__m128i* begin = reinterpret_cast<__m128i*>(&rgb32);
+	__m128i* end = reinterpret_cast<__m128i*>(&rgb32 + 1);
 
 	yuv2rgb();
 
-	if (g_ipu_thresh[0] > 0)
+	__m128i thresh0 = _mm_set1_epi8(g_ipu_thresh[0]);
+	__m128i thresh1 = _mm_set1_epi8(g_ipu_thresh[1]);
+	__m128i rgb_mask = _mm_set1_epi32(0x00ffffff);
+	__m128i alpha_fill = _mm_set1_epi32(0x40000000);
+	__m128i sign_xor = sgn ? _mm_set1_epi32(0x808080) : _mm_setzero_si128();
+
+	if (g_ipu_thresh[0] >= 0x100)
 	{
-		for (i = 0; i < 16*16; i++, p += 4)
+		if (sgn)
 		{
-			if ((p[0] < g_ipu_thresh[0]) && (p[1] < g_ipu_thresh[0]) && (p[2] < g_ipu_thresh[0]))
-				*(u32*)p = 0;
-			else if ((p[0] < g_ipu_thresh[1]) && (p[1] < g_ipu_thresh[1]) && (p[2] < g_ipu_thresh[1]))
-				p[3] = 0x40;
+			for (__m128i* i = begin; i < end; i++)
+				_mm_store_si128(i, sign_xor);
+		}
+		else
+		{
+			memset(&rgb32, 0, sizeof(rgb32));
+		}
+	}
+	else if (g_ipu_thresh[0] > 0)
+	{
+		if (g_ipu_thresh[1] >= 0x100)
+		{
+			for (__m128i* i = begin; i < end; i++)
+			{
+				__m128i pixels = _mm_load_si128(i);
+				__m128i ge_thresh0 = _mm_cmpeq_epi8(_mm_max_epu8(pixels, thresh0), pixels);
+				__m128i should_zero = _mm_cmpeq_epi32(_mm_and_si128(ge_thresh0, rgb_mask), _mm_setzero_si128());
+				_mm_store_si128(i, _mm_xor_si128(_mm_andnot_si128(should_zero, alpha_fill), sign_xor));
+			}
+		}
+		else
+		{
+			for (__m128i* i = begin; i < end; i++)
+			{
+				__m128i pixels = _mm_load_si128(i);
+				__m128i ge_thresh0 = _mm_cmpeq_epi8(_mm_max_epu8(pixels, thresh0), pixels);
+				__m128i ge_thresh1 = _mm_cmpeq_epi8(_mm_max_epu8(pixels, thresh1), pixels);
+				__m128i should_zero = _mm_cmpeq_epi32(_mm_and_si128(ge_thresh0, rgb_mask), _mm_setzero_si128());
+				__m128i should_alpha = _mm_cmpeq_epi32(_mm_and_si128(ge_thresh1, rgb_mask), _mm_setzero_si128());
+				__m128i alpha_mask = _mm_andnot_si128(rgb_mask, should_alpha);
+				__m128i alpha_applied = _mm_blendv_epi8(pixels, alpha_fill, alpha_mask);
+				_mm_store_si128(i, _mm_xor_si128(_mm_andnot_si128(should_zero, alpha_applied), sign_xor));
+			}
+		}
+	}
+	else if (g_ipu_thresh[1] >= 0x100)
+	{
+		for (__m128i* i = begin; i < end; i++)
+		{
+			__m128i pixels = _mm_load_si128(i);
+			__m128i alpha_applied = _mm_blendv_epi8(pixels, alpha_fill, _mm_set1_epi32(0xff000000));
+			_mm_store_si128(i, _mm_xor_si128(alpha_applied, sign_xor));
 		}
 	}
 	else if (g_ipu_thresh[1] > 0)
 	{
-		for (i = 0; i < 16*16; i++, p += 4)
+		for (__m128i* i = begin; i < end; i++)
 		{
-			if ((p[0] < g_ipu_thresh[1]) && (p[1] < g_ipu_thresh[1]) && (p[2] < g_ipu_thresh[1]))
-				p[3] = 0x40;
+			__m128i pixels = _mm_load_si128(i);
+			__m128i ge_thresh1 = _mm_cmpeq_epi8(_mm_max_epu8(pixels, thresh1), pixels);
+			__m128i should_alpha = _mm_cmpeq_epi32(_mm_and_si128(ge_thresh1, rgb_mask), _mm_setzero_si128());
+			__m128i alpha_mask = _mm_andnot_si128(rgb_mask, should_alpha);
+			__m128i alpha_applied = _mm_blendv_epi8(pixels, alpha_fill, alpha_mask);
+			_mm_store_si128(i, _mm_xor_si128(alpha_applied, sign_xor));
 		}
 	}
-	if (sgn)
+	else if (sgn)
 	{
-		for (i = 0; i < 16*16; i++, p += 4)
+		for (__m128i* i = begin; i < end; i++)
 		{
-			*(u32*)p ^= 0x808080;
+			__m128i pixels = _mm_load_si128(i);
+			_mm_store_si128(i, _mm_xor_si128(pixels, sign_xor));
 		}
 	}
 }
