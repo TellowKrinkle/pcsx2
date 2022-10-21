@@ -30,11 +30,11 @@
 
 #define IPU_Y_BIAS    16
 #define IPU_C_BIAS    128
-#define IPU_Y_COEFF   0x95	//  1.1640625
-#define IPU_GCR_COEFF (-0x68)	// -0.8125
-#define IPU_GCB_COEFF (-0x32)	// -0.390625
-#define IPU_RCR_COEFF 0xcc	//  1.59375
-#define IPU_BCB_COEFF 0x102	//  2.015625
+#define IPU_Y_COEFF   0x95    //  1.1640625
+#define IPU_GCR_COEFF (-0x68) // -0.8125
+#define IPU_GCB_COEFF (-0x32) // -0.390625
+#define IPU_RCR_COEFF 0xcc    //  1.59375
+#define IPU_BCB_COEFF 0x102   //  2.015625
 
 // conforming implementation for reference, do not optimise
 void yuv2rgb_reference(macroblock_rgb32& RESTRICT dst, const macroblock_8& RESTRICT src)
@@ -68,7 +68,7 @@ __ri void yuv2rgb_sse2(macroblock_rgb32& RESTRICT dst, const macroblock_8& RESTR
 	const __m128i y_mask = _mm_set1_epi16(s16(0xFF00));
 	// Specifying round off instead of round down as everywhere else
 	// implies that this is right
-	const __m128i round_1bit = _mm_set1_epi16(0x0001);;
+	const __m128i round_1bit = _mm_set1_epi16(0x0001);
 
 	const __m128i y_coefficient = _mm_set1_epi16(s16(IPU_Y_COEFF << 2));
 	const __m128i gcr_coefficient = _mm_set1_epi16(s16(u16(IPU_GCR_COEFF) << 2));
@@ -79,7 +79,8 @@ __ri void yuv2rgb_sse2(macroblock_rgb32& RESTRICT dst, const macroblock_8& RESTR
 	// Alpha set to 0x80 here. The threshold stuff is done later.
 	const __m128i& alpha = c_bias;
 
-	for (int n = 0; n < 8; ++n) {
+	for (int n = 0; n < 8; ++n)
+	{
 		// could skip the loadl_epi64 but most SSE instructions require 128-bit
 		// alignment so two versions would be needed.
 		__m128i cb = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(&src.Cb[n][0]));
@@ -95,7 +96,8 @@ __ri void yuv2rgb_sse2(macroblock_rgb32& RESTRICT dst, const macroblock_8& RESTR
 		__m128i gc = _mm_adds_epi16(_mm_mulhi_epi16(cr, gcr_coefficient), _mm_mulhi_epi16(cb, gcb_coefficient));
 		__m128i bc = _mm_mulhi_epi16(cb, bcb_coefficient);
 
-		for (int m = 0; m < 2; ++m) {
+		for (int m = 0; m < 2; ++m)
+		{
 			__m128i y = _mm_load_si128(reinterpret_cast<const __m128i*>(&src.Y[n * 2 + m][0]));
 			y = _mm_subs_epu8(y, y_bias);
 			// Y << 8 for pixels 0, 2, 4, 6, 8, 10, 12, 14
@@ -141,9 +143,9 @@ __ri void yuv2rgb_sse2(macroblock_rgb32& RESTRICT dst, const macroblock_8& RESTR
 			__m128i rgba_hl = _mm_unpacklo_epi16(rg_h, ba_h);
 			__m128i rgba_hh = _mm_unpackhi_epi16(rg_h, ba_h);
 
-			_mm_store_si128(reinterpret_cast<__m128i*>(&dst.c[n * 2 + m][0]), rgba_ll);
-			_mm_store_si128(reinterpret_cast<__m128i*>(&dst.c[n * 2 + m][4]), rgba_lh);
-			_mm_store_si128(reinterpret_cast<__m128i*>(&dst.c[n * 2 + m][8]), rgba_hl);
+			_mm_store_si128(reinterpret_cast<__m128i*>(&dst.c[n * 2 + m][ 0]), rgba_ll);
+			_mm_store_si128(reinterpret_cast<__m128i*>(&dst.c[n * 2 + m][ 4]), rgba_lh);
+			_mm_store_si128(reinterpret_cast<__m128i*>(&dst.c[n * 2 + m][ 8]), rgba_hl);
 			_mm_store_si128(reinterpret_cast<__m128i*>(&dst.c[n * 2 + m][12]), rgba_hh);
 		}
 	}

@@ -34,18 +34,18 @@ enum macroblock_modes
 	MACROBLOCK_MOTION_BACKWARD = 4,
 	MACROBLOCK_MOTION_FORWARD = 8,
 	MACROBLOCK_QUANT = 16,
-	DCT_TYPE_INTERLACED = 32
+	DCT_TYPE_INTERLACED = 32,
 };
 
 enum motion_type
 {
 	MOTION_TYPE_SHIFT = 6,
-	MOTION_TYPE_MASK = (3*64),
+	MOTION_TYPE_MASK = (3 * 64),
 	MOTION_TYPE_BASE = 64,
-	MC_FIELD = (1*64),
-	MC_FRAME = (2*64),
-	MC_16X8 = (2*64),
-	MC_DMV = (3*64)
+	MC_FIELD = (1 * 64),
+	MC_FRAME = (2 * 64),
+	MC_16X8 = (2 * 64),
+	MC_DMV = (3 * 64),
 };
 
 /* picture structure */
@@ -65,48 +65,54 @@ enum picture_coding_type
 	D_TYPE = 4
 };
 
-struct macroblock_8{
-	u8 Y[16][16];		//0
-	u8 Cb[8][8];		//1
-	u8 Cr[8][8];		//2
+struct macroblock_8
+{
+	u8 Y[16][16]; //0
+	u8 Cb[8][8];  //1
+	u8 Cr[8][8];  //2
 };
 
-struct macroblock_16{
-	s16 Y[16][16];			//0
-	s16 Cb[8][8];			//1
-	s16 Cr[8][8];			//2
+struct macroblock_16
+{
+	s16 Y[16][16]; //0
+	s16 Cb[8][8];  //1
+	s16 Cr[8][8];  //2
 };
 
-struct macroblock_rgb32{
+struct macroblock_rgb32
+{
 	struct {
 		u8 r, g, b, a;
 	} c[16][16];
 };
 
-struct rgb16_t{
+struct rgb16_t
+{
 	u16 r:5, g:5, b:5, a:1;
 };
 
-struct macroblock_rgb16{
-	rgb16_t	c[16][16];
+struct macroblock_rgb16
+{
+	rgb16_t c[16][16];
 };
 
-struct decoder_t {
+struct decoder_t
+{
 	/* first, state that carries information from one macroblock to the */
 	/* next inside a slice, and is never used outside of mpeg2_slice() */
 
 	/* DCT coefficients - should be kept aligned ! */
 	s16 DCTblock[64];
 
-	u8 niq[64];			//non-intraquant matrix (sequence header)
-	u8 iq[64];			//intraquant matrix (sequence header)
+	u8 niq[64]; // non-intraquant matrix (sequence header)
+	u8 iq[64];  // intraquant matrix (sequence header)
 
 	macroblock_8 mb8;
 	macroblock_16 mb16;
 	macroblock_rgb32 rgb32;
 	macroblock_rgb16 rgb16;
 
-	uint ipu0_data;		// amount of data in the output macroblock (in QWC)
+	uint ipu0_data; // amount of data in the output macroblock (in QWC)
 	uint ipu0_idx;
 
 	int quantizer_scale;
@@ -163,8 +169,8 @@ struct decoder_t {
 	{
 		uint mb_offset = ((uptr)&obj - (uptr)&mb8);
 		pxAssume( (mb_offset & 15) == 0 );
-		ipu0_idx	= mb_offset / 16;
-		ipu0_data	= sizeof(obj)/16;
+		ipu0_idx  = mb_offset / 16;
+		ipu0_data = sizeof(obj)/16;
 	}
 
 	u128* GetIpuDataPtr()
@@ -188,12 +194,12 @@ struct mpeg2_scan_pack
 	mpeg2_scan_pack();
 };
 
-extern int bitstream_init ();
+extern int bitstream_init();
 extern u32 UBITS(uint bits);
 extern s32 SBITS(uint bits);
 
-extern void mpeg2_idct_copy(s16 * block, u8* dest, int stride);
-extern void mpeg2_idct_add(int last, s16 * block, s16* dest, int stride);
+extern void mpeg2_idct_copy(s16* block, u8* dest, int stride);
+extern void mpeg2_idct_add(int last, s16* block, s16* dest, int stride);
 
 extern bool mpeg2sliceIDEC();
 extern bool mpeg2_slice();
@@ -207,7 +213,7 @@ extern void ipu_csc(const macroblock_8& mb8, macroblock_rgb32& rgb32, int sgn);
 extern void ipu_dither(const macroblock_rgb32& rgb32, macroblock_rgb16& rgb16, int dte);
 extern void ipu_vq(macroblock_rgb16& rgb16, u8* indx4);
 
-extern int slice (u8 * buffer);
+extern int slice(u8* buffer);
 
 #ifdef _MSC_VER
 #define BigEndian(in) _byteswap_ulong(in)
@@ -229,4 +235,3 @@ extern const int non_linear_quantizer_scale[];
 
 alignas(16) extern tIPU_BP g_BP;
 alignas(16) extern decoder_t decoder;
-

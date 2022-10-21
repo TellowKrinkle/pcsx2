@@ -24,24 +24,25 @@ bool CommandExecuteQueued;
 
 void ipuDmaReset()
 {
-	IPU1Status.InProgress	= false;
-	IPU1Status.DMAFinished	= true;
-	CommandExecuteQueued	= false;
+	IPU1Status.InProgress  = false;
+	IPU1Status.DMAFinished = true;
+	CommandExecuteQueued   = false;
 }
 
 void SaveStateBase::ipuDmaFreeze()
 {
-	FreezeTag( "IPUdma" );
+	FreezeTag("IPUdma");
 	Freeze(IPU1Status);
 	Freeze(CommandExecuteQueued);
 }
 
-static __fi int IPU1chain() {
+static __fi int IPU1chain()
+{
 
 	int totalqwc = 0;
 
 	int qwc = ipu1ch.qwc;
-	u32 *pMem;
+	u32* pMem;
 
 	pMem = (u32*)dmaGetAddr(ipu1ch.madr, false);
 
@@ -68,7 +69,7 @@ static __fi int IPU1chain() {
 
 void IPU1dma()
 {
-	if(!ipu1ch.chcr.STR || ipu1ch.chcr.MOD == 2)
+	if (!ipu1ch.chcr.STR || ipu1ch.chcr.MOD == 2)
 	{
 		//We MUST stop the IPU from trying to fill the FIFO with more data if the DMA has been suspended
 		//if we don't, we risk causing the data to go out of sync with the fifo and we end up losing some!
@@ -93,7 +94,7 @@ void IPU1dma()
 		if (IPU1Status.DMAFinished)
 			DevCon.Warning("IPU1 DMA Somehow reading tag when finished??");
 
-		tDMA_TAG* ptag = dmaGetAddr(ipu1ch.tadr, false);  //Set memory pointer to TADR
+		tDMA_TAG* ptag = dmaGetAddr(ipu1ch.tadr, false); //Set memory pointer to TADR
 
 		if (!ipu1ch.transfer("IPU1", ptag))
 		{
@@ -103,7 +104,8 @@ void IPU1dma()
 
 		tagcycles += 1; // Add 1 cycles from the QW read for the tag
 
-		if (ipu1ch.chcr.TTE) DevCon.Warning("TTE?");
+		if (ipu1ch.chcr.TTE)
+			DevCon.Warning("TTE?");
 
 		IPU1Status.DMAFinished = hwDmacSrcChain(ipu1ch, ptag->ID);
 
@@ -121,7 +123,7 @@ void IPU1dma()
 		totalqwc += IPU1chain();
 
 	//Do this here to prevent double settings on Chain DMA's
-	if(totalqwc == 0 || (IPU1Status.DMAFinished && !IPU1Status.InProgress))
+	if (totalqwc == 0 || (IPU1Status.DMAFinished && !IPU1Status.InProgress))
 	{
 		totalqwc = std::max(4, totalqwc) + tagcycles;
 		IPU_INT_TO(totalqwc * BIAS);
@@ -132,7 +134,7 @@ void IPU1dma()
 
 		if (!(IPU1Status.DMAFinished && !IPU1Status.InProgress))
 		{
-			cpuRegs.eCycle[4] = 0x9999;//IPU_INT_TO(2048);
+			cpuRegs.eCycle[4] = 0x9999; //IPU_INT_TO(2048);
 		}
 		else
 		{
@@ -152,9 +154,9 @@ void IPU1dma()
 
 void IPU0dma()
 {
-	if(!ipuRegs.ctrl.OFC)
+	if (!ipuRegs.ctrl.OFC)
 	{
-		if(!CommandExecuteQueued)
+		if (!CommandExecuteQueued)
 			IPUProcessInterrupt();
 		return;
 	}
@@ -183,13 +185,13 @@ void IPU0dma()
 	ipu0ch.madr += readsize << 4;
 	ipu0ch.qwc -= readsize;
 
-	if (dmacRegs.ctrl.STS == STS_fromIPU)   // STS == fromIPU
+	if (dmacRegs.ctrl.STS == STS_fromIPU) // STS == fromIPU
 	{
 		//DevCon.Warning("fromIPU Stall Control");
 		dmacRegs.stadr.ADDR = ipu0ch.madr;
 	}
 
-	IPU_INT_FROM( readsize * BIAS );
+	IPU_INT_FROM(readsize * BIAS);
 
 	if (ipuRegs.ctrl.BUSY && !CommandExecuteQueued)
 	{
@@ -202,7 +204,7 @@ __fi void dmaIPU0() // fromIPU
 {
 	//if (dmacRegs.ctrl.STS == STS_fromIPU) DevCon.Warning("DMA Stall enabled on IPU0");
 
-	if (dmacRegs.ctrl.STS == STS_fromIPU)   // STS == fromIPU - Initial settings
+	if (dmacRegs.ctrl.STS == STS_fromIPU) // STS == fromIPU - Initial settings
 		dmacRegs.stadr.ADDR = ipu0ch.madr;
 
 	// Note: This should probably be a very small value, however anything lower than this will break Mana Khemia
@@ -231,10 +233,10 @@ __fi void dmaIPU1() // toIPU
 {
 	IPU_LOG("IPU1DMAStart QWC %x, MADR %x, CHCR %x, TADR %x", ipu1ch.qwc, ipu1ch.madr, ipu1ch.chcr._u32, ipu1ch.tadr);
 
-	if (ipu1ch.chcr.MOD == CHAIN_MODE)  //Chain Mode
+	if (ipu1ch.chcr.MOD == CHAIN_MODE) //Chain Mode
 	{
 		IPU_LOG("Setting up IPU1 Chain mode");
-		if(ipu1ch.qwc == 0)
+		if (ipu1ch.qwc == 0)
 		{
 			IPU1Status.InProgress = false;
 			IPU1Status.DMAFinished = false;
@@ -253,21 +255,21 @@ __fi void dmaIPU1() // toIPU
 			}
 		}
 
-		if(IPU1Status.DataRequested)
+		if (IPU1Status.DataRequested)
 			IPU1dma();
 		else
 			cpuRegs.eCycle[4] = 0x9999;
 	}
 	else // Normal Mode
 	{
-			IPU_LOG("Setting up IPU1 Normal mode");
-			IPU1Status.InProgress = true;
-			IPU1Status.DMAFinished = true;
+		IPU_LOG("Setting up IPU1 Normal mode");
+		IPU1Status.InProgress = true;
+		IPU1Status.DMAFinished = true;
 
-			if (IPU1Status.DataRequested)
-				IPU1dma();
-			else
-				cpuRegs.eCycle[4] = 0x9999;
+		if (IPU1Status.DataRequested)
+			IPU1dma();
+		else
+			cpuRegs.eCycle[4] = 0x9999;
 	}
 }
 
@@ -281,7 +283,7 @@ void ipu0Interrupt()
 {
 	IPU_LOG("ipu0Interrupt: %x", cpuRegs.cycle);
 
-	if(ipu0ch.qwc > 0)
+	if (ipu0ch.qwc > 0)
 	{
 		IPU0dma();
 		return;
@@ -296,7 +298,7 @@ __fi void ipu1Interrupt()
 {
 	IPU_LOG("ipu1Interrupt %x:", cpuRegs.cycle);
 
-	if(!IPU1Status.DMAFinished || IPU1Status.InProgress)  //Sanity Check
+	if (!IPU1Status.DMAFinished || IPU1Status.InProgress) //Sanity Check
 	{
 		IPU1dma();
 		return;

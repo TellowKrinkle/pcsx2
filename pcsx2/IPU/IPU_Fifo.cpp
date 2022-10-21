@@ -93,7 +93,7 @@ int IPU_Fifo_Input::write(u32* pMem, int size)
 	return firsttrans;
 }
 
-int IPU_Fifo_Input::read(void *value)
+int IPU_Fifo_Input::read(void* value)
 {
 	// wait until enough data to ensure proper streaming.
 	if (g_BP.IFC <= 1)
@@ -101,12 +101,13 @@ int IPU_Fifo_Input::read(void *value)
 		// IPU FIFO is empty and DMA is waiting so lets tell the DMA we are ready to put data in the FIFO
 		IPU1Status.DataRequested = true;
 
-		if(ipu1ch.chcr.STR && cpuRegs.eCycle[4] == 0x9999)
+		if (ipu1ch.chcr.STR && cpuRegs.eCycle[4] == 0x9999)
 		{
-			CPU_INT( DMAC_TO_IPU, 4);
+			CPU_INT(DMAC_TO_IPU, 4);
 		}
 
-		if (g_BP.IFC == 0) return 0;
+		if (g_BP.IFC == 0)
+			return 0;
 		pxAssert(g_BP.IFC > 0);
 	}
 
@@ -117,9 +118,9 @@ int IPU_Fifo_Input::read(void *value)
 	return 1;
 }
 
-int IPU_Fifo_Output::write(const u32 *value, uint size)
+int IPU_Fifo_Output::write(const u32* value, uint size)
 {
-	pxAssertMsg(size>0, "Invalid size==0 when calling IPU_Fifo_Output::write");
+	pxAssertMsg(size > 0, "Invalid size==0 when calling IPU_Fifo_Output::write");
 
 	uint origsize = size;
 	/*do {*/
@@ -138,12 +139,12 @@ int IPU_Fifo_Output::write(const u32 *value, uint size)
 			--transsize;
 		}
 	/*} while(true);*/
-	if(ipu0ch.chcr.STR)
+	if (ipu0ch.chcr.STR)
 		IPU_INT_FROM(ipuRegs.ctrl.OFC * BIAS);
 	return origsize - size;
 }
 
-void IPU_Fifo_Output::read(void *value, uint size)
+void IPU_Fifo_Output::read(void* value, uint size)
 {
 	pxAssert(ipuRegs.ctrl.OFC >= size);
 	ipuRegs.ctrl.OFC -= size;
@@ -165,7 +166,8 @@ void IPU_Fifo_Output::read(void *value, uint size)
 
 void ReadFIFO_IPUout(mem128_t* out)
 {
-	if (!pxAssertDev( ipuRegs.ctrl.OFC > 0, "Attempted read from IPUout's FIFO, but the FIFO is empty!" )) return;
+	if (!pxAssertDev(ipuRegs.ctrl.OFC > 0, "Attempted read from IPUout's FIFO, but the FIFO is empty!"))
+		return;
 	ipu_fifo.out.read(out, 1);
 
 	// Games should always check the fifo before reading from it -- so if the FIFO has no data
@@ -174,10 +176,10 @@ void ReadFIFO_IPUout(mem128_t* out)
 
 void WriteFIFO_IPUin(const mem128_t* value)
 {
-	IPU_LOG( "WriteFIFO/IPUin <- 0x%08X.%08X.%08X.%08X", value->_u32[0], value->_u32[1], value->_u32[2], value->_u32[3]);
+	IPU_LOG("WriteFIFO/IPUin <- 0x%08X.%08X.%08X.%08X", value->_u32[0], value->_u32[1], value->_u32[2], value->_u32[3]);
 
 	//committing every 16 bytes
-	if( ipu_fifo.in.write((u32*)value, 1) == 0 )
+	if (ipu_fifo.in.write((u32*)value, 1) == 0)
 	{
 		if (ipuRegs.ctrl.BUSY && !CommandExecuteQueued)
 		{

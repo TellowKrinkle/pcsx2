@@ -28,7 +28,7 @@ struct IPU_Fifo_Input
 	int readpos, writepos;
 
 	int write(u32* pMem, int size);
-	int read(void *value);
+	int read(void* value);
 	void clear();
 	std::string desc() const;
 };
@@ -39,8 +39,8 @@ struct IPU_Fifo_Output
 	int readpos, writepos;
 
 	// returns number of qw read
-	int write(const u32 * value, uint size);
-	void read(void *value, uint size);
+	int write(const u32* value, uint size);
+	void read(void* value, uint size);
 	void clear();
 	std::string desc() const;
 };

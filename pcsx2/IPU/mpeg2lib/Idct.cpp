@@ -47,176 +47,177 @@
  */
 alignas(16) static u8 clip_lut[1024];
 
-#define CLIP(i) ((clip_lut+384)[(i)])
+#define CLIP(i) ((clip_lut + 384)[(i)])
 
 static __fi void BUTTERFLY(int& t0, int& t1, int w0, int w1, int d0, int d1)
 {
 #if 0
-    t0 = w0*d0 + w1*d1;
-    t1 = w0*d1 - w1*d0;
+	t0 = w0*d0 + w1*d1;
+	t1 = w0*d1 - w1*d0;
 #else
-    int tmp = w0 * (d0 + d1);
-    t0 = tmp + (w1 - w0) * d1;
-    t1 = tmp - (w1 + w0) * d0;
+	int tmp = w0 * (d0 + d1);
+	t0 = tmp + (w1 - w0) * d1;
+	t1 = tmp - (w1 + w0) * d0;
 #endif
 }
 
-static __fi void idct_row (s16 * const block)
+static __fi void idct_row(s16* const block)
 {
-    int d0, d1, d2, d3;
-    int a0, a1, a2, a3, b0, b1, b2, b3;
-    int t0, t1, t2, t3;
+	int d0, d1, d2, d3;
+	int a0, a1, a2, a3, b0, b1, b2, b3;
+	int t0, t1, t2, t3;
 
-    /* shortcut */
-    if (!(block[1] | ((s32 *)block)[1] | ((s32 *)block)[2] |
-		  ((s32 *)block)[3])) {
-		u32 tmp = (u16) (block[0] << 3);
+	/* shortcut */
+	if (!(block[1] | ((s32*)block)[1] | ((s32*)block)[2] | ((s32*)block)[3]))
+	{
+		u32 tmp = (u16)(block[0] << 3);
 		tmp |= tmp << 16;
-		((s32 *)block)[0] = tmp;
-		((s32 *)block)[1] = tmp;
-		((s32 *)block)[2] = tmp;
-		((s32 *)block)[3] = tmp;
+		((s32*)block)[0] = tmp;
+		((s32*)block)[1] = tmp;
+		((s32*)block)[2] = tmp;
+		((s32*)block)[3] = tmp;
 		return;
-    }
+	}
 
-    d0 = (block[0] << 11) + 128;
-    d1 = block[1];
-    d2 = block[2] << 11;
-    d3 = block[3];
-    t0 = d0 + d2;
-    t1 = d0 - d2;
-    BUTTERFLY (t2, t3, W6, W2, d3, d1);
-    a0 = t0 + t2;
-    a1 = t1 + t3;
-    a2 = t1 - t3;
-    a3 = t0 - t2;
+	d0 = (block[0] << 11) + 128;
+	d1 = block[1];
+	d2 = block[2] << 11;
+	d3 = block[3];
+	t0 = d0 + d2;
+	t1 = d0 - d2;
+	BUTTERFLY(t2, t3, W6, W2, d3, d1);
+	a0 = t0 + t2;
+	a1 = t1 + t3;
+	a2 = t1 - t3;
+	a3 = t0 - t2;
 
-    d0 = block[4];
-    d1 = block[5];
-    d2 = block[6];
-    d3 = block[7];
-    BUTTERFLY (t0, t1, W7, W1, d3, d0);
-    BUTTERFLY (t2, t3, W3, W5, d1, d2);
-    b0 = t0 + t2;
-    b3 = t1 + t3;
-    t0 -= t2;
-    t1 -= t3;
-    b1 = ((t0 + t1) * 181) >> 8;
-    b2 = ((t0 - t1) * 181) >> 8;
+	d0 = block[4];
+	d1 = block[5];
+	d2 = block[6];
+	d3 = block[7];
+	BUTTERFLY(t0, t1, W7, W1, d3, d0);
+	BUTTERFLY(t2, t3, W3, W5, d1, d2);
+	b0 = t0 + t2;
+	b3 = t1 + t3;
+	t0 -= t2;
+	t1 -= t3;
+	b1 = ((t0 + t1) * 181) >> 8;
+	b2 = ((t0 - t1) * 181) >> 8;
 
-    block[0] = (a0 + b0) >> 8;
-    block[1] = (a1 + b1) >> 8;
-    block[2] = (a2 + b2) >> 8;
-    block[3] = (a3 + b3) >> 8;
-    block[4] = (a3 - b3) >> 8;
-    block[5] = (a2 - b2) >> 8;
-    block[6] = (a1 - b1) >> 8;
-    block[7] = (a0 - b0) >> 8;
+	block[0] = (a0 + b0) >> 8;
+	block[1] = (a1 + b1) >> 8;
+	block[2] = (a2 + b2) >> 8;
+	block[3] = (a3 + b3) >> 8;
+	block[4] = (a3 - b3) >> 8;
+	block[5] = (a2 - b2) >> 8;
+	block[6] = (a1 - b1) >> 8;
+	block[7] = (a0 - b0) >> 8;
 }
 
-static __fi void idct_col (s16 * const block)
+static __fi void idct_col(s16* const block)
 {
-    int d0, d1, d2, d3;
-    int a0, a1, a2, a3, b0, b1, b2, b3;
-    int t0, t1, t2, t3;
+	int d0, d1, d2, d3;
+	int a0, a1, a2, a3, b0, b1, b2, b3;
+	int t0, t1, t2, t3;
 
-    d0 = (block[8*0] << 11) + 65536;
-    d1 = block[8*1];
-    d2 = block[8*2] << 11;
-    d3 = block[8*3];
-    t0 = d0 + d2;
-    t1 = d0 - d2;
-    BUTTERFLY (t2, t3, W6, W2, d3, d1);
-    a0 = t0 + t2;
-    a1 = t1 + t3;
-    a2 = t1 - t3;
-    a3 = t0 - t2;
+	d0 = (block[8 * 0] << 11) + 65536;
+	d1 = block[8 * 1];
+	d2 = block[8 * 2] << 11;
+	d3 = block[8 * 3];
+	t0 = d0 + d2;
+	t1 = d0 - d2;
+	BUTTERFLY(t2, t3, W6, W2, d3, d1);
+	a0 = t0 + t2;
+	a1 = t1 + t3;
+	a2 = t1 - t3;
+	a3 = t0 - t2;
 
-    d0 = block[8*4];
-    d1 = block[8*5];
-    d2 = block[8*6];
-    d3 = block[8*7];
-    BUTTERFLY (t0, t1, W7, W1, d3, d0);
-    BUTTERFLY (t2, t3, W3, W5, d1, d2);
-    b0 = t0 + t2;
-    b3 = t1 + t3;
-    t0 = (t0 - t2) >> 8;
-    t1 = (t1 - t3) >> 8;
-    b1 = (t0 + t1) * 181;
-    b2 = (t0 - t1) * 181;
+	d0 = block[8 * 4];
+	d1 = block[8 * 5];
+	d2 = block[8 * 6];
+	d3 = block[8 * 7];
+	BUTTERFLY(t0, t1, W7, W1, d3, d0);
+	BUTTERFLY(t2, t3, W3, W5, d1, d2);
+	b0 = t0 + t2;
+	b3 = t1 + t3;
+	t0 = (t0 - t2) >> 8;
+	t1 = (t1 - t3) >> 8;
+	b1 = (t0 + t1) * 181;
+	b2 = (t0 - t1) * 181;
 
-    block[8*0] = (a0 + b0) >> 17;
-    block[8*1] = (a1 + b1) >> 17;
-    block[8*2] = (a2 + b2) >> 17;
-    block[8*3] = (a3 + b3) >> 17;
-    block[8*4] = (a3 - b3) >> 17;
-    block[8*5] = (a2 - b2) >> 17;
-    block[8*6] = (a1 - b1) >> 17;
-    block[8*7] = (a0 - b0) >> 17;
+	block[8 * 0] = (a0 + b0) >> 17;
+	block[8 * 1] = (a1 + b1) >> 17;
+	block[8 * 2] = (a2 + b2) >> 17;
+	block[8 * 3] = (a3 + b3) >> 17;
+	block[8 * 4] = (a3 - b3) >> 17;
+	block[8 * 5] = (a2 - b2) >> 17;
+	block[8 * 6] = (a1 - b1) >> 17;
+	block[8 * 7] = (a0 - b0) >> 17;
 }
 
-__ri void mpeg2_idct_copy(s16 * block, u8 * dest, const int stride)
+__ri void mpeg2_idct_copy(s16* block, u8* dest, const int stride)
 {
-    int i;
+	int i;
 
-    for (i = 0; i < 8; i++)
-		idct_row (block + 8 * i);
-    for (i = 0; i < 8; i++)
-		idct_col (block + i);
+	for (i = 0; i < 8; i++)
+		idct_row(block + 8 * i);
+	for (i = 0; i < 8; i++)
+		idct_col(block + i);
 
 	__m128 zero = _mm_setzero_ps();
-    do {
-		dest[0] = CLIP (block[0]);
-		dest[1] = CLIP (block[1]);
-		dest[2] = CLIP (block[2]);
-		dest[3] = CLIP (block[3]);
-		dest[4] = CLIP (block[4]);
-		dest[5] = CLIP (block[5]);
-		dest[6] = CLIP (block[6]);
-		dest[7] = CLIP (block[7]);
+	do
+	{
+		dest[0] = CLIP(block[0]);
+		dest[1] = CLIP(block[1]);
+		dest[2] = CLIP(block[2]);
+		dest[3] = CLIP(block[3]);
+		dest[4] = CLIP(block[4]);
+		dest[5] = CLIP(block[5]);
+		dest[6] = CLIP(block[6]);
+		dest[7] = CLIP(block[7]);
 
 		_mm_store_ps((float*)block, zero);
 
 		dest += stride;
 		block += 8;
-    } while (--i);
+	} while (--i);
 }
 
 
 // stride = increment for dest in 16-bit units (typically either 8 [128 bits] or 16 [256 bits]).
-__ri void mpeg2_idct_add (const int last, s16 * block, s16 * dest, const int stride)
+__ri void mpeg2_idct_add(const int last, s16* block, s16* dest, const int stride)
 {
 	// on the IPU, stride is always assured to be multiples of QWC (bottom 3 bits are 0).
 
-    if (last != 129 || (block[0] & 7) == 4)
-    {
+	if (last != 129 || (block[0] & 7) == 4)
+	{
 		int i;
 		for (i = 0; i < 8; i++)
-			idct_row (block + 8 * i);
+			idct_row(block + 8 * i);
 		for (i = 0; i < 8; i++)
-			idct_col (block + i);
+			idct_col(block + i);
 
 		__m128 zero = _mm_setzero_ps();
-		do {
+		do
+		{
 			_mm_store_ps((float*)dest, _mm_load_ps((float*)block));
 			_mm_store_ps((float*)block, zero);
 
 			dest += stride;
 			block += 8;
 		} while (--i);
-
-    }
-    else
-    {
+	}
+	else
+	{
 		s16 DC = ((int)block[0] + 4) >> 3;
-		s16 dcf[2] = { DC, DC };
+		s16 dcf[2] = {DC, DC};
 		block[0] = block[63] = 0;
 
 		__m128 dc128 = _mm_set_ps1(*(float*)dcf);
 
-		for(int i=0; i<8; ++i)
-			_mm_store_ps((float*)(dest+(stride*i)), dc128);
-    }
+		for (int i = 0; i < 8; ++i)
+			_mm_store_ps((float*)(dest + (stride * i)), dc128);
+	}
 }
 
 mpeg2_scan_pack::mpeg2_scan_pack()
@@ -238,9 +239,10 @@ mpeg2_scan_pack::mpeg2_scan_pack()
 	};
 
 	for (int i = -384; i < 640; i++)
-		clip_lut[i+384] = (i < 0) ? 0 : ((i > 255) ? 255 : i);
+		clip_lut[i + 384] = (i < 0) ? 0 : ((i > 255) ? 255 : i);
 
-	for (int i = 0; i < 64; i++) {
+	for (int i = 0; i < 64; i++)
+	{
 		int j = mpeg2_scan_norm[i];
 		norm[i] = ((j & 0x36) >> 1) | ((j & 0x09) << 2);
 		j = mpeg2_scan_alt[i];

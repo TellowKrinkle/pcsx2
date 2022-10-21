@@ -17,7 +17,8 @@
 
 #include "IPU.h"
 
-struct IPUStatus {
+struct IPUStatus
+{
 	bool InProgress;
 	bool DMAFinished;
 	bool DataRequested;
