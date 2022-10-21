@@ -15,7 +15,12 @@
 
 #pragma once
 
-extern void yuv2rgb_reference();
+#include "PCSX2Base.h"
+
+struct macroblock_8;
+struct macroblock_rgb32;
+
+extern void yuv2rgb_reference(macroblock_rgb32& RESTRICT dst, const macroblock_8& RESTRICT src);
 
 #define yuv2rgb yuv2rgb_sse2
-extern void yuv2rgb_sse2();
+extern void yuv2rgb_sse2(macroblock_rgb32& RESTRICT dst, const macroblock_8& RESTRICT src);

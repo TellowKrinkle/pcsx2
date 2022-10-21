@@ -644,12 +644,12 @@ static void ipuSETTH(u32 val)
 // --------------------------------------------------------------------------------------
 //  CORE Functions (referenced from MPEG library)
 // --------------------------------------------------------------------------------------
-__fi void ipu_csc(macroblock_8& mb8, macroblock_rgb32& rgb32, int sgn)
+__fi void ipu_csc(const macroblock_8& mb8, macroblock_rgb32& rgb32, int sgn)
 {
 	__m128i* begin = reinterpret_cast<__m128i*>(&rgb32);
 	__m128i* end = reinterpret_cast<__m128i*>(&rgb32 + 1);
 
-	yuv2rgb();
+	yuv2rgb(rgb32, mb8);
 
 	__m128i thresh0 = _mm_set1_epi8(s_thresh[0]);
 	__m128i thresh1 = _mm_set1_epi8(s_thresh[1]);

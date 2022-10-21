@@ -37,32 +37,31 @@
 #define IPU_BCB_COEFF 0x102	//  2.015625
 
 // conforming implementation for reference, do not optimise
-void yuv2rgb_reference(void)
+void yuv2rgb_reference(macroblock_rgb32& RESTRICT dst, const macroblock_8& RESTRICT src)
 {
-	const macroblock_8& mb8 = decoder.mb8;
-	macroblock_rgb32& rgb32 = decoder.rgb32;
-
 	for (int y = 0; y < 16; y++)
+	{
 		for (int x = 0; x < 16; x++)
 		{
-			s32 lum = (IPU_Y_COEFF * (std::max(0, (s32)mb8.Y[y][x] - IPU_Y_BIAS))) >> 6;
-			s32 rcr = (IPU_RCR_COEFF * ((s32)mb8.Cr[y>>1][x>>1] - 128)) >> 6;
-			s32 gcr = (IPU_GCR_COEFF * ((s32)mb8.Cr[y>>1][x>>1] - 128)) >> 6;
-			s32 gcb = (IPU_GCB_COEFF * ((s32)mb8.Cb[y>>1][x>>1] - 128)) >> 6;
-			s32 bcb = (IPU_BCB_COEFF * ((s32)mb8.Cb[y>>1][x>>1] - 128)) >> 6;
+			s32 lum = (IPU_Y_COEFF * (std::max(0, (s32)src.Y[y][x] - IPU_Y_BIAS))) >> 6;
+			s32 rcr = (IPU_RCR_COEFF * ((s32)src.Cr[y>>1][x>>1] - 128)) >> 6;
+			s32 gcr = (IPU_GCR_COEFF * ((s32)src.Cr[y>>1][x>>1] - 128)) >> 6;
+			s32 gcb = (IPU_GCB_COEFF * ((s32)src.Cb[y>>1][x>>1] - 128)) >> 6;
+			s32 bcb = (IPU_BCB_COEFF * ((s32)src.Cb[y>>1][x>>1] - 128)) >> 6;
 
-			rgb32.c[y][x].r = std::max(0, std::min(255, (lum + rcr + 1) >> 1));
-			rgb32.c[y][x].g = std::max(0, std::min(255, (lum + gcr + gcb + 1) >> 1));
-			rgb32.c[y][x].b = std::max(0, std::min(255, (lum + bcb + 1) >> 1));
-			rgb32.c[y][x].a = 0x80; // the norm to save doing this on the alpha pass
+			dst.c[y][x].r = std::max(0, std::min(255, (lum + rcr + 1) >> 1));
+			dst.c[y][x].g = std::max(0, std::min(255, (lum + gcr + gcb + 1) >> 1));
+			dst.c[y][x].b = std::max(0, std::min(255, (lum + bcb + 1) >> 1));
+			dst.c[y][x].a = 0x80; // the norm to save doing this on the alpha pass
 		}
+	}
 }
 
 // Suikoden Tactics FMV speed results: Reference - ~72fps, SSE2 - ~120fps
 // An AVX2 version is only slightly faster than an SSE2 version (+2-3fps)
 // (or I'm a poor optimiser), though it might be worth attempting again
 // once we've ported to 64 bits (the extra registers should help).
-__ri void yuv2rgb_sse2()
+__ri void yuv2rgb_sse2(macroblock_rgb32& RESTRICT dst, const macroblock_8& RESTRICT src)
 {
 	const __m128i c_bias = _mm_set1_epi8(s8(IPU_C_BIAS));
 	const __m128i y_bias = _mm_set1_epi8(IPU_Y_BIAS);
@@ -83,8 +82,8 @@ __ri void yuv2rgb_sse2()
 	for (int n = 0; n < 8; ++n) {
 		// could skip the loadl_epi64 but most SSE instructions require 128-bit
 		// alignment so two versions would be needed.
-		__m128i cb = _mm_loadl_epi64(reinterpret_cast<__m128i*>(&decoder.mb8.Cb[n][0]));
-		__m128i cr = _mm_loadl_epi64(reinterpret_cast<__m128i*>(&decoder.mb8.Cr[n][0]));
+		__m128i cb = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(&src.Cb[n][0]));
+		__m128i cr = _mm_loadl_epi64(reinterpret_cast<const __m128i*>(&src.Cr[n][0]));
 
 		// (Cb - 128) << 8, (Cr - 128) << 8
 		cb = _mm_xor_si128(cb, c_bias);
@@ -97,7 +96,7 @@ __ri void yuv2rgb_sse2()
 		__m128i bc = _mm_mulhi_epi16(cb, bcb_coefficient);
 
 		for (int m = 0; m < 2; ++m) {
-			__m128i y = _mm_load_si128(reinterpret_cast<__m128i*>(&decoder.mb8.Y[n * 2 + m][0]));
+			__m128i y = _mm_load_si128(reinterpret_cast<const __m128i*>(&src.Y[n * 2 + m][0]));
 			y = _mm_subs_epu8(y, y_bias);
 			// Y << 8 for pixels 0, 2, 4, 6, 8, 10, 12, 14
 			__m128i y_even = _mm_slli_epi16(y, 8);
@@ -142,10 +141,10 @@ __ri void yuv2rgb_sse2()
 			__m128i rgba_hl = _mm_unpacklo_epi16(rg_h, ba_h);
 			__m128i rgba_hh = _mm_unpackhi_epi16(rg_h, ba_h);
 
-			_mm_store_si128(reinterpret_cast<__m128i*>(&decoder.rgb32.c[n * 2 + m][0]), rgba_ll);
-			_mm_store_si128(reinterpret_cast<__m128i*>(&decoder.rgb32.c[n * 2 + m][4]), rgba_lh);
-			_mm_store_si128(reinterpret_cast<__m128i*>(&decoder.rgb32.c[n * 2 + m][8]), rgba_hl);
-			_mm_store_si128(reinterpret_cast<__m128i*>(&decoder.rgb32.c[n * 2 + m][12]), rgba_hh);
+			_mm_store_si128(reinterpret_cast<__m128i*>(&dst.c[n * 2 + m][0]), rgba_ll);
+			_mm_store_si128(reinterpret_cast<__m128i*>(&dst.c[n * 2 + m][4]), rgba_lh);
+			_mm_store_si128(reinterpret_cast<__m128i*>(&dst.c[n * 2 + m][8]), rgba_hl);
+			_mm_store_si128(reinterpret_cast<__m128i*>(&dst.c[n * 2 + m][12]), rgba_hh);
 		}
 	}
 }

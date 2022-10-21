@@ -203,7 +203,7 @@ extern int get_macroblock_modes();
 extern int get_motion_delta(const int f_code);
 extern int get_dmv();
 
-extern void ipu_csc(macroblock_8& mb8, macroblock_rgb32& rgb32, int sgn);
+extern void ipu_csc(const macroblock_8& mb8, macroblock_rgb32& rgb32, int sgn);
 extern void ipu_dither(const macroblock_rgb32& rgb32, macroblock_rgb16& rgb16, int dte);
 extern void ipu_vq(macroblock_rgb16& rgb16, u8* indx4);
 
