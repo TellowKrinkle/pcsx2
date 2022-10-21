@@ -61,10 +61,10 @@ void yuv2rgb_reference(void)
 }
 
 #ifdef __GNUC__
-typedef u16 u16x8 __attribute__((__vector_size__(16)));
-typedef u8  u8x16 __attribute__((__vector_size__(16)));
-constexpr static u16x8 splat_u16(u16 x) { return u16x8{x, x, x, x, x, x, x, x}; }
-constexpr static u8x16 splat_u8(u8 x) { return u8x16{x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x}; }
+typedef u16 u16x8 __attribute__((__vector_size__(32)));
+typedef u8  u8x16 __attribute__((__vector_size__(32)));
+constexpr static u16x8 splat_u16(u16 x) { return u16x8{x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x}; }
+constexpr static u8x16 splat_u8(u8 x) { return u8x16{x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x}; }
 constexpr static u32 splat_u16_u32(u16 x) { return static_cast<u32>(x) | (static_cast<u32>(x) << 16); }
 constexpr static u32 splat_u8_u32(u8 x) { return splat_u16_u32(static_cast<u16>(x) | (static_cast<u16>(x) << 8)); }
 #endif
@@ -75,8 +75,8 @@ constexpr static u32 splat_u8_u32(u8 x) { return splat_u16_u32(static_cast<u16>(
 // once we've ported to 64 bits (the extra registers should help).
 __ri void yuv2rgb_sse2()
 {
-#ifdef __GNUC__
-	static constexpr u8x16 shuffle = u8x16{0, 8, 1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
+#if defined(__GNUC__) && defined(__AVX2__)
+	static constexpr u8x16 shuffle = u8x16{0, 8, 1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15, 0, 8, 1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
 	static constexpr u8x16 c_bias = splat_u8(IPU_C_BIAS);
 	static constexpr u8x16 y_bias = splat_u8(IPU_Y_BIAS);
 	static constexpr u16x8 y_coefficient = splat_u16(IPU_Y_COEFF << 2);
@@ -84,7 +84,7 @@ __ri void yuv2rgb_sse2()
 	static constexpr u16x8 gcb_coefficient = splat_u16(static_cast<u16>(static_cast<u16>(IPU_GCB_COEFF) << 2));
 	static constexpr u16x8 rcr_coefficient = splat_u16(static_cast<u16>(static_cast<u16>(IPU_RCR_COEFF) << 2));
 	static constexpr u16x8 bcb_coefficient = splat_u16(static_cast<u16>(static_cast<u16>(IPU_BCB_COEFF) << 2));
-	__m128i temp[11];
+	__m256i temp[11];
 	sptr n = -64;
 	void* output = &decoder.rgb32;
 	asm volatile(R"(
@@ -95,8 +95,8 @@ __ri void yuv2rgb_sse2()
 		# This greatly reduces the amount of IPC we can get
 		# Work around this by loading values at the end of the previous loop iteration
 		# This will load a bit too far, but it won't go off the end of the large containing struct so whatever
-		vmovq      320(%[input]), %[t0] # Load Initial Cr
-		vmovq      256(%[input]), %[t1] # Load Initial Cb
+		vpbroadcastq 320(%[input]), %[t0] # Load Initial Cr
+		vpbroadcastq 256(%[input]), %[t1] # Load Initial Cb
 		vpxor      %[t2], %[t2], %[t2]
 		vpxor      %[t0], %[c_bias], %[t0]
 		vpunpcklbw %[t0], %[t2], %[t0]
@@ -125,46 +125,6 @@ __ri void yuv2rgb_sse2()
 		vpsraw     $1, %[t5], %[t5]
 		vpsraw     $1, %[t6], %[t6]
 		vpackuswb  %[t6], %[t5], %[t5]
-		vpshufb    %[shuffle], %[t5], %[t5]
-		vpaddw     %[t3], %[t0], %[t6]
-		vpaddw     %[t3], %[t1], %[t7]
-		vpsraw     $1, %[t6], %[t6]
-		vpsraw     $1, %[t7], %[t7]
-		vpackuswb  %[t7], %[t6], %[t6]
-		vpshufb    %[shuffle], %[t6], %[t6]
-		vpaddw     %[t4], %[t0], %[t7]
-		vpaddw     %[t4], %[t1], %[t1]
-		vpsraw     $1, %[t7], %[t7]
-		vpsraw     $1, %[t1], %[t1]
-		vpackuswb  %[t1], %[t7], %[t7]
-		vpshufb    %[shuffle], %[t7], %[t7]
-
-		vpunpcklbw %[t6], %[t5], %[t0]
-		vpunpcklbw %[c_bias], %[t7], %[t1]
-		vpunpcklwd %[t1], %[t0], %[t8]
-		vmovdqa    %[t8], 0x00(%[output])
-		vpunpckhwd %[t1], %[t0], %[t8]
-		vmovdqa    %[t8], 0x10(%[output])
-
-		vpunpckhbw %[t6], %[t5], %[t0]
-		vpunpckhbw %[c_bias], %[t7], %[t1]
-		vpunpcklwd %[t1], %[t0], %[t8]
-		vmovdqa    %[t8], 0x20(%[output])
-		vpunpckhwd %[t1], %[t0], %[t8]
-		vmovdqa    %[t8], 0x30(%[output])
-
-		vmovdqa    272(%[input], %[n], 4), %[t1] # Load Y (Row 1)
-		vpsubusb   %[y_bias], %[t1], %[t1]
-		vpsllw     $8, %[t1], %[t0]
-		vpmulhuw   %[y_coeff], %[t0], %[t0]
-		vpand      %[t1], %[y_mask], %[t1]
-		vpmulhuw   %[y_coeff], %[t1], %[t1]
-
-		vpaddw     %[t2], %[t0], %[t5]
-		vpaddw     %[t2], %[t1], %[t6]
-		vpsraw     $1, %[t5], %[t5]
-		vpsraw     $1, %[t6], %[t6]
-		vpackuswb  %[t6], %[t5], %[t5]
 		vpaddw     %[t3], %[t0], %[t6]
 		vpaddw     %[t3], %[t1], %[t7]
 		vpsraw     $1, %[t6], %[t6]
@@ -176,8 +136,8 @@ __ri void yuv2rgb_sse2()
 		vpsraw     $1, %[t1], %[t1]
 		vpackuswb  %[t1], %[t7], %[t7]
 
-		vmovq      392(%[input], %[n]), %[t0] # Load Next Cr
-		vmovq      328(%[input], %[n]), %[t1] # Load Next Cb
+		vpbroadcastq 392(%[input], %[n]), %[t0] # Load Next Cr
+		vpbroadcastq 328(%[input], %[n]), %[t1] # Load Next Cb
 		vpxor      %[t2], %[t2], %[t2]
 		vpxor      %[t0], %[c_bias], %[t0]
 		vpunpcklbw %[t0], %[t2], %[t0]
@@ -191,16 +151,20 @@ __ri void yuv2rgb_sse2()
 		vpunpcklbw %[t6], %[t5], %[t2]
 		vpunpcklbw %[c_bias], %[t7], %[t3]
 		vpunpcklwd %[t3], %[t2], %[t4]
-		vmovdqa    %[t4], 0x40(%[output])
+		vmovdqa    %x[t4], 0x00(%[output])
+		vextracti128 $1, %[t4], 0x40(%[output])
 		vpunpckhwd %[t3], %[t2], %[t4]
-		vmovdqa    %[t4], 0x50(%[output])
+		vmovdqa    %x[t4], 0x10(%[output])
+		vextracti128 $1, %[t4], 0x50(%[output])
 
 		vpunpckhbw %[t6], %[t5], %[t2]
 		vpunpckhbw %[c_bias], %[t7], %[t3]
 		vpunpcklwd %[t3], %[t2], %[t4]
-		vmovdqa    %[t4], 0x60(%[output])
+		vmovdqa    %x[t4], 0x20(%[output])
+		vextracti128 $1, %[t4], 0x60(%[output])
 		vpunpckhwd %[t3], %[t2], %[t4]
-		vmovdqa    %[t4], 0x70(%[output])
+		vmovdqa    %x[t4], 0x30(%[output])
+		vextracti128 $1, %[t4], 0x70(%[output])
 
 		subq $-128, %[output]
 		addq $8, %[n]
