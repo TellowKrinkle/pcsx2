@@ -646,34 +646,86 @@ static void ipuSETTH(u32 val)
 // --------------------------------------------------------------------------------------
 __fi void ipu_csc(macroblock_8& mb8, macroblock_rgb32& rgb32, int sgn)
 {
-	int i;
-	u8* p = (u8*)&rgb32;
+	__m128i* begin = reinterpret_cast<__m128i*>(&rgb32);
+	__m128i* end = reinterpret_cast<__m128i*>(&rgb32 + 1);
 
 	yuv2rgb();
 
+	__m128i thresh0 = _mm_set1_epi8(s_thresh[0]);
+	__m128i thresh1 = _mm_set1_epi8(s_thresh[1]);
+	__m128i rgb_mask = _mm_set1_epi32(0x00ffffff);
+	__m128i alpha_fill = _mm_set1_epi32(0x40000000);
+	__m128i sign_xor = sgn ? _mm_set1_epi32(0x808080) : _mm_setzero_si128();
+
 	if (s_thresh[0] > 0)
 	{
-		for (i = 0; i < 16*16; i++, p += 4)
+		if (s_thresh[0] >= 0x100)
 		{
-			if ((p[0] < s_thresh[0]) && (p[1] < s_thresh[0]) && (p[2] < s_thresh[0]))
-				*(u32*)p = 0;
-			else if ((p[0] < s_thresh[1]) && (p[1] < s_thresh[1]) && (p[2] < s_thresh[1]))
-				p[3] = 0x40;
+			if (sgn)
+			{
+				for (__m128i* i = begin; i < end; i++)
+					_mm_store_si128(i, sign_xor);
+			}
+			else
+			{
+				memset(&rgb32, 0, sizeof(rgb32));
+			}
+		}
+		else if (s_thresh[1] >= 0x100)
+		{
+			for (__m128i* i = begin; i < end; i++)
+			{
+				__m128i pixels = _mm_load_si128(i);
+				__m128i ge_thresh0 = _mm_cmpeq_epi8(_mm_max_epu8(pixels, thresh0), pixels);
+				__m128i should_zero = _mm_cmpeq_epi32(_mm_and_si128(ge_thresh0, rgb_mask), _mm_setzero_si128());
+				_mm_store_si128(i, _mm_xor_si128(_mm_andnot_si128(should_zero, alpha_fill), sign_xor));
+			}
+		}
+		else
+		{
+			for (__m128i* i = begin; i < end; i++)
+			{
+				__m128i pixels = _mm_load_si128(i);
+				__m128i ge_thresh0 = _mm_cmpeq_epi8(_mm_max_epu8(pixels, thresh0), pixels);
+				__m128i ge_thresh1 = _mm_cmpeq_epi8(_mm_max_epu8(pixels, thresh1), pixels);
+				__m128i should_zero = _mm_cmpeq_epi32(_mm_and_si128(ge_thresh0, rgb_mask), _mm_setzero_si128());
+				__m128i should_alpha = _mm_cmpeq_epi32(_mm_and_si128(ge_thresh1, rgb_mask), _mm_setzero_si128());
+				__m128i alpha_mask = _mm_andnot_si128(rgb_mask, should_alpha);
+				__m128i alpha_applied = _mm_blendv_epi8(pixels, alpha_fill, alpha_mask);
+				_mm_store_si128(i, _mm_xor_si128(_mm_andnot_si128(should_zero, alpha_applied), sign_xor));
+			}
 		}
 	}
 	else if (s_thresh[1] > 0)
 	{
-		for (i = 0; i < 16*16; i++, p += 4)
+		if (s_thresh[1] >= 0x100)
 		{
-			if ((p[0] < s_thresh[1]) && (p[1] < s_thresh[1]) && (p[2] < s_thresh[1]))
-				p[3] = 0x40;
+			for (__m128i* i = begin; i < end; i++)
+			{
+				__m128i pixels = _mm_load_si128(i);
+				__m128i alpha_applied = _mm_blendv_epi8(pixels, alpha_fill, _mm_set1_epi32(0xff000000));
+				_mm_store_si128(i, _mm_xor_si128(alpha_applied, sign_xor));
+			}
+		}
+		else
+		{
+			for (__m128i* i = begin; i < end; i++)
+			{
+				__m128i pixels = _mm_load_si128(i);
+				__m128i ge_thresh1 = _mm_cmpeq_epi8(_mm_max_epu8(pixels, thresh1), pixels);
+				__m128i should_alpha = _mm_cmpeq_epi32(_mm_and_si128(ge_thresh1, rgb_mask), _mm_setzero_si128());
+				__m128i alpha_mask = _mm_andnot_si128(rgb_mask, should_alpha);
+				__m128i alpha_applied = _mm_blendv_epi8(pixels, alpha_fill, alpha_mask);
+				_mm_store_si128(i, _mm_xor_si128(alpha_applied, sign_xor));
+			}
 		}
 	}
-	if (sgn)
+	else if (sgn)
 	{
-		for (i = 0; i < 16*16; i++, p += 4)
+		for (__m128i* i = begin; i < end; i++)
 		{
-			*(u32*)p ^= 0x808080;
+			__m128i pixels = _mm_load_si128(i);
+			_mm_store_si128(i, _mm_xor_si128(pixels, sign_xor));
 		}
 	}
 }
