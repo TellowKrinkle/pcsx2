@@ -90,15 +90,20 @@ __ri void yuv2rgb_sse2()
 	asm volatile(R"(
 		vpcmpeqd %[round_off], %[round_off], %[round_off]
 		vpsllw   $8, %[round_off], %[y_mask]
-	.balign 16
-	0:
-		vmovq      384(%[input], %[n]), %[t0] # Load Cr
-		vmovq      320(%[input], %[n]), %[t1] # Load Cb
+
+		# The large number of unpacks at the end end up conflicting with the loading of initial values for the next iteration
+		# This greatly reduces the amount of IPC we can get
+		# Work around this by loading values at the end of the previous loop iteration
+		# This will load a bit too far, but it won't go off the end of the large containing struct so whatever
+		vmovq      320(%[input]), %[t0] # Load Initial Cr
+		vmovq      256(%[input]), %[t1] # Load Initial Cb
 		vpxor      %[t2], %[t2], %[t2]
 		vpxor      %[t0], %[c_bias], %[t0]
 		vpunpcklbw %[t0], %[t2], %[t0]
 		vpxor      %[t1], %[c_bias], %[t1]
 		vpunpcklbw %[t1], %[t2], %[t1]
+	.balign 16
+	0:
 		vpmulhw    %[rcr_coeff], %[t0], %[t2]
 		vpmulhw    %[gcr_coeff], %[t0], %[t3]
 		vpmulhw    %[gcb_coeff], %[t1], %[t5]
@@ -160,33 +165,42 @@ __ri void yuv2rgb_sse2()
 		vpsraw     $1, %[t5], %[t5]
 		vpsraw     $1, %[t6], %[t6]
 		vpackuswb  %[t6], %[t5], %[t5]
-		vpshufb    %[shuffle], %[t5], %[t5]
 		vpaddw     %[t3], %[t0], %[t6]
 		vpaddw     %[t3], %[t1], %[t7]
 		vpsraw     $1, %[t6], %[t6]
 		vpsraw     $1, %[t7], %[t7]
 		vpackuswb  %[t7], %[t6], %[t6]
-		vpshufb    %[shuffle], %[t6], %[t6]
 		vpaddw     %[t4], %[t0], %[t7]
 		vpaddw     %[t4], %[t1], %[t1]
 		vpsraw     $1, %[t7], %[t7]
 		vpsraw     $1, %[t1], %[t1]
 		vpackuswb  %[t1], %[t7], %[t7]
+
+		vmovq      392(%[input], %[n]), %[t0] # Load Next Cr
+		vmovq      328(%[input], %[n]), %[t1] # Load Next Cb
+		vpxor      %[t2], %[t2], %[t2]
+		vpxor      %[t0], %[c_bias], %[t0]
+		vpunpcklbw %[t0], %[t2], %[t0]
+		vpxor      %[t1], %[c_bias], %[t1]
+		vpunpcklbw %[t1], %[t2], %[t1]
+
+		vpshufb    %[shuffle], %[t5], %[t5]
+		vpshufb    %[shuffle], %[t6], %[t6]
 		vpshufb    %[shuffle], %[t7], %[t7]
 
-		vpunpcklbw %[t6], %[t5], %[t0]
-		vpunpcklbw %[c_bias], %[t7], %[t1]
-		vpunpcklwd %[t1], %[t0], %[t8]
-		vmovdqa    %[t8], 0x40(%[output])
-		vpunpckhwd %[t1], %[t0], %[t8]
-		vmovdqa    %[t8], 0x50(%[output])
+		vpunpcklbw %[t6], %[t5], %[t2]
+		vpunpcklbw %[c_bias], %[t7], %[t3]
+		vpunpcklwd %[t3], %[t2], %[t4]
+		vmovdqa    %[t4], 0x40(%[output])
+		vpunpckhwd %[t3], %[t2], %[t4]
+		vmovdqa    %[t4], 0x50(%[output])
 
-		vpunpckhbw %[t6], %[t5], %[t0]
-		vpunpckhbw %[c_bias], %[t7], %[t1]
-		vpunpcklwd %[t1], %[t0], %[t8]
-		vmovdqa    %[t8], 0x60(%[output])
-		vpunpckhwd %[t1], %[t0], %[t8]
-		vmovdqa    %[t8], 0x70(%[output])
+		vpunpckhbw %[t6], %[t5], %[t2]
+		vpunpckhbw %[c_bias], %[t7], %[t3]
+		vpunpcklwd %[t3], %[t2], %[t4]
+		vmovdqa    %[t4], 0x60(%[output])
+		vpunpckhwd %[t3], %[t2], %[t4]
+		vmovdqa    %[t4], 0x70(%[output])
 
 		subq $-128, %[output]
 		addq $8, %[n]
