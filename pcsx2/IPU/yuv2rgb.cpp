@@ -60,18 +60,155 @@ void yuv2rgb_reference(void)
 		}
 }
 
+#ifdef __GNUC__
+typedef u16 u16x8 __attribute__((__vector_size__(16)));
+typedef u8  u8x16 __attribute__((__vector_size__(16)));
+constexpr static u16x8 splat_u16(u16 x) { return u16x8{x, x, x, x, x, x, x, x}; }
+constexpr static u8x16 splat_u8(u8 x) { return u8x16{x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x}; }
+constexpr static u32 splat_u16_u32(u16 x) { return static_cast<u32>(x) | (static_cast<u32>(x) << 16); }
+constexpr static u32 splat_u8_u32(u8 x) { return splat_u16_u32(static_cast<u16>(x) | (static_cast<u16>(x) << 8)); }
+#endif
+
 // Suikoden Tactics FMV speed results: Reference - ~72fps, SSE2 - ~120fps
 // An AVX2 version is only slightly faster than an SSE2 version (+2-3fps)
 // (or I'm a poor optimiser), though it might be worth attempting again
 // once we've ported to 64 bits (the extra registers should help).
 __ri void yuv2rgb_sse2()
 {
+#ifdef __GNUC__
+	static constexpr u8x16 shuffle = u8x16{0, 8, 1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15};
+	static constexpr u8x16 c_bias = splat_u8(IPU_C_BIAS);
+	static constexpr u8x16 y_bias = splat_u8(IPU_Y_BIAS);
+	static constexpr u16x8 y_coefficient = splat_u16(IPU_Y_COEFF << 2);
+	static constexpr u16x8 gcr_coefficient = splat_u16(static_cast<u16>(static_cast<u16>(IPU_GCR_COEFF) << 2));
+	static constexpr u16x8 gcb_coefficient = splat_u16(static_cast<u16>(static_cast<u16>(IPU_GCB_COEFF) << 2));
+	static constexpr u16x8 rcr_coefficient = splat_u16(static_cast<u16>(static_cast<u16>(IPU_RCR_COEFF) << 2));
+	static constexpr u16x8 bcb_coefficient = splat_u16(static_cast<u16>(static_cast<u16>(IPU_BCB_COEFF) << 2));
+	__m128i temp[11];
+	sptr n = -64;
+	void* output = &decoder.rgb32;
+	asm volatile(R"(
+		vpcmpeqd %[round_off], %[round_off], %[round_off]
+		vpsllw   $8, %[round_off], %[y_mask]
+	.balign 16
+	0:
+		vmovq      384(%[input], %[n]), %[t0] # Load Cr
+		vmovq      320(%[input], %[n]), %[t1] # Load Cb
+		vpxor      %[t2], %[t2], %[t2]
+		vpxor      %[t0], %[c_bias], %[t0]
+		vpunpcklbw %[t0], %[t2], %[t0]
+		vpxor      %[t1], %[c_bias], %[t1]
+		vpunpcklbw %[t1], %[t2], %[t1]
+		vpmulhw    %[rcr_coeff], %[t0], %[t2]
+		vpmulhw    %[gcr_coeff], %[t0], %[t3]
+		vpmulhw    %[gcb_coeff], %[t1], %[t5]
+		vpmulhw    %[bcb_coeff], %[t1], %[t4]
+		vpaddw     %[t2], %[t5], %[t2]
+		vpsubw     %[round_off], %[t2], %[t2]
+		vpsubw     %[round_off], %[t3], %[t3]
+		vpsubw     %[round_off], %[t4], %[t4]
+
+		vmovdqa    256(%[input], %[n], 4), %[t1] # Load Y (Row 0)
+		vpsubusb   %[y_bias], %[t1], %[t1]
+		vpsllw     $8, %[t1], %[t0]
+		vpmulhuw   %[y_coeff], %[t0], %[t0]
+		vpand      %[t1], %[y_mask], %[t1]
+		vpmulhuw   %[y_coeff], %[t1], %[t1]
+
+		vpaddw     %[t2], %[t0], %[t5]
+		vpaddw     %[t2], %[t1], %[t6]
+		vpsraw     $1, %[t5], %[t5]
+		vpsraw     $1, %[t6], %[t6]
+		vpackuswb  %[t6], %[t5], %[t5]
+		vpshufb    %[shuffle], %[t5], %[t5]
+		vpaddw     %[t3], %[t0], %[t6]
+		vpaddw     %[t3], %[t1], %[t7]
+		vpsraw     $1, %[t6], %[t6]
+		vpsraw     $1, %[t7], %[t7]
+		vpackuswb  %[t7], %[t6], %[t6]
+		vpshufb    %[shuffle], %[t6], %[t6]
+		vpaddw     %[t4], %[t0], %[t7]
+		vpaddw     %[t4], %[t1], %[t1]
+		vpsraw     $1, %[t7], %[t7]
+		vpsraw     $1, %[t1], %[t1]
+		vpackuswb  %[t1], %[t7], %[t7]
+		vpshufb    %[shuffle], %[t7], %[t7]
+
+		vpunpcklbw %[t6], %[t5], %[t0]
+		vpunpcklbw %[c_bias], %[t7], %[t1]
+		vpunpcklwd %[t1], %[t0], %[t8]
+		vmovdqa    %[t8], 0x00(%[output])
+		vpunpckhwd %[t1], %[t0], %[t8]
+		vmovdqa    %[t8], 0x10(%[output])
+
+		vpunpckhbw %[t6], %[t5], %[t0]
+		vpunpckhbw %[c_bias], %[t7], %[t1]
+		vpunpcklwd %[t1], %[t0], %[t8]
+		vmovdqa    %[t8], 0x20(%[output])
+		vpunpckhwd %[t1], %[t0], %[t8]
+		vmovdqa    %[t8], 0x30(%[output])
+
+		vmovdqa    272(%[input], %[n], 4), %[t1] # Load Y (Row 1)
+		vpsubusb   %[y_bias], %[t1], %[t1]
+		vpsllw     $8, %[t1], %[t0]
+		vpmulhuw   %[y_coeff], %[t0], %[t0]
+		vpand      %[t1], %[y_mask], %[t1]
+		vpmulhuw   %[y_coeff], %[t1], %[t1]
+
+		vpaddw     %[t2], %[t0], %[t5]
+		vpaddw     %[t2], %[t1], %[t6]
+		vpsraw     $1, %[t5], %[t5]
+		vpsraw     $1, %[t6], %[t6]
+		vpackuswb  %[t6], %[t5], %[t5]
+		vpshufb    %[shuffle], %[t5], %[t5]
+		vpaddw     %[t3], %[t0], %[t6]
+		vpaddw     %[t3], %[t1], %[t7]
+		vpsraw     $1, %[t6], %[t6]
+		vpsraw     $1, %[t7], %[t7]
+		vpackuswb  %[t7], %[t6], %[t6]
+		vpshufb    %[shuffle], %[t6], %[t6]
+		vpaddw     %[t4], %[t0], %[t7]
+		vpaddw     %[t4], %[t1], %[t1]
+		vpsraw     $1, %[t7], %[t7]
+		vpsraw     $1, %[t1], %[t1]
+		vpackuswb  %[t1], %[t7], %[t7]
+		vpshufb    %[shuffle], %[t7], %[t7]
+
+		vpunpcklbw %[t6], %[t5], %[t0]
+		vpunpcklbw %[c_bias], %[t7], %[t1]
+		vpunpcklwd %[t1], %[t0], %[t8]
+		vmovdqa    %[t8], 0x40(%[output])
+		vpunpckhwd %[t1], %[t0], %[t8]
+		vmovdqa    %[t8], 0x50(%[output])
+
+		vpunpckhbw %[t6], %[t5], %[t0]
+		vpunpckhbw %[c_bias], %[t7], %[t1]
+		vpunpcklwd %[t1], %[t0], %[t8]
+		vmovdqa    %[t8], 0x60(%[output])
+		vpunpckhwd %[t1], %[t0], %[t8]
+		vmovdqa    %[t8], 0x70(%[output])
+
+		subq $-128, %[output]
+		addq $8, %[n]
+		jne 0b
+	)"
+		: [t0]"=&x"(temp[0]), [t1]"=&x"(temp[1]), [t2]"=&x"(temp[2]), [t3]"=&x"(temp[3]),
+		  [t4]"=&x"(temp[4]), [t5]"=&x"(temp[5]), [t6]"=&x"(temp[6]), [t7]"=&x"(temp[7]),
+		  [t8]"=&x"(temp[8]), [round_off]"=&x"(temp[9]), [y_mask]"=&x"(temp[10]),
+		  [n]"+r"(n), [output]"+r"(output)
+		: [c_bias]"x"(c_bias), [y_bias]"x"(y_bias),
+		  [y_coeff]"x"(y_coefficient), [shuffle]"x"(shuffle),
+		  [gcr_coeff]"m"(gcr_coefficient), [gcb_coeff]"m"(gcb_coefficient),
+		  [rcr_coeff]"m"(rcr_coefficient), [bcb_coeff]"m"(bcb_coefficient),
+		  [input]"r"(&decoder.mb8)
+		: "memory");
+#else
 	const __m128i c_bias = _mm_set1_epi8(s8(IPU_C_BIAS));
 	const __m128i y_bias = _mm_set1_epi8(IPU_Y_BIAS);
 	const __m128i y_mask = _mm_set1_epi16(s16(0xFF00));
 	// Specifying round off instead of round down as everywhere else
 	// implies that this is right
-	const __m128i round_1bit = _mm_set1_epi16(0x0001);;
+	const __m128i round_1bit = _mm_set1_epi16(0x0001);
 
 	const __m128i y_coefficient = _mm_set1_epi16(s16(IPU_Y_COEFF << 2));
 	const __m128i gcr_coefficient = _mm_set1_epi16(s16(u16(IPU_GCR_COEFF) << 2));
@@ -150,6 +287,7 @@ __ri void yuv2rgb_sse2()
 			_mm_store_si128(reinterpret_cast<__m128i*>(&decoder.rgb32.c[n * 2 + m][12]), rgba_hh);
 		}
 	}
+#endif
 }
 
 MULTI_ISA_UNSHARED_END
