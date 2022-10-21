@@ -190,8 +190,6 @@ struct mpeg2_scan_pack
 {
 	u8 norm[64];
 	u8 alt[64];
-
-	mpeg2_scan_pack();
 };
 
 extern int bitstream_init();

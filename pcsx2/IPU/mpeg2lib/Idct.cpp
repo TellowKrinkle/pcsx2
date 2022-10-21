@@ -32,6 +32,8 @@
 #include "IPU/IPU.h"
 #include "Mpeg.h"
 
+#include <array>
+
 #define W1 2841 /* 2048*sqrt (2)*cos (1*pi/16) */
 #define W2 2676 /* 2048*sqrt (2)*cos (2*pi/16) */
 #define W3 2408 /* 2048*sqrt (2)*cos (3*pi/16) */
@@ -45,9 +47,9 @@
  * to +-3826 - this is the worst case for a column IDCT where the
  * column inputs are 16-bit values.
  */
-alignas(16) static u8 clip_lut[1024];
+alignas(16) extern const std::array<u8, 1024> g_ipu_clip_lut;
 
-#define CLIP(i) ((clip_lut + 384)[(i)])
+#define CLIP(i) ((g_ipu_clip_lut.data() + 384)[(i)])
 
 static __fi void BUTTERFLY(int& t0, int& t1, int w0, int w1, int d0, int d1)
 {
@@ -220,34 +222,43 @@ __ri void mpeg2_idct_add(const int last, s16* block, s16* dest, const int stride
 	}
 }
 
-mpeg2_scan_pack::mpeg2_scan_pack()
+static constexpr std::array<u8, 1024> make_clip_lut()
 {
-	static const u8 mpeg2_scan_norm[64] = {
+	std::array<u8, 1024> out = {};
+	for (int i = -384; i < 640; i++)
+		out[i + 384] = (i < 0) ? 0 : ((i > 255) ? 255 : i);
+	return out;
+}
+
+static constexpr mpeg2_scan_pack make_scan_pack()
+{
+	constexpr u8 mpeg2_scan_norm[64] = {
 		/* Zig-Zag scan pattern */
-		0,  1,  8,  16,  9,  2,  3, 10, 17, 24, 32, 25, 18, 11,  4,  5,
+		 0,  1,  8, 16,  9,  2,  3, 10, 17, 24, 32, 25, 18, 11,  4,  5,
 		12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13,  6,  7, 14, 21, 28,
 		35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51,
 		58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63
 	};
 
-	static const u8 mpeg2_scan_alt[64] = {
+	constexpr u8 mpeg2_scan_alt[64] = {
 		/* Alternate scan pattern */
-		0,  8,  16, 24,  1,  9,  2, 10, 17, 25, 32, 40, 48, 56, 57, 49,
+		 0,  8, 16, 24,  1,  9,  2, 10, 17, 25, 32, 40, 48, 56, 57, 49,
 		41, 33, 26, 18,  3, 11,  4, 12, 19, 27, 34, 42, 50, 58, 35, 43,
 		51, 59, 20, 28,  5, 13,  6, 14, 21, 29, 36, 44, 52, 60, 37, 45,
 		53, 61, 22, 30,  7, 15, 23, 31, 38, 46, 54, 62, 39, 47, 55, 63
 	};
 
-	for (int i = -384; i < 640; i++)
-		clip_lut[i + 384] = (i < 0) ? 0 : ((i > 255) ? 255 : i);
+	mpeg2_scan_pack pack = {};
 
 	for (int i = 0; i < 64; i++)
 	{
 		int j = mpeg2_scan_norm[i];
-		norm[i] = ((j & 0x36) >> 1) | ((j & 0x09) << 2);
+		pack.norm[i] = ((j & 0x36) >> 1) | ((j & 0x09) << 2);
 		j = mpeg2_scan_alt[i];
-		alt[i] = ((j & 0x36) >> 1) | ((j & 0x09) << 2);
+		pack.alt[i] = ((j & 0x36) >> 1) | ((j & 0x09) << 2);
 	}
+	return pack;
 }
 
-alignas(16) const mpeg2_scan_pack mpeg2_scan;
+alignas(16) constexpr std::array<u8, 1024> g_ipu_clip_lut = make_clip_lut();
+alignas(16) constexpr mpeg2_scan_pack mpeg2_scan = make_scan_pack();
