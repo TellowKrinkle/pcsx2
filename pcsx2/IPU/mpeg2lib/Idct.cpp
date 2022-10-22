@@ -41,16 +41,6 @@
 #define W6 1108 /* 2048*sqrt (2)*cos (6*pi/16) */
 #define W7 565  /* 2048*sqrt (2)*cos (7*pi/16) */
 
-/*
- * In legal streams, the IDCT output should be between -384 and +384.
- * In corrupted streams, it is possible to force the IDCT output to go
- * to +-3826 - this is the worst case for a column IDCT where the
- * column inputs are 16-bit values.
- */
-alignas(16) extern const std::array<u8, 1024> g_ipu_clip_lut;
-
-#define CLIP(i) ((g_ipu_clip_lut.data() + 384)[(i)])
-
 static __fi void BUTTERFLY(int& t0, int& t1, int w0, int w1, int d0, int d1)
 {
 #if 0
@@ -159,30 +149,23 @@ static __fi void idct_col(s16* const block)
 
 __ri void mpeg2_idct_copy(s16* block, u8* dest, const int stride)
 {
-	int i;
-
-	for (i = 0; i < 8; i++)
+	for (int i = 0; i < 8; i++)
 		idct_row(block + 8 * i);
-	for (i = 0; i < 8; i++)
+	for (int i = 0; i < 8; i++)
 		idct_col(block + i);
 
-	__m128 zero = _mm_setzero_ps();
-	do
+	for (int i = 0; i < 8; i += 2)
 	{
-		dest[0] = CLIP(block[0]);
-		dest[1] = CLIP(block[1]);
-		dest[2] = CLIP(block[2]);
-		dest[3] = CLIP(block[3]);
-		dest[4] = CLIP(block[4]);
-		dest[5] = CLIP(block[5]);
-		dest[6] = CLIP(block[6]);
-		dest[7] = CLIP(block[7]);
-
-		_mm_store_ps((float*)block, zero);
-
-		dest += stride;
-		block += 8;
-	} while (--i);
+		__m128i* src = reinterpret_cast<__m128i*>(&block[i * 8]);
+		__m128i part0 = _mm_load_si128(src + 0);
+		__m128i part1 = _mm_load_si128(src + 1);
+		__m128 packed = _mm_castsi128_ps(_mm_packus_epi16(part0, part1));
+		_mm_storel_pi(reinterpret_cast<__m64*>(dest), packed);
+		_mm_storeh_pi(reinterpret_cast<__m64*>(dest + stride), packed);
+		_mm_store_si128(src + 0, _mm_setzero_si128());
+		_mm_store_si128(src + 1, _mm_setzero_si128());
+		dest += stride * 2;
+	}
 }
 
 
@@ -222,14 +205,6 @@ __ri void mpeg2_idct_add(const int last, s16* block, s16* dest, const int stride
 	}
 }
 
-static constexpr std::array<u8, 1024> make_clip_lut()
-{
-	std::array<u8, 1024> out = {};
-	for (int i = -384; i < 640; i++)
-		out[i + 384] = (i < 0) ? 0 : ((i > 255) ? 255 : i);
-	return out;
-}
-
 static constexpr mpeg2_scan_pack make_scan_pack()
 {
 	constexpr u8 mpeg2_scan_norm[64] = {
@@ -260,5 +235,4 @@ static constexpr mpeg2_scan_pack make_scan_pack()
 	return pack;
 }
 
-alignas(16) constexpr std::array<u8, 1024> g_ipu_clip_lut = make_clip_lut();
 alignas(16) constexpr mpeg2_scan_pack mpeg2_scan = make_scan_pack();
