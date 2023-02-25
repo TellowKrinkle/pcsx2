@@ -54,6 +54,8 @@ if (WIN32)
 	add_subdirectory(updater)
 endif()
 
+add_subdirectory(pcsx2-gsrunner EXCLUDE_FROM_ALL)
+
 # tests
 if(ENABLE_TESTS)
 	add_subdirectory(3rdparty/googletest)
