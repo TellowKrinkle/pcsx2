@@ -121,10 +121,11 @@ jobs:
           if [ ! -e 3rdparty/${{ env.SDL }} ]; then
             curl -sL https://libsdl.org/release/${{ env.SDL }}.tar.gz | tar -xzC 3rdparty
             cd 3rdparty/${{ env.SDL }}
+            FLAGS="--disable-libsamplerate --disable-audio --disable-dbus --without-x --disable-video --disable-video-vulkan --disable-video-dummy --disable-wayland-shared --disable-ime --disable-esd --disable-arts --disable-nas"
             if [ "${{ inputs.platform }}" = "x86" ]; then
-              ./configure --build=i686-pc-linux-gnu CC=${{ inputs.compiler }} CFLAGS=-m32 CXXFLAGS=-m32 LDFLAGS=-m32 --prefix=/usr --libdir=/usr/lib/i386-linux-gnu
+              ./configure $FLAGS --build=i686-pc-linux-gnu CC=${{ inputs.compiler }} CFLAGS=-m32 CXXFLAGS=-m32 LDFLAGS=-m32 --prefix=/usr --libdir=/usr/lib/i386-linux-gnu
             else
-              ./configure --prefix=/usr --libdir=/usr/lib/x86_64-linux-gnu
+              ./configure $FLAGS --prefix=/usr --libdir=/usr/lib/x86_64-linux-gnu
             fi
             make -j $(getconf _NPROCESSORS_ONLN) && cd ../../
           fi
