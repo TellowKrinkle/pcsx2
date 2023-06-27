@@ -111,6 +111,8 @@ jobs:
                 -DCMAKE_C_COMPILER_LAUNCHER=ccache \
                 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
                 -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON \
+                -DCMAKE_C_COMPILER="$(brew --prefix llvm@15)/bin/clang" \
+                -DCMAKE_CXX_COMPILER="$(brew --prefix llvm@15)/bin/clang++" \
                 -B build .
 
       - name: Build PCSX2
