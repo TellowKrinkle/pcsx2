@@ -167,6 +167,16 @@ public:
 		return m;
 	}
 
+	/// Makes Clang think that the whole vector is needed, preventing it from changing shuffles around because it thinks we don't need the whole vector
+	__forceinline GSVector4i noopt()
+	{
+		// Note: Clang is currently the only compiler that attempts to optimize vector intrinsics, if that changes in the future the implementation should be updated
+#ifdef __clang__
+		__asm__("":"+x"(m)::);
+#endif
+		return *this;
+	}
+
 	// rect
 
 	__forceinline int width() const

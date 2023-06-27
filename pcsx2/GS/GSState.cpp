@@ -3258,7 +3258,8 @@ __forceinline void GSState::VertexKick(u32 skip)
 		}
 
 		// We only care about the xy passing the skip test. zw is the offset coordinates for native culling.
-		skip |= test.mask() & 0xff;
+		// `.noopt()` is a workaround for a bug in older clang (see https://github.com/PCSX2/pcsx2/pull/9047)
+		skip |= test.noopt().mask() & 0xff;
 	}
 
 	if (skip != 0)
