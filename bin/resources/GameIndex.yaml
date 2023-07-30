@@ -28787,15 +28787,15 @@ SLPM-55117:
   name: "Beatmania IIDX 15 - DJ Troopers"
   region: "NTSC-J"
 SLPM-55118:
-  name: ギャラクシーエンジェルII 永劫回帰の刻
-  name-sort: ぎゃらくしーえんじぇるII えいごうかいきのこく
+  name: ギャラクシーエンジェルII 永劫回帰の刻 [ディスク1/2]
+  name-sort: ぎゃらくしーえんじぇるII えいごうかいきのこく [でぃすく1/2]
   name-en: "Galaxy Angel II - Eigou Kaiki no Koku [Disc 1 of 2]"
   region: "NTSC-J"
   gsHWFixes:
     halfPixelOffset: 1 # Reduces misaligned lighting and other effects.
 SLPM-55119:
-  name: ギャラクシーエンジェルII 永劫回帰の刻
-  name-sort: ぎゃらくしーえんじぇるII えいごうかいきのこく
+  name: ギャラクシーエンジェルII 永劫回帰の刻 [ディスク2/2]
+  name-sort: ぎゃらくしーえんじぇるII えいごうかいきのこく [でぃすく2/2]
   name-en: "Galaxy Angel II - Eigou Kaiki no Koku [Disc 2 of 2]"
   region: "NTSC-J"
   memcardFilters:
@@ -33265,20 +33265,24 @@ SLPM-62630:
   name-en: "Sukusuku Inufuku [Hamster The Best]"
   region: "NTSC-J"
 SLPM-62631:
-  name: SIMPLE2000シリーズ 2in1 Vol.3 THE パズルコレクション2,000問 & THE 東洋三大占術〜風水・姓名判断・易占〜
-  name-sort: SIMPLE2000しりーず 2in1 Vol.3 THE ぱずるこれくしょん2,000もん & THE とうようさんだいうらないじゅつ〜ふうすい・せいめいはんだん・えきうらない〜
+  name: SIMPLE2000シリーズ 2in1 Vol.3 THE パズルコレクション2,000問 & THE 東洋三大占術〜風水・姓名判断・易占〜 [ディスク1/2]
+  name-sort: SIMPLE2000しりーず 2in1 Vol.3 THE ぱずるこれくしょん2,000もん & THE とうようさんだいうらないじゅつ〜ふうすい・せいめいはんだん・えきうらない〜 [でぃすく1/2]
   name-en: "Simple 2000 Series 2-in-1 Vol. 3 - The Puzzle Collection 2000 Toi & The Touyou Sandai Senjitsu Fusui, Seimeidanhan, Ekisen [Disc 1 of 2]"
   region: "NTSC-J"
 SLPM-62632:
-  name: "Simple 2000 Series 2-in-1 Vol. 3 - The Puzzle Collection 2000 Toi & The Touyou Sandai Senjitsu Fusui, Seimeidanhan, Ekisen [Disc 2 of 2]"
+  name: SIMPLE2000シリーズ 2in1 Vol.3 THE パズルコレクション2,000問 & THE 東洋三大占術〜風水・姓名判断・易占〜 [ディスク2/2]
+  name-sort: SIMPLE2000しりーず 2in1 Vol.3 THE ぱずるこれくしょん2,000もん & THE とうようさんだいうらないじゅつ〜ふうすい・せいめいはんだん・えきうらない〜 [でぃすく2/2]
+  name-en: "Simple 2000 Series 2-in-1 Vol. 3 - The Puzzle Collection 2000 Toi & The Touyou Sandai Senjitsu Fusui, Seimeidanhan, Ekisen [Disc 2 of 2]"
   region: "NTSC-J"
 SLPM-62633:
-  name: SIMPLE2000シリーズ 2in1 Vol.2 THE バスフィッシング ＆ THE ボウリングHYPER
-  name-sort: SIMPLE2000しりーず 2in1 Vol.2 THE ばすふぃっしんぐ ＆ THE ぼうりんぐHYPER
+  name: SIMPLE2000シリーズ 2in1 Vol.2 THE バスフィッシング ＆ THE ボウリングHYPER [ディスク1/2]
+  name-sort: SIMPLE2000しりーず 2in1 Vol.2 THE ばすふぃっしんぐ ＆ THE ぼうりんぐHYPER [でぃすく1/2]
   name-en: "Simple 2000 Series 2-in-1 Vol. 2 - The Bass Fishing & The Bowling Hyper [Disc 1 of 2]"
   region: "NTSC-J"
 SLPM-62634:
-  name: "Simple 2000 Series 2-in-1 Vol. 2 - The Bass Fishing & The Bowling Hyper [Disc 2 of 2]"
+  name: SIMPLE2000シリーズ 2in1 Vol.2 THE バスフィッシング ＆ THE ボウリングHYPER [ディスク2/2]
+  name-sort: SIMPLE2000しりーず 2in1 Vol.2 THE ばすふぃっしんぐ ＆ THE ぼうりんぐHYPER [でぃすく2/2]
+  name-en: "Simple 2000 Series 2-in-1 Vol. 2 - The Bass Fishing & The Bowling Hyper [Disc 2 of 2]"
   region: "NTSC-J"
 SLPM-62635:
   name: SIMPLE2000シリーズ Ultimate Vol.26 ラブ★スマッシュ!5.1 〜テニスロボの反乱〜
@@ -33288,14 +33292,16 @@ SLPM-62635:
   gameFixes:
     - XGKickHack # Fixes bad Geometry.
 SLPM-62636:
-  name: SIMPLE2000シリーズ 2in1 Vol.1 THE テニス ＆ THE スノーボード
-  name-sort: SIMPLE2000しりーず 2in1 Vol.1 THE てにす ＆ THE すのーぼーど
+  name: SIMPLE2000シリーズ 2in1 Vol.1 THE テニス ＆ THE スノーボード [ディスク1/2]
+  name-sort: SIMPLE2000しりーず 2in1 Vol.1 THE てにす ＆ THE すのーぼーど [でぃすく1/2]
   name-en: "Simple 2000 Series 2-in-1 Vol. 1 - The Tennis & The Snowboard [Disc 1 of 2]"
   region: "NTSC-J"
   gameFixes:
     - XGKickHack # Fixes SPS and console spam (The Tennis).
 SLPM-62637:
-  name: "Simple 2000 Series 2-in-1 Vol. 1 - The Tennis & The Snowboard [Disc 2 of 2]"
+  name: SIMPLE2000シリーズ 2in1 Vol.1 THE テニス ＆ THE スノーボード [ディスク2/2]
+  name-sort: SIMPLE2000しりーず 2in1 Vol.1 THE てにす ＆ THE すのーぼーど [でぃすく2/2]
+  name-en: "Simple 2000 Series 2-in-1 Vol. 1 - The Tennis & The Snowboard [Disc 2 of 2]"
   region: "NTSC-J"
 SLPM-62638:
   name: SIMPLE2000シリーズ Vol.80 THE お姉チャンプルゥ 〜THE姉チャン特別編〜
@@ -33402,20 +33408,24 @@ SLPM-62661:
   name-en: "Oretachi Geasen Zoku Sono - Terra Cresta"
   region: "NTSC-J"
 SLPM-62662:
-  name: SIMPLE2000シリーズ 2in1 Vol.5 THE シューティング〜ダブル紫炎龍〜 ＆ THE ヘリコプター
-  name-sort: SIMPLE2000しりーず 2in1 Vol.5 THE しゅーてぃんぐ〜だぶるしえんりゅう〜 ＆ THE へりこぷたー
+  name: SIMPLE2000シリーズ 2in1 Vol.5 THE シューティング〜ダブル紫炎龍〜 ＆ THE ヘリコプター [ディスク1/2]
+  name-sort: SIMPLE2000しりーず 2in1 Vol.5 THE しゅーてぃんぐ〜だぶるしえんりゅう〜 ＆ THE へりこぷたー [でぃすく1/2]
   name-en: "Simple 2000 Series 2-in-1 Vol. 5 - The Shooting & The Helicopter [Disc 1 of 2]"
   region: "NTSC-J"
 SLPM-62663:
-  name: "Simple 2000 Series 2-in-1 Vol. 5 - The Shooting & The Helicopter [Disc 2 of 2]"
+  name: SIMPLE2000シリーズ 2in1 Vol.5 THE シューティング〜ダブル紫炎龍〜 ＆ THE ヘリコプター [ディスク2/2]
+  name-sort: SIMPLE2000しりーず 2in1 Vol.5 THE しゅーてぃんぐ〜だぶるしえんりゅう〜 ＆ THE へりこぷたー [でぃすく2/2]
+  name-en: "Simple 2000 Series 2-in-1 Vol. 5 - The Shooting & The Helicopter [Disc 2 of 2]"
   region: "NTSC-J"
 SLPM-62664:
-  name: SIMPLE2000シリーズ 2in1 Vol.4 THE 武士道 〜辻斬り一代〜 ＆ THE スナイパー2 〜悪夢の銃弾〜
-  name-sort: SIMPLE2000しりーず 2in1 Vol.4 THE ぶしどう 〜つじぎりいちだい〜 ＆ THE すないぱー2 〜あくむのじゅうだん〜
+  name: SIMPLE2000シリーズ 2in1 Vol.4 THE 武士道 〜辻斬り一代〜 ＆ THE スナイパー2 〜悪夢の銃弾〜 [ディスク1/2]
+  name-sort: SIMPLE2000しりーず 2in1 Vol.4 THE ぶしどう 〜つじぎりいちだい〜 ＆ THE すないぱー2 〜あくむのじゅうだん〜 [でぃすく1/2]
   name-en: "Simple 2000 Series 2-in-1 Vol. 4 - The Bushidou & The Sniper 2 [Disc 1 of 2]"
   region: "NTSC-J"
 SLPM-62665:
-  name: "Simple 2000 Series 2-in-1 Vol. 4 - The Bushidou & The Sniper 2 [Disc 2 of 2]"
+  name: SIMPLE2000シリーズ 2in1 Vol.4 THE 武士道 〜辻斬り一代〜 ＆ THE スナイパー2 〜悪夢の銃弾〜 [ディスク2/2]
+  name-sort: SIMPLE2000しりーず 2in1 Vol.4 THE ぶしどう 〜つじぎりいちだい〜 ＆ THE すないぱー2 〜あくむのじゅうだん〜 [でぃすく2/2]
+  name-en: "Simple 2000 Series 2-in-1 Vol. 4 - The Bushidou & The Sniper 2 [Disc 2 of 2]"
   region: "NTSC-J"
 SLPM-62666:
   name: SEGA AGES 2500シリーズ Vol.1 PHANTASY STAR generation:1 通常版
@@ -34058,15 +34068,17 @@ SLPM-65001:
   region: "NTSC-J"
   compat: 5
 SLPM-65002:
-  name: ラブストーリー
-  name-sort: らぶすとーりー
+  name: ラブストーリー [ディスク1/2]
+  name-sort: らぶすとーりー [でぃすく1/2]
   name-en: "0 Story [Disc 1 of 2]"
   region: "NTSC-J"
   compat: 5
   gameFixes:
     - SoftwareRendererFMVHack # Fixes removed bloom in FMV.
 SLPM-65003:
-  name: "0 Story [Disc 2 of 2]"
+  name: ラブストーリー [ディスク2/2]
+  name-sort: らぶすとーりー [でぃすく2/2]
+  name-en: "0 Story [Disc 2 of 2]"
   region: "NTSC-J"
   compat: 5
   gameFixes:
@@ -34209,12 +34221,14 @@ SLPM-65023:
   gsHWFixes:
     disablePartialInvalidation: 1 # Fixes corrupt textures.
 SLPM-65024:
-  name: バイオハザード コード:ベロニカ 完全版
-  name-sort: ばいおはざーど こーど:べろにか かんぜんばん
+  name: バイオハザード コード:ベロニカ 完全版 [ディスク1/2]
+  name-sort: ばいおはざーど こーど:べろにか かんぜんばん [でぃすく1/2]
   name-en: "BioHazard - 5th Anniversary Package - Nightmare Returns [Disc 1 of 2]"
   region: "NTSC-J"
 SLPM-65025:
-  name: "BioHazard - 5th Anniversary Package - Nightmare Returns [Disc 2 of 2]"
+  name: バイオハザード コード:ベロニカ 完全版 [ディスク2/2]
+  name-sort: ばいおはざーど こーど:べろにか かんぜんばん [でぃすく2/2]
+  name-en: "BioHazard - 5th Anniversary Package - Nightmare Returns [Disc 2 of 2]"
   region: "NTSC-J"
 SLPM-65026:
   name: beatmania IIDX 4th style -new songs collection-
@@ -34281,8 +34295,8 @@ SLPM-65039:
   name-en: "Densha de Go! Shinkansen"
   region: "NTSC-J"
 SLPM-65040:
-  name: ザ・フィアー
-  name-sort: ざ・ふぃあー
+  name: ザ・フィアー [ディスク1/4]
+  name-sort: ざ・ふぃあー [でぃすく1/4]
   name-en: "Fear, The [Disc 1 of 4]"
   region: "NTSC-J"
   memcardFilters:
@@ -34291,7 +34305,9 @@ SLPM-65040:
     - "SLPM-65042"
     - "SLPM-65043"
 SLPM-65041:
-  name: "Fear, The [Disc 2 of 4]"
+  name: ザ・フィアー [ディスク2/4]
+  name-sort: ざ・ふぃあー [でぃすく2/4]
+  name-en: "Fear, The [Disc 2 of 4]"
   region: "NTSC-J"
   memcardFilters:
     - "SLPM-65040"
@@ -34299,7 +34315,9 @@ SLPM-65041:
     - "SLPM-65042"
     - "SLPM-65043"
 SLPM-65042:
-  name: "Fear, The [Disc 3of 4]"
+  name: ザ・フィアー [ディスク3/4]
+  name-sort: ざ・ふぃあー [でぃすく3/4]
+  name-en: "Fear, The [Disc 3of 4]"
   region: "NTSC-J"
   compat: 5
   memcardFilters:
@@ -34308,7 +34326,9 @@ SLPM-65042:
     - "SLPM-65042"
     - "SLPM-65043"
 SLPM-65043:
-  name: "Fear, The [Disc 4 of 4]"
+  name: ザ・フィアー [ディスク4/4]
+  name-sort: ざ・ふぃあー [でぃすく4/4]
+  name-en: "Fear, The [Disc 4 of 4]"
   region: "NTSC-J"
   memcardFilters:
     - "SLPM-65040"
@@ -34526,8 +34546,8 @@ SLPM-65085:
   name: "Alone in the Dark - The New Nightmare"
   region: "NTSC-J"
 SLPM-65086:
-  name: “A” VISUAL MIX
-  name-sort: “A” VISUAL MIX
+  name: “A” VISUAL MIX [ディスク1/2]
+  name-sort: “A” VISUAL MIX [ディスク1/2]
   name-en: "Visual Mix - Ayumi Hamasaki Dome Tour 2001 [Disc 1 of 2]"
   region: "NTSC-J"
   compat: 5
@@ -34537,7 +34557,9 @@ SLPM-65086:
     - "SLPM-65086"
     - "SLPM-65087"
 SLPM-65087:
-  name: "Visual Mix - Ayumi Hamasaki Dome Tour 2001 [Disc 2 of 2]"
+  name: “A” VISUAL MIX [ディスク2/2]
+  name-sort: “A” VISUAL MIX [ディスク2/2]
+  name-en: "Visual Mix - Ayumi Hamasaki Dome Tour 2001 [Disc 2 of 2]"
   region: "NTSC-J"
   compat: 5
   memcardFilters:
@@ -35401,12 +35423,14 @@ SLPM-65262:
   name-en: "Boboboubo Boubobo - Hajike Matsuri"
   region: "NTSC-J"
 SLPM-65263:
-  name: コーエーメガパック 真・三國無双2&真・三國無双2 猛将伝
-  name-sort: こーえーめがぱっく しん・さんごくむそう2&しん・さんごくむそう2 もうしょうでん
+  name: コーエーメガパック 真・三國無双2&真・三國無双2 猛将伝 [ディスク1/2]
+  name-sort: こーえーめがぱっく しん・さんごくむそう2&しん・さんごくむそう2 もうしょうでん [でぃすく1/2]
   name-en: "Shin Sangoku Musou 2 & Shin Sangoku Musou 2 Mushoden [Koei Mega Pack] [Disc 1 of 2]"
   region: "NTSC-J"
 SLPM-65264:
-  name: "Shin Sangoku Musou 2 & Shin Sangoku Musou 2 Mushoden [Koei Mega Pack] [Disc 2 of 2]"
+  name: コーエーメガパック 真・三國無双2&真・三國無双2 猛将伝 [ディスク2/2]
+  name-sort: こーえーめがぱっく しん・さんごくむそう2&しん・さんごくむそう2 もうしょうでん [でぃすく2/2]
+  name-en: "Shin Sangoku Musou 2 & Shin Sangoku Musou 2 Mushoden [Koei Mega Pack] [Disc 2 of 2]"
   region: "NTSC-J"
 SLPM-65266:
   name: ドラッグ オン ドラグーン
@@ -36330,8 +36354,8 @@ SLPM-65437:
   name: "Kessen II"
   region: "NTSC-J"
 SLPM-65438:
-  name: スターオーシャン Till the End of Time ディレクターズカット
-  name-sort: すたーおーしゃん Till the End of Time でぃれくたーずかっと
+  name: スターオーシャン Till the End of Time ディレクターズカット [ディスク1/2]
+  name-sort: すたーおーしゃん Till the End of Time でぃれくたーずかっと [でぃすく1/2]
   name-en: "Star Ocean 3 [Director's Cut] [Disc 1 of 2]"
   region: "NTSC-J"
   compat: 5
@@ -36342,7 +36366,9 @@ SLPM-65438:
     roundSprite: 1 # Fixes door transition vertical lines and mini-map artifacts.
     textureInsideRT: 1 # Fixes missing battle effects.
 SLPM-65439:
-  name: "Star Ocean 3 [Director's Cut] [Disc 2 of 2]"
+  name: スターオーシャン Till the End of Time ディレクターズカット [ディスク2/2]
+  name-sort: すたーおーしゃん Till the End of Time でぃれくたーずかっと [でぃすく2/2]
+  name-en: "Star Ocean 3 [Director's Cut] [Disc 2 of 2]"
   region: "NTSC-J"
   compat: 5
   gameFixes:
@@ -36674,8 +36700,8 @@ SLPM-65503:
   region: "NTSC-J"
   compat: 5
 SLPM-65504:
-  name: COOL GIRL 初回限定版
-  name-sort: COOL GIRL しょかいげんていばん
+  name: COOL GIRL 初回限定版 [ディスク1/2]
+  name-sort: COOL GIRL しょかいげんていばん [でぃすく1/2]
   name-en: "Cool Girl [Limited Edition] [Disc 1 of 2]"
   region: "NTSC-J"
   memcardFilters:
@@ -36684,7 +36710,9 @@ SLPM-65504:
     - "SLPM-65506"
     - "SLPM-65742"
 SLPM-65505:
-  name: "Cool Girl [Limited Edition] [Disc 2 of 2]"
+  name: COOL GIRL 初回限定版 [ディスク2/2]
+  name-sort: COOL GIRL しょかいげんていばん [でぃすく2/2]
+  name-en: "Cool Girl [Limited Edition] [Disc 2 of 2]"
   region: "NTSC-J"
   memcardFilters:
     - "SLPM-65504"
@@ -40005,8 +40033,8 @@ SLPM-66116:
   name-en: "NBA Live 2005 [EA Best Hits]"
   region: "NTSC-J"
 SLPM-66117:
-  name: METAL GEAR SOLID 3 SUBSISTENCE (ヘッドセット同梱版)
-  name-sort: METAL GEAR SOLID 3 SUBSISTENCE (へっどせっとどうこんばん)
+  name: METAL GEAR SOLID 3 SUBSISTENCE (ヘッドセット同梱版) [ディスク1/3]
+  name-sort: METAL GEAR SOLID 3 SUBSISTENCE (へっどせっとどうこんばん) [でぃすく1/3]
   name-en: "Metal Gear Solid 3 - Subsistence [with Headset] [Disc 1 of 3]"
   region: "NTSC-J"
   gameFixes:
@@ -40017,7 +40045,9 @@ SLPM-66117:
     halfPixelOffset: 2 # Fixes blurriness.
     getSkipCount: "GSC_MetalGearSolid3" # Fixes depth of field blur.
 SLPM-66118:
-  name: "Metal Gear Solid 3 - Subsistence [with Headset] [Disc 2 of 3]"
+  name: METAL GEAR SOLID 3 SUBSISTENCE (ヘッドセット同梱版) [ディスク2/3]
+  name-sort: METAL GEAR SOLID 3 SUBSISTENCE (へっどせっとどうこんばん) [でぃすく2/3]
+  name-en: "Metal Gear Solid 3 - Subsistence [with Headset] [Disc 2 of 3]"
   region: "NTSC-J"
   gameFixes:
     - BlitInternalFPSHack # Fixes internal FPS detection.
@@ -40027,7 +40057,9 @@ SLPM-66118:
     halfPixelOffset: 2 # Fixes blurriness.
     getSkipCount: "GSC_MetalGearSolid3" # Fixes depth of field blur.
 SLPM-66119:
-  name: "Metal Gear Solid 3 - Subsistence [with Headset] [Disc 3 of 3]"
+  name: METAL GEAR SOLID 3 SUBSISTENCE (ヘッドセット同梱版) [ディスク2/3]
+  name-sort: METAL GEAR SOLID 3 SUBSISTENCE (へっどせっとどうこんばん) [でぃすく2/3]
+  name-en: "Metal Gear Solid 3 - Subsistence [with Headset] [Disc 3 of 3]"
   region: "NTSC-J"
   gameFixes:
     - BlitInternalFPSHack # Fixes internal FPS detection.
@@ -40615,8 +40647,8 @@ SLPM-66219:
   name-en: "Tennis no Oji-Sama - Gakuensai no Oji-Sama"
   region: "NTSC-J"
 SLPM-66220:
-  name: METAL GEAR SOLID 3 SUBSISTENCE (初回生産版)
-  name-sort: METAL GEAR SOLID 3 SUBSISTENCE (しょかいせいさんばん)
+  name: METAL GEAR SOLID 3 SUBSISTENCE (初回生産版) [ディスク1/3]
+  name-sort: METAL GEAR SOLID 3 SUBSISTENCE (しょかいせいさんばん) [でぃすく1/3]
   name-en: "Metal Gear Solid 3 - Subsistence [First Print Limited Edition] [Disc 1 of 3]"
   region: "NTSC-J"
   gameFixes:
@@ -40629,7 +40661,9 @@ SLPM-66220:
   memcardFilters:
     - "SLPM-66117"
 SLPM-66221:
-  name: "Metal Gear Solid 3 - Subsistence [First Print Limited Edition] [Disc 2 of 3]"
+  name: METAL GEAR SOLID 3 SUBSISTENCE (初回生産版) [ディスク2/3]
+  name-sort: METAL GEAR SOLID 3 SUBSISTENCE (しょかいせいさんばん) [でぃすく2/3]
+  name-en: "Metal Gear Solid 3 - Subsistence [First Print Limited Edition] [Disc 2 of 3]"
   region: "NTSC-J"
   gameFixes:
     - BlitInternalFPSHack # Fixes internal FPS detection.
@@ -40641,7 +40675,9 @@ SLPM-66221:
   memcardFilters:
     - "SLPM-66117"
 SLPM-66222:
-  name: "Metal Gear Solid 3 - Subsistence [First Print Limited Edition] [Disc 3 of 3]"
+  name: METAL GEAR SOLID 3 SUBSISTENCE (初回生産版) [ディスク3/3]
+  name-sort: METAL GEAR SOLID 3 SUBSISTENCE (しょかいせいさんばん) [でぃすく3/3]
+  name-en: "Metal Gear Solid 3 - Subsistence [First Print Limited Edition] [Disc 3 of 3]"
   region: "NTSC-J"
   gameFixes:
     - BlitInternalFPSHack # Fixes internal FPS detection.
@@ -40653,8 +40689,8 @@ SLPM-66222:
   memcardFilters:
     - "SLPM-66117"
 SLPM-66223:
-  name: METAL GEAR SOLID 3 SUBSISTENCE
-  name-sort: METAL GEAR SOLID 3 SUBSISTENCE
+  name: METAL GEAR SOLID 3 SUBSISTENCE [ディスク1/2]
+  name-sort: METAL GEAR SOLID 3 SUBSISTENCE [でぃすく1/2]
   name-en: "Metal Gear Solid 3 - Subsistence [Disc 1 of 2]"
   region: "NTSC-J"
   gameFixes:
@@ -40667,7 +40703,9 @@ SLPM-66223:
   memcardFilters:
     - "SLPM-66117"
 SLPM-66224:
-  name: "Metal Gear Solid 3 - Subsistence [Disc 2 of 2]"
+  name: METAL GEAR SOLID 3 SUBSISTENCE [ディスク2/2]
+  name-sort: METAL GEAR SOLID 3 SUBSISTENCE [でぃすく2/2]
+  name-en: "Metal Gear Solid 3 - Subsistence [Disc 2 of 2]"
   region: "NTSC-J"
   gameFixes:
     - BlitInternalFPSHack # Fixes internal FPS detection.
@@ -40962,15 +41000,17 @@ SLPM-66274:
   name-en: "Ninkyouden Toseinin Ichidaiki"
   region: "NTSC-J"
 SLPM-66275:
-  name: 新 鬼武者 DAWN OF DREAMS
-  name-sort: しん おにむしゃ DAWN OF DREAMS
+  name: 新 鬼武者 DAWN OF DREAMS [ディスク1/2]
+  name-sort: しん おにむしゃ DAWN OF DREAMS [でぃすく1/2]
   name-en: "Shin Onimusha - Dawn of Dreams [Disc 1 of 2]"
   region: "NTSC-J"
   compat: 5
   gsHWFixes:
     halfPixelOffset: 2 # Fixes misalignment and upscaling lines.
 SLPM-66276:
-  name: "Shin Onimusha - Dawn of Dreams [Disc 2 of 2]"
+  name: 新 鬼武者 DAWN OF DREAMS [ディスク2/2]
+  name-sort: しん おにむしゃ DAWN OF DREAMS [でぃすく2/2]
+  name-en: "Shin Onimusha - Dawn of Dreams [Disc 2 of 2]"
   region: "NTSC-J"
   compat: 5
   gsHWFixes:
@@ -42150,8 +42190,8 @@ SLPM-66477:
   name-en: "Kamiwaza"
   region: "NTSC-J"
 SLPM-66478:
-  name: アルティメット ヒッツ スターオーシャン Till the End of Time ディレクターズカット
-  name-sort: あるてぃめっと ひっつ すたーおーしゃん Till the End of Time でぃれくたーずかっと
+  name: アルティメット ヒッツ スターオーシャン Till the End of Time ディレクターズカット [ディスク1/2]
+  name-sort: あるてぃめっと ひっつ すたーおーしゃん Till the End of Time でぃれくたーずかっと [でぃすく1/2]
   name-en: "Star Ocean 3 - Till the End of Time [Ultimate Hits] [Disc 1 of 2]"
   region: "NTSC-J"
   compat: 5
@@ -42162,7 +42202,9 @@ SLPM-66478:
     roundSprite: 1 # Fixes door transition vertical lines and mini-map artifacts.
     textureInsideRT: 1 # Fixes missing battle effects.
 SLPM-66479:
-  name: "Star Ocean 3 - Till the End of Time [Ultimate Hits] [Disc 2 of 2]"
+  name: アルティメット ヒッツ スターオーシャン Till the End of Time ディレクターズカット [ディスク2/2]
+  name-sort: あるてぃめっと ひっつ すたーおーしゃん Till the End of Time でぃれくたーずかっと [でぃすく2/2]
+  name-en: "Star Ocean 3 - Till the End of Time [Ultimate Hits] [Disc 2 of 2]"
   region: "NTSC-J"
   compat: 5
   gameFixes:
@@ -42858,8 +42900,8 @@ SLPM-66601:
   gsHWFixes:
     recommendedBlendingLevel: 4 # Fixes missing lighting and makes snow not look like snow sludge.
 SLPM-66602:
-  name: 龍が如く 2
-  name-sort: りゅうがごとく 2
+  name: 龍が如く 2 [ディスク1/2]
+  name-sort: りゅうがごとく 2 [でぃすく1/2]
   name-en: "Ryu ga Gotoku 2 [Disc 1 of 2]"
   region: "NTSC-J"
   memcardFilters:
@@ -42869,7 +42911,9 @@ SLPM-66602:
     - "SLPM-74234"
     - "SLPM-74253"
 SLPM-66603:
-  name: "Ryu ga Gotoku 2 [Disc 2 of 2]"
+  name: 龍が如く 2 [ディスク2/2]
+  name-sort: りゅうがごとく 2 [でぃすく2/2]
+  name-en: "Ryu ga Gotoku 2 [Disc 2 of 2]"
   region: "NTSC-J"
   memcardFilters:
     - "SLPM-66602"
@@ -43899,14 +43943,16 @@ SLPM-66778:
   name-en: "Galaxy Angel - Eternal Lovers [Broccoli The Best Quality]"
   region: "NTSC-J"
 SLPM-66779:
-  name: ギャラクシーエンジェルII 無限回廊の鍵【通常版】
-  name-sort: ぎゃらくしーえんじぇるII むげんかいろうのかぎ【つうじょうばん】
+  name: ギャラクシーエンジェルII 無限回廊の鍵【通常版】 [ディスク1/2]
+  name-sort: ぎゃらくしーえんじぇるII むげんかいろうのかぎ【つうじょうばん】 [でぃすく1/2]
   name-en: "Galaxy Angel II - Mugen Kairou no Kagi [Disc 1 of 2]"
   region: "NTSC-J"
   gsHWFixes:
     halfPixelOffset: 1 # Reduces misaligned lighting and other effects.
 SLPM-66780:
-  name: "Galaxy Angel II - Mugen Kairou no Kagi [Disc 2 of 2]"
+  name: ギャラクシーエンジェルII 無限回廊の鍵【通常版】 [ディスク2/2]
+  name-sort: ぎゃらくしーえんじぇるII むげんかいろうのかぎ【つうじょうばん】 [でぃすく2/2]
+  name-en: "Galaxy Angel II - Mugen Kairou no Kagi [Disc 2 of 2]"
   region: "NTSC-J"
   gsHWFixes:
     halfPixelOffset: 1 # Reduces misaligned lighting and other effects.
@@ -43978,8 +44024,8 @@ SLPM-66791:
   name-en: "Memories Off #5 Encore"
   region: "NTSC-J"
 SLPM-66792:
-  name: METAL GEAR 20th ANNIVERSARY METAL GEAR SOLID 2 SONS OF LIBERTY
-  name-sort: METAL GEAR 20th ANNIVERSARY METAL GEAR SOLID 2 SONS OF LIBERTY
+  name: METAL GEAR 20th ANNIVERSARY METAL GEAR SOLID 2 SONS OF LIBERTY [ディスク1/2]
+  name-sort: METAL GEAR 20th ANNIVERSARY METAL GEAR SOLID 2 SONS OF LIBERTY [でぃすく1/2]
   name-en: "Metal Gear Solid 2 - Sons of Liberty [20th Anniversary Edition] [Disc 1 of 2]"
   region: "NTSC-J"
   gameFixes:
@@ -43987,7 +44033,9 @@ SLPM-66792:
   gsHWFixes:
     recommendedBlendingLevel: 3 # Fixes broken skin colour on Vlad and others.
 SLPM-66793:
-  name: "Metal Gear Solid 2 - Sons of Liberty [20th Anniversary Edition] [Disc 2 of 2]"
+  name: METAL GEAR 20th ANNIVERSARY METAL GEAR SOLID 2 SONS OF LIBERTY [ディスク2/2]
+  name-sort: METAL GEAR 20th ANNIVERSARY METAL GEAR SOLID 2 SONS OF LIBERTY [でぃすく2/2]
+  name-en: "Metal Gear Solid 2 - Sons of Liberty [20th Anniversary Edition] [Disc 2 of 2]"
   region: "NTSC-J"
   gameFixes:
     - InstantDMAHack # Fixes broken half-bottom artifacts.
@@ -46190,15 +46238,17 @@ SLPS-20017:
   name-en: "Street Mahjong Trance 2"
   region: "NTSC-J"
 SLPS-20018:
-  name: ステッピングセレクション
-  name-sort: すてっぴんぐせれくしょん
+  name: ステッピングセレクション [ディスク1/2]
+  name-sort: すてっぴんぐせれくしょん [でぃすく1/2]
   name-en: "Stepping Selection [Disc 1 of 2]"
   region: "NTSC-J"
   memcardFilters:
     - "SLPS-20018"
     - "SLPS-20019"
 SLPS-20019:
-  name: "Stepping Selection [Disc 2 of 2]"
+  name: ステッピングセレクション [ディスク2/2]
+  name-sort: すてっぴんぐせれくしょん [でぃすく2/2]
+  name-en: "Stepping Selection [Disc 2 of 2]"
   region: "NTSC-J"
   memcardFilters:
     - "SLPS-20018"
@@ -46503,15 +46553,17 @@ SLPS-20083:
     mipmap: 2 # Fixes ground graphics.
     trilinearFiltering: 1 # Fixes ground graphics.
 SLPS-20084:
-  name: BASIC STUDIO パワフルゲーム工房
-  name-sort: BASIC STUDIO ぱわふるげーむこうぼう
+  name: BASIC STUDIO パワフルゲーム工房 [ディスク1/2]
+  name-sort: BASIC STUDIO ぱわふるげーむこうぼう [でぃすく1/2]
   name-en: "Basic Studio [Disc 1]"
   region: "NTSC-J"
   memcardFilters:
     - "SLPS-20084"
     - "SLPS-20085"
 SLPS-20085:
-  name: "Basic Studio [Disc 2]"
+  name: BASIC STUDIO パワフルゲーム工房 [ディスク2/2]
+  name-sort: BASIC STUDIO ぱわふるげーむこうぼう [でぃすく2/2]
+  name-en: "Basic Studio [Disc 2]"
   region: "NTSC-J"
   memcardFilters:
     - "SLPS-20084"
@@ -48700,8 +48752,8 @@ SLPS-25070:
   name-en: "Tales of the Sunrise Heroes 2"
   region: "NTSC-J"
 SLPS-25071:
-  name: “A” VISUAL MIX
-  name-sort: “A” VISUAL MIX
+  name: “A” VISUAL MIX [ディスク1/2]
+  name-sort: “A” VISUAL MIX [でぃすく1/2]
   name-en: "Visual Mix - Ayumi Hamasaki Dome Tour 2001 [Disc 1 of 2]"
   region: "NTSC-J"
   memcardFilters:
@@ -48710,7 +48762,9 @@ SLPS-25071:
     - "SLPM-65086"
     - "SLPM-65087"
 SLPS-25072:
-  name: "Visual Mix - Ayumi Hamasaki Dome Tour 2001 [Disc 2 of 2]"
+  name: “A” VISUAL MIX [ディスク2/2]
+  name-sort: “A” VISUAL MIX [でぃすく2/2]
+  name-en: "Visual Mix - Ayumi Hamasaki Dome Tour 2001 [Disc 2 of 2]"
   region: "NTSC-J"
   memcardFilters:
     - "SLPS-25071"
@@ -49975,8 +50029,8 @@ SLPS-25316:
   region: "NTSC-J"
   compat: 5
 SLPS-25317:
-  name: シャドウハーツ II DXパック
-  name-sort: しゃどうはーつ II DXぱっく
+  name: シャドウハーツ II DXパック [ディスク1/2]
+  name-sort: しゃどうはーつ II DXぱっく [でぃすく1/2]
   name-en: "Shadow Hearts 2 [Deluxe Pack] [Disc 1 of 2]"
   region: "NTSC-J"
   gsHWFixes:
@@ -49985,7 +50039,9 @@ SLPS-25317:
     roundSprite: 2 # Fixes the position of monster sprites and reduces garbage in the UI.
     autoFlush: 2 # Makes the shadow monsters appear.
 SLPS-25318:
-  name: "Shadow Hearts 2 [Deluxe Pack] [Disc 2 of 2]"
+  name: シャドウハーツ II DXパック [ディスク2/2]
+  name-sort: しゃどうはーつ II DXぱっく [でぃすく2/2]
+  name-en: "Shadow Hearts 2 [Deluxe Pack] [Disc 2 of 2]"
   region: "NTSC-J"
   gsHWFixes:
     halfPixelOffset: 2 # Fixes blurrines, preload frame for FMV breaks visuals with this setting.
@@ -50059,8 +50115,8 @@ SLPS-25333:
   name-en: "Gallop Racer Lucky 7"
   region: "NTSC-J"
 SLPS-25334:
-  name: シャドウハーツ II(通常版)
-  name-sort: しゃどうはーつ II(つうじょうばん)
+  name: シャドウハーツ II(通常版) [ディスク1/2]
+  name-sort: しゃどうはーつ II(つうじょうばん) [でぃすく1/2]
   name-en: "Shadow Hearts 2 [Disc 1 of 2]"
   region: "NTSC-J"
   gsHWFixes:
@@ -50069,7 +50125,9 @@ SLPS-25334:
     roundSprite: 2 # Fixes the position of monster sprites and reduces garbage in the UI.
     autoFlush: 2 # Makes the shadow monsters appear.
 SLPS-25335:
-  name: "Shadow Hearts 2 [Disc 2 of 2]"
+  name: シャドウハーツ II(通常版) [ディスク2/2]
+  name-sort: しゃどうはーつ II(つうじょうばん) [でぃすく2/2]
+  name-en: "Shadow Hearts 2 [Disc 2 of 2]"
   region: "NTSC-J"
   gsHWFixes:
     halfPixelOffset: 2 # Fixes blurrines, preload frame for FMV breaks visuals with this setting.
@@ -50089,8 +50147,8 @@ SLPS-25337:
   name-en: "Bass Landing 3 [Sammy Best]"
   region: "NTSC-J"
 SLPS-25338:
-  name: ARMORED CORE NEXUS
-  name-sort: ARMORED CORE NEXUS
+  name: ARMORED CORE NEXUS [ディスク1/2]
+  name-sort: ARMORED CORE NEXUS [でぃすく1/2]
   name-en: "Armored Core - Nexus [Disc 1]"
   region: "NTSC-J"
   gsHWFixes:
@@ -50104,7 +50162,9 @@ SLPS-25338:
     - "SLPS-73202"
     - "SLPS-73203"
 SLPS-25339:
-  name: "Armored Core - Nexus [Disc 2]"
+  name: ARMORED CORE NEXUS [ディスク2/2]
+  name-sort: ARMORED CORE NEXUS [でぃすく2/2]
+  name-en: "Armored Core - Nexus [Disc 2]"
   region: "NTSC-J"
   gsHWFixes:
     halfPixelOffset: 1 # Fixes misaligned blur.
@@ -50268,8 +50328,8 @@ SLPS-25365:
   name-en: "Missing Blue [Best Price]"
   region: "NTSC-J"
 SLPS-25366:
-  name: ゼノサーガ エピソードII［善悪の彼岸］ プレミアムボックス
-  name-sort: ぜのさーが えぴそーどII［ぜんあくのひがん］ ぷれみあむぼっくす
+  name: ゼノサーガ エピソードII［善悪の彼岸］ プレミアムボックス [ディスク1/2]
+  name-sort: ぜのさーが えぴそーどII［ぜんあくのひがん］ ぷれみあむぼっくす [でぃすく1/2]
   name-en: "Xenosaga Episode II - Jenseits von Gut und Bose [Premium Box] [Disc 1 of 2]"
   region: "NTSC-J"
   gsHWFixes:
@@ -50284,7 +50344,9 @@ SLPS-25366:
     - "SLPS-25353"
     - "SLPS-73224"
 SLPS-25367:
-  name: "Xenosaga Episode II - Jenseits von Gut und Bose [Premium Box] [Disc 2 of 2]"
+  name: ゼノサーガ エピソードII［善悪の彼岸］ プレミアムボックス [ディスク2/2]
+  name-sort: ぜのさーが えぴそーどII［ぜんあくのひがん］ ぷれみあむぼっくす [でぃすく2/2]
+  name-en: "Xenosaga Episode II - Jenseits von Gut und Bose [Premium Box] [Disc 2 of 2]"
   region: "NTSC-J"
   gsHWFixes:
     autoFlush: 2 # Fixes shadows in cutscenes.
@@ -50298,8 +50360,8 @@ SLPS-25367:
     - "SLPS-25353"
     - "SLPS-73224"
 SLPS-25368:
-  name: ゼノサーガ エピソードII［善悪の彼岸］
-  name-sort: ぜのさーが えぴそーどII［ぜんあくのひがん］
+  name: ゼノサーガ エピソードII［善悪の彼岸］ [ディスク1/2]
+  name-sort: ぜのさーが えぴそーどII［ぜんあくのひがん］ [でぃすく1/2]
   name-en: "Xenosaga Episode II - Jenseits von Gut und Bose [Disc 1 of 2]"
   region: "NTSC-J"
   gsHWFixes:
@@ -50314,7 +50376,9 @@ SLPS-25368:
     - "SLPS-25353"
     - "SLPS-73224"
 SLPS-25369:
-  name: "Xenosaga Episode II - Jenseits von Gut und Bose [Disc 2 of 2]"
+  name: ゼノサーガ エピソードII［善悪の彼岸］ [ディスク2/2]
+  name-sort: ぜのさーが えぴそーどII［ぜんあくのひがん］ [でぃすく2/2]
+  name-en: "Xenosaga Episode II - Jenseits von Gut und Bose [Disc 2 of 2]"
   region: "NTSC-J"
   gsHWFixes:
     autoFlush: 2 # Fixes shadows in cutscenes.
@@ -51817,8 +51881,8 @@ SLPS-25639:
   name-en: "Plus Plum 2 Again"
   region: "NTSC-J"
 SLPS-25640:
-  name: ゼノサーガ エピソードIII [ツァラトゥストラはかく語りき]
-  name-sort: ぜのさーが えぴそーどIII [つぁらとぅすとらはかくかたりき]
+  name: ゼノサーガ エピソードIII [ツァラトゥストラはかく語りき] [ディスク1/2]
+  name-sort: ぜのさーが えぴそーどIII [つぁらとぅすとらはかくかたりき] [でぃすく1/2]
   name-en: "Xenosaga Episode III - Also Sprach Zarathustra [Disc 1 of 2]"
   region: "NTSC-J"
   compat: 5
@@ -51831,7 +51895,9 @@ SLPS-25640:
     - "SLPS-25640"
     - "SLPS-25368"
 SLPS-25641:
-  name: "Xenosaga Episode III - Also Sprach Zarathustra [Disc 2 of 2]"
+  name: ゼノサーガ エピソードIII [ツァラトゥストラはかく語りき] [ディスク2/2]
+  name-sort: ぜのさーが えぴそーどIII [つぁらとぅすとらはかくかたりき] [でぃすく2/2]
+  name-en: "Xenosaga Episode III - Also Sprach Zarathustra [Disc 2 of 2]"
   region: "NTSC-J"
   compat: 5
   gsHWFixes:
@@ -53729,8 +53795,8 @@ SLPS-73201:
   name-en: "Fatal Frame II - Crimson Butterfly [PlayStation 2 The Best]"
   region: "NTSC-J"
 SLPS-73202:
-  name: ARMORED CORE NEXUS PlayStation®2 the Best
-  name-sort: ARMORED CORE NEXUS PlayStation®2 the Best
+  name: ARMORED CORE NEXUS PlayStation®2 the Best [ディスク1/2]
+  name-sort: ARMORED CORE NEXUS PlayStation®2 the Best [でぃすく1/2]
   name-en: "Armored Core - Nexus [Disc 1] [PlayStation 2 The Best]"
   region: "NTSC-J"
   gsHWFixes:
@@ -53744,7 +53810,9 @@ SLPS-73202:
     - "SLPS-73202"
     - "SLPS-73203"
 SLPS-73203:
-  name: "Armored Core - Nexus [Disc 2] [PlayStation 2 The Best]"
+  name: ARMORED CORE NEXUS PlayStation®2 the Best [ディスク2/2]
+  name-sort: ARMORED CORE NEXUS PlayStation®2 the Best [でぃすく2/2]
+  name-en: "Armored Core - Nexus [Disc 2] [PlayStation 2 The Best]"
   region: "NTSC-J"
   gsHWFixes:
     halfPixelOffset: 1 # Fixes misaligned blur.
@@ -53823,8 +53891,8 @@ SLPS-73212:
   name-en: "Naruto Narutimett Hero [PlayStation 2 The Best]"
   region: "NTSC-J"
 SLPS-73214:
-  name: シャドウ ハーツ II ディレクターズカット PlayStation®2 the Best
-  name-sort: しゃどう はーつ II でぃれくたーずかっと PlayStation®2 the Best
+  name: シャドウ ハーツ II ディレクターズカット PlayStation®2 the Best [ディスク1/2]
+  name-sort: しゃどう はーつ II でぃれくたーずかっと PlayStation®2 the Best [でぃすく1/2]
   name-en: "Shadow Hearts 2 [Director's Cut] [PlayStation 2 The Best] [Disc 1 of 2]"
   region: "NTSC-J"
   gsHWFixes:
@@ -53833,7 +53901,9 @@ SLPS-73214:
     roundSprite: 2 # Fixes the position of monster sprites and reduces garbage in the UI.
     autoFlush: 2 # Makes the shadow monsters appear.
 SLPS-73215:
-  name: "Shadow Hearts 2 [Director's Cut] [PlayStation 2 The Best] [Disc 2 of 2]"
+  name: シャドウ ハーツ II ディレクターズカット PlayStation®2 the Best [ディスク2/2]
+  name-sort: しゃどう はーつ II でぃれくたーずかっと PlayStation®2 the Best [でぃすく2/2]
+  name-en: "Shadow Hearts 2 [Director's Cut] [PlayStation 2 The Best] [Disc 2 of 2]"
   region: "NTSC-J"
   gsHWFixes:
     halfPixelOffset: 2 # Fixes blurrines, preload frame for FMV breaks visuals with this setting.
@@ -53904,8 +53974,8 @@ SLPS-73223:
     alignSprite: 1 # Fixes vertical lines.
     getSkipCount: "GSC_Tekken5"
 SLPS-73224:
-  name: ゼノサーガ エピソードII［善悪の彼岸］ PlayStation®2 the Best
-  name-sort: ぜのさーが えぴそーどII［ぜんあくのひがん］ PlayStation®2 the Best
+  name: ゼノサーガ エピソードII［善悪の彼岸］ PlayStation®2 the Best [ディスク1/2]
+  name-sort: ぜのさーが えぴそーどII［ぜんあくのひがん］ PlayStation®2 the Best [でぃすく1/2]
   name-en: "Xenosaga Episode II - Jenseits von Gut und Bose [PlayStation 2 The Best] [Disc 1 of 2]"
   region: "NTSC-J"
   gsHWFixes:
@@ -53920,7 +53990,9 @@ SLPS-73224:
     - "SLPS-25353"
     - "SLPS-73224"
 SLPS-73225:
-  name: "Xenosaga Episode II - Jenseits von Gut und Bose [PlayStation 2 The Best] [Disc 2 of 2]"
+  name: ゼノサーガ エピソードII［善悪の彼岸］ PlayStation®2 the Best [ディスク2/2]
+  name-sort: ぜのさーが えぴそーどII［ぜんあくのひがん］ PlayStation®2 the Best [でぃすく2/2]
+  name-en: "Xenosaga Episode II - Jenseits von Gut und Bose [PlayStation 2 The Best] [Disc 2 of 2]"
   region: "NTSC-J"
   gsHWFixes:
     autoFlush: 2 # Fixes shadows in cutscenes.
