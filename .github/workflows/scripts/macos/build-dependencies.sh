@@ -66,7 +66,7 @@ patch -u CMakeLists.txt <<EOF
 
 EOF
 
-cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$INSTALLDIR" -DSDL_X11=OFF
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-fsanitize=address -DCMAKE_INSTALL_PREFIX="$INSTALLDIR" -DSDL_X11=OFF
 make -C build "-j$NPROCS"
 make -C build install
 cd ..

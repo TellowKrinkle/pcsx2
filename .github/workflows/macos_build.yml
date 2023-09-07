@@ -114,6 +114,7 @@ jobs:
                 -DCMAKE_C_COMPILER_LAUNCHER=ccache \
                 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
                 -DCMAKE_DISABLE_PRECOMPILE_HEADERS=ON \
+                -DUSE_ASAN=ON \
                 -B build .
 
       - name: Build PCSX2
