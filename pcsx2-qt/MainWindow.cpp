@@ -2272,6 +2272,9 @@ SettingsDialog* MainWindow::getSettingsDialog()
 				g_main_window->doSettings("Interface");
 			});
 		});
+		connect(m_settings_dialog->getGameListSettingsWidget(), &GameListSettingsWidget::preferEnglishGameListChanged, this, []{
+			g_main_window->m_game_list_widget->refreshGridCovers();
+		});
 	}
 
 	return m_settings_dialog;
