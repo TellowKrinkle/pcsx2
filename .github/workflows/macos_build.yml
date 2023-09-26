@@ -45,7 +45,7 @@ jobs:
         run: git fetch --tags --no-recurse-submodules
 
       - name: Use Xcode 14.3.1
-        run: sudo xcode-select -s /Applications/Xcode_14.3.1.app
+        run: ls /Applications && sudo xcode-select -s /Applications/Xcode_14.3.1.app
 
       - name: Prepare Artifact Metadata
         id: artifact-metadata
