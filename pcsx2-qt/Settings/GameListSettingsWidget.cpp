@@ -41,9 +41,13 @@ GameListSettingsWidget::GameListSettingsWidget(SettingsDialog* dialog, QWidget* 
 
 	SettingWidgetBinder::BindWidgetToBoolSetting(sif, m_ui.preferEnglishGameList, "UI", "PreferEnglishGameList", false);
 	connect(m_ui.preferEnglishGameList, &QCheckBox::stateChanged, [this]{ emit preferEnglishGameListChanged(); });
+	SettingWidgetBinder::BindWidgetToBoolSetting(sif, m_ui.showCoverTitles, "UI", "GameListShowCoverTitles", true);
+	connect(m_ui.showCoverTitles, &QCheckBox::stateChanged, [this]{ emit showCoverTitlesChanged(); });
 
 	dialog->registerWidgetHelp(m_ui.preferEnglishGameList, tr("Prefer English Titles"), tr("Unchecked"),
 		tr("For games with both a title in the game's native language and one in English, prefer the English title."));
+	dialog->registerWidgetHelp(m_ui.showCoverTitles, tr("Show Titles in Cover View"), tr("Checked"),
+		tr("Shows game titles under cover images when in the game list's cover view."));
 
 	m_ui.searchDirectoryList->setSelectionMode(QAbstractItemView::SingleSelection);
 	m_ui.searchDirectoryList->setSelectionBehavior(QAbstractItemView::SelectRows);

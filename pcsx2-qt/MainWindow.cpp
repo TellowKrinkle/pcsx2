@@ -2275,6 +2275,9 @@ SettingsDialog* MainWindow::getSettingsDialog()
 		connect(m_settings_dialog->getGameListSettingsWidget(), &GameListSettingsWidget::preferEnglishGameListChanged, this, []{
 			g_main_window->m_game_list_widget->refreshGridCovers();
 		});
+		connect(m_settings_dialog->getGameListSettingsWidget(), &GameListSettingsWidget::showCoverTitlesChanged, this, []{
+			g_main_window->m_game_list_widget->setShowCoverTitles(Host::GetBaseBoolSettingValue("UI", "GameListShowCoverTitles"));
+		});
 	}
 
 	return m_settings_dialog;

@@ -34,6 +34,7 @@ public:
 
 Q_SIGNALS:
 	void preferEnglishGameListChanged();
+	void showCoverTitlesChanged();
 
 public Q_SLOTS:
 	void addSearchDirectory(QWidget* parent_widget);
