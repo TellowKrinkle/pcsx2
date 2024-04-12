@@ -569,7 +569,7 @@ struct PSMain
 
 	float4 sample_depth(float2 st)
 	{
-		float2 uv_f = float2(clamp_wrap_uv_depth(ushort2(st))) * float2(cb.scale_factor.x);
+		float2 uv_f = float2(clamp_wrap_uv_depth(ushort2(st))) * cb.scaled_scale_factor;
 
 		if (PS_REGION_RECT)
 			uv_f = clamp(uv_f + cb.st_range.xy, cb.st_range.xy, cb.st_range.zw);
@@ -871,8 +871,13 @@ struct PSMain
 		if (PS_DITHER == 2)
 			fpos = ushort2(in.p.xy);
 		else
-			fpos = ushort2(in.p.xy * float2(cb.scale_factor.y));
-		float value = cb.dither_matrix[fpos.y & 3][fpos.x & 3];
+			fpos = ushort2(in.p.xy * cb.rcp_scale_factor);
+
+		// cb.dither_matrix is a 4x4 matrix of 3-bit values with alignment of 4 bits
+		// Index with [fpos.y & 3][fpos.x & 3]
+		int dither = fpos.y & 2 ? cb.dither_matrix.y : cb.dither_matrix.x;
+		int index = ((fpos.y & 1) << 2) | (fpos.x & 3);
+		float value = (dither << (29 - index * 4)) >> 29;
 
 		// The idea here is we add on the dither amount adjusted by the alpha before it goes to the hw blend
 		// so after the alpha blend the resulting value should be the same as (Cs - Cd) * As + Cd + Dither.

@@ -121,9 +121,9 @@ struct GSMTLMainPSUniform
 	} channel_shuffle;
 	vector_float2 tc_offset;
 	vector_float2 st_scale;
-	matrix_float4x4 dither_matrix;
-
-	vector_float4 scale_factor;
+	vector_uint2 dither_matrix;
+	float scaled_scale_factor;
+	float rcp_scale_factor;
 };
 
 enum GSMTLAttributes

@@ -573,10 +573,8 @@ struct alignas(16) GSHWDrawConfig
 		GSVector4i ChannelShuffle;
 		GSVector2 TCOffsetHack;
 		GSVector2 STScale;
-
-		GSVector4 DitherMatrix[4];
-
-		GSVector4 ScaleFactor;
+		uint64_t DitherMatrix;
+		GSVector2 ScaleFactor;
 
 		__fi PSConstantBuffer()
 		{

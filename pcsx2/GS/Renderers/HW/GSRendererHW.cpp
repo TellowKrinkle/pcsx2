@@ -5194,7 +5194,7 @@ __ri void GSRendererHW::DrawPrims(GSTextureCache::Target* rt, GSTextureCache::Ta
 
 	const float scale_factor = rt ? rt->GetScale() : ds->GetScale();
 	m_conf.cb_vs.texture_offset = {};
-	m_conf.cb_ps.ScaleFactor = GSVector4(scale_factor * (1.0f / 16.0f), 1.0f / scale_factor, scale_factor, 0.0f);
+	m_conf.cb_ps.ScaleFactor = GSVector2(scale_factor * (1.0f / 16.0f), 1.0f / scale_factor);
 	m_conf.ps.scanmsk = env.SCANMSK.MSK;
 	m_conf.rt = rt ? rt->m_texture : nullptr;
 	m_conf.ds = ds ? ds->m_texture : nullptr;
@@ -5793,10 +5793,7 @@ __ri void GSRendererHW::DrawPrims(GSTextureCache::Target* rt, GSTextureCache::Ta
 		GL_DBG("DITHERING mode ENABLED (%d)", GSConfig.Dithering);
 
 		m_conf.ps.dither = GSConfig.Dithering;
-		m_conf.cb_ps.DitherMatrix[0] = GSVector4(DIMX.DM00, DIMX.DM01, DIMX.DM02, DIMX.DM03);
-		m_conf.cb_ps.DitherMatrix[1] = GSVector4(DIMX.DM10, DIMX.DM11, DIMX.DM12, DIMX.DM13);
-		m_conf.cb_ps.DitherMatrix[2] = GSVector4(DIMX.DM20, DIMX.DM21, DIMX.DM22, DIMX.DM23);
-		m_conf.cb_ps.DitherMatrix[3] = GSVector4(DIMX.DM30, DIMX.DM31, DIMX.DM32, DIMX.DM33);
+		m_conf.cb_ps.DitherMatrix = DIMX.U64 & 0x7777777777777777;
 	}
 
 	if (PRIM->FGE)

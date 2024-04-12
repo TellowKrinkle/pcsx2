@@ -166,7 +166,7 @@ cbuffer cb1
 	int4 ChannelShuffle;
 	float2 TC_OffsetHack;
 	float2 STScale;
-	float4x4 DitherMatrix;
+	uint2 DitherMatrix;
 	float ScaledScaleFactor;
 	float RcpScaleFactor;
 };
@@ -812,7 +812,11 @@ void ps_dither(inout float3 C, float As, float2 pos_xy)
 		else
 			fpos = int2(pos_xy * RcpScaleFactor);
 
-		float value = DitherMatrix[fpos.x & 3][fpos.y & 3];
+		// DitherMatrix is a 4x4 matrix of 3-bit values with alignment of 4 bits
+		// Index with [fpos.y & 3][fpos.x & 3]
+		int dither = fpos.y & 2 ? DitherMatrix.y : DitherMatrix.x;
+		int index = ((fpos.y & 1) << 2) | (fpos.x & 3);
+		float value = (dither << (29 - index * 4)) >> 29;
 		
 		// The idea here is we add on the dither amount adjusted by the alpha before it goes to the hw blend
 		// so after the alpha blend the resulting value should be the same as (Cs - Cd) * As + Cd + Dither.

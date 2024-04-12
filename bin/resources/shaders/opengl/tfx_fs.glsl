@@ -51,7 +51,7 @@ layout(std140, binding = 0) uniform cb21
 	vec2 TC_OffsetHack;
 	vec2 STScale;
 
-	mat4 DitherMatrix;
+	ivec2 DitherMatrix;
 
 	float ScaledScaleFactor;
 	float RcpScaleFactor;
@@ -727,7 +727,11 @@ void ps_dither(inout vec3 C, float As)
 	#else
 		ivec2 fpos = ivec2(gl_FragCoord.xy * RcpScaleFactor);
 	#endif
-		float value = DitherMatrix[fpos.y&3][fpos.x&3];
+		// DitherMatrix is a 4x4 matrix of 3-bit values with alignment of 4 bits
+		// Index with [fpos.y & 3][fpos.x & 3]
+		int dither = (fpos.y & 2) != 0 ? DitherMatrix.y : DitherMatrix.x;
+		int index = ((fpos.y & 1) << 2) | (fpos.x & 3);
+		float value = (dither << (29 - index * 4)) >> 29;
 
 	// The idea here is we add on the dither amount adjusted by the alpha before it goes to the hw blend
 	// so after the alpha blend the resulting value should be the same as (Cs - Cd) * As + Cd + Dither.

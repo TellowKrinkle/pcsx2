@@ -2503,7 +2503,7 @@ void GSDeviceOGL::RenderHW(GSHWDrawConfig& config)
 	}
 	if (config.topology == GSHWDrawConfig::Topology::Line)
 	{
-		const float line_width = config.line_expand ? config.cb_ps.ScaleFactor.z : 1.0f;
+		const float line_width = config.line_expand ? config.cb_ps.ScaleFactor.x * 16 : 1.0f;
 		if (GLState::line_width != line_width)
 		{
 			GLState::line_width = line_width;

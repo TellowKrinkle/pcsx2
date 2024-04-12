@@ -5660,7 +5660,7 @@ void GSDeviceVK::RenderHW(GSHWDrawConfig& config)
 		SetBlendConstants(config.blend.constant);
 
 	if (config.topology == GSHWDrawConfig::Topology::Line)
-		SetLineWidth(config.line_expand ? config.cb_ps.ScaleFactor.z : 1.0f);
+		SetLineWidth(config.line_expand ? config.cb_ps.ScaleFactor.x * 16 : 1.0f);
 
 	// Primitive ID tracking DATE setup.
 	GSTextureVK* date_image = nullptr;
