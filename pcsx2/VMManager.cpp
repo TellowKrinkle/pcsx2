@@ -2511,10 +2511,11 @@ void VMManager::LogCPUCapabilities()
 		GetOSVersionString(),
 		GetPhysicalMemory() / _1mb);
 
-	Console.WriteLnFmt("  Processor        = {}", cpuinfo_get_package(0)->name);
-	Console.WriteLnFmt("  Core Count       = {} cores", cpuinfo_get_cores_count());
-	Console.WriteLnFmt("  Thread Count     = {} threads", cpuinfo_get_processors_count());
-	Console.WriteLnFmt("  Cluster Count    = {} clusters", cpuinfo_get_clusters_count());
+	const CPUInfo& cpuinfo = GetCPUInfo();
+	Console.WriteLnFmt("  Processor        = {}", cpuinfo.name);
+	Console.WriteLnFmt("  Core Count       = {} cores", cpuinfo.num_big_cores + cpuinfo.num_small_cores);
+	Console.WriteLnFmt("  Thread Count     = {} threads", cpuinfo.num_threads);
+	Console.WriteLnFmt("  Cluster Count    = {} clusters", cpuinfo.num_clusters);
 #ifdef _WIN32
 	LogUserPowerPlan();
 #endif
