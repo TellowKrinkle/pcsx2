@@ -181,7 +181,7 @@ std::vector<DarwinMisc::CPUClass> DarwinMisc::GetCPUClasses()
 	}
 	else if (std::optional<u32> physcpu = sysctlbyname_T<u32>("hw.physicalcpu"))
 	{
-		out.push_back({"Default", *physcpu, sysctlbyname_T<u32>("hw.logicalcpu").value_or(0)});
+		out.push_back({"Default", *physcpu, sysctlbyname_T<u32>("hw.logicalcpu").value_or(*physcpu)});
 	}
 	else
 	{
@@ -189,6 +189,33 @@ std::vector<DarwinMisc::CPUClass> DarwinMisc::GetCPUClasses()
 	}
 
 	return out;
+}
+
+static CPUInfo CalcCPUInfo()
+{
+	CPUInfo out;
+	char name[256];
+	size_t name_size = sizeof(name);
+	if (0 != sysctlbyname("machdep.cpu.brand_string", name, &name_size, nullptr, 0))
+		strcpy(name, "Unknown");
+	out.name = name;
+	std::vector<DarwinMisc::CPUClass> classes = DarwinMisc::GetCPUClasses();
+	out.num_clusters = classes.size();
+	out.num_big_cores = classes.empty() ? 0 : classes[0].num_physical;
+	out.num_threads   = classes.empty() ? 0 : classes[0].num_logical;
+	out.num_small_cores = 0;
+	for (std::size_t i = 1; i < classes.size(); i++)
+	{
+		out.num_small_cores += classes[i].num_physical;
+		out.num_threads += classes[i].num_logical;
+	}
+	return out;
+}
+
+const CPUInfo& GetCPUInfo()
+{
+	static const CPUInfo info = CalcCPUInfo();
+	return info;
 }
 
 size_t HostSys::GetRuntimePageSize()
