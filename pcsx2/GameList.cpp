@@ -613,16 +613,19 @@ void GameList::ScanDirectory(const char* path, bool recursive, bool only_cache, 
 
 		if (progress->IsCancelled() || !GameList::IsScannableFilename(ffd.FileName) || IsPathExcluded(excluded_paths, ffd.FileName))
 		{
+			Console.WriteLnFmt("GameList Scan skipping {}", ffd.FileName);
 			continue;
 		}
 
 		std::unique_lock lock(s_mutex);
 		if (GetEntryForPath(ffd.FileName.c_str()) || AddFileFromCache(ffd.FileName, ffd.ModificationTime, played_time_map) || only_cache)
 		{
+			Console.WriteLnFmt("GameList Scan using cached {}", ffd.FileName);
 			continue;
 		}
 
 		const std::string_view filename = Path::GetFileName(ffd.FileName);
+		Console.WriteLnFmt("GameList Scan scanning {}", ffd.FileName);
 		progress->SetFormattedStatusText(fmt::format(TRANSLATE_FS("GameList","Scanning {}..."), filename.data()).c_str());
 		ScanFile(std::move(ffd.FileName), ffd.ModificationTime, lock, played_time_map, custom_attributes_ini);
 		progress->SetProgressValue(files_scanned);
