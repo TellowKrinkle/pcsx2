@@ -585,6 +585,8 @@ static bool IsPathExcluded(const std::vector<std::string>& excluded_paths, const
 	return std::find_if(excluded_paths.begin(), excluded_paths.end(), [&path](const std::string& entry) { return !entry.empty() && path.starts_with(entry); }) != excluded_paths.end();
 }
 
+#include <dirent.h>
+
 void GameList::ScanDirectory(const char* path, bool recursive, bool only_cache, const std::vector<std::string>& excluded_paths,
 	const PlayedTimeMap& played_time_map, const INISettingsInterface& custom_attributes_ini, ProgressCallback* progress)
 {
@@ -598,6 +600,14 @@ void GameList::ScanDirectory(const char* path, bool recursive, bool only_cache, 
 								.c_str());
 
 	FileSystem::FindResultsArray files;
+	DIR* dir = opendir(path);
+	if (dir) {
+		closedir(dir);
+	} else {
+		char buf[64];
+		strerror_r(errno, buf, sizeof(buf));
+		Console.WriteLnFmt("Failed to opendir {}: {}", path, buf);
+	}
 	FileSystem::FindFiles(path, "*",
 		recursive ? (FILESYSTEM_FIND_FILES | FILESYSTEM_FIND_HIDDEN_FILES | FILESYSTEM_FIND_RECURSIVE) :
 					(FILESYSTEM_FIND_FILES | FILESYSTEM_FIND_HIDDEN_FILES),
