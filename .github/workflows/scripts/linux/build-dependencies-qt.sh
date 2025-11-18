@@ -24,6 +24,7 @@ HARFBUZZ=12.0.0
 LIBBACKTRACE=ad106d5fdd5d960bd33fae1c48a351af567fd075
 LIBJPEGTURBO=3.1.2
 LIBPNG=1.6.50
+LIBVA=2.22.0
 LIBWEBP=1.6.0
 NVENC=11.1.5.3
 SDL=SDL3-3.2.26
@@ -53,6 +54,7 @@ c4a398539c3e0fdc9a82dfe7824d0438cae78c1e2124e7c6ada3dfa600cdb6c8  harfbuzz-$HARF
 fd6f417fe9e3a071cf1424a5152d926a34c4a3c5070745470be6cf12a404ed79  $LIBBACKTRACE.zip
 8f0012234b464ce50890c490f18194f913a7b1f4e6a03d6644179fa0f867d0cf  libjpeg-turbo-$LIBJPEGTURBO.tar.gz
 4df396518620a7aa3651443e87d1b2862e4e88cad135a8b93423e01706232307  libpng-$LIBPNG.tar.xz
+e3da2250654c8d52b3f59f8cb3f3d8e7fb1a2ee64378dbc400fbc5663de7edb8  libva-$LIBVA.tar.bz2
 e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564  libwebp-$LIBWEBP.tar.gz
 dad488474a51a0b01d547cd2834893d6299328d2e30f479a3564088b5476bae2  $SDL.tar.gz
 687ddc0c7cb128a3ea58e159b5129252537c27ede0c32a93f11f03127f0c0165  libpng-$LIBPNG-apng.patch.gz
@@ -89,6 +91,7 @@ curl -L \
 	-O "https://github.com/facebook/zstd/releases/download/v$ZSTD/zstd-$ZSTD.tar.gz" \
 	-O "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/vulkan-sdk-$VULKAN.tar.gz" \
 	-O "https://github.com/FFmpeg/nv-codec-headers/releases/download/n$NVENC/nv-codec-headers-$NVENC.tar.gz" \
+	-O "https://github.com/intel/libva/releases/download/$LIBVA/libva-$LIBVA.tar.bz2" \
 	-O "https://ffmpeg.org/releases/ffmpeg-$FFMPEG.tar.xz" \
 	-O "https://download.qt.io/official_releases/qt/${QT%.*}/$QT/submodules/qtbase-everywhere-src-$QT.tar.xz" \
 	-O "https://download.qt.io/official_releases/qt/${QT%.*}/$QT/submodules/qtimageformats-everywhere-src-$QT.tar.xz" \
@@ -121,13 +124,22 @@ if [ "$BUILD_FFMPEG" -ne 0 ]; then
 	tar xf "nv-codec-headers-$NVENC.tar.gz"
 	make -C "nv-codec-headers-$NVENC" PREFIX="$INSTALLDIR" install
 
+	echo "Installing libva..."
+	rm -fr "libva-$LIBVA"
+	tar xf "libva-$LIBVA.tar.bz2"
+	cd "libva-$LIBVA"
+	./configure --prefix="$INSTALLDIR" --enable-x11 --enable-glx --enable-wayland
+	make "-j$NPROCS"
+	make install
+	cd ..
+
 	echo "Installing FFmpeg..."
 	rm -fr "ffmpeg-$FFMPEG"
 	tar xf "ffmpeg-$FFMPEG.tar.xz"
 	cd "ffmpeg-$FFMPEG"
 	CFLAGS="-Os $CFLAGS" CXXFLAGS="-Os $CXXFLAGS" \
 		./configure --prefix="$INSTALLDIR" \
-		--disable-all --disable-autodetect --disable-static --enable-shared \
+		--disable-all --disable-autodetect --disable-static --enable-shared --enable-rpath \
 		--enable-avcodec --enable-avformat --enable-avutil --enable-swresample --enable-swscale \
 		--enable-gpl --enable-libx264 --enable-libopus --enable-vulkan --enable-ffnvcodec --enable-nvenc --enable-vaapi --enable-libvpl \
 		--enable-encoder=ffv1,qtrle,libx264*,aac,flac,libopus,pcm_s16be,pcm_s16le,*_vulkan,*_qsv,*_nvenc,*_vaapi \
