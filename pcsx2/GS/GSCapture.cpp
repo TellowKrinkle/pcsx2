@@ -107,6 +107,7 @@ extern "C" {
 	X(av_dict_free) \
 	X(av_opt_set_int) \
 	X(av_opt_set_sample_fmt) \
+	X(av_log_set_level) \
 	X(av_compare_ts) \
 	X(av_get_bytes_per_sample) \
 	X(av_sample_fmt_is_planar) \
@@ -389,6 +390,7 @@ bool GSCapture::BeginCapture(float fps, GSVector2i recommendedResolution, float 
 	s_size = GSVector2i(Common::AlignUpPow2(recommendedResolution.x, 8), Common::AlignUpPow2(recommendedResolution.y, 8));
 	s_filename = std::move(filename);
 
+	wrap_av_log_set_level(AV_LOG_VERBOSE);
 	ff_const59 AVOutputFormat* output_format = wrap_av_guess_format(nullptr, s_filename.c_str(), nullptr);
 	if (!output_format)
 	{
