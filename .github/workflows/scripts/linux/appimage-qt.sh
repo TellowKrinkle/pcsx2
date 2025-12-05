@@ -45,6 +45,9 @@ declare -a MANUAL_LIBS=(
 	"libshaderc_shared.so.1"
 	"libharfbuzz.so.0"
 	"libfreetype.so.6"
+	"libva-glx.so.2"
+	"libva-wayland.so.2"
+	"libva-x11.so.2"
 )
 
 set -e
