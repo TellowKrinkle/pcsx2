@@ -513,8 +513,8 @@ bool GSDevice11::Create(GSVSyncMode vsync_mode, bool allow_present_throttle)
 	if (m_feature_level < D3D_FEATURE_LEVEL_11_0)
 	{
 		Host::AddIconOSDMessage("d3d11_feature_level_warning", ICON_FA_TRIANGLE_EXCLAMATION,
-			TRANSLATE_SV("GS", "The Direct3D11 renderer is running at feature level 10.0. This is an UNSUPPORTED configuration.\n"
-							   "Do not request support, please upgrade your hardware/drivers first."),
+			TRANSLATE_SV("GS", "The Direct3D 11 renderer is running at feature level 10.0. This is an UNSUPPORTED configuration.\n"
+							   "Do not request support, please upgrade your GPU first."),
 			Host::OSD_WARNING_DURATION);
 	}
 

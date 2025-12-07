@@ -1871,7 +1871,7 @@ void MainWindow::onInputRecPlayActionTriggered()
 
 	QFileDialog dialog(this);
 	dialog.setFileMode(QFileDialog::ExistingFile);
-	dialog.setWindowTitle("Select a File");
+	dialog.setWindowTitle(tr("Select a File"));
 	dialog.setNameFilter(tr("Input Recording Files (*.p2m2)"));
 	QStringList fileNames;
 	if (dialog.exec())
@@ -3053,7 +3053,7 @@ void MainWindow::populateLoadStateMenu(QMenu* menu, const QString& filename, con
 			}
 
 			const u32 deleted = VMManager::DeleteSaveStates(serial.toUtf8().constData(), crc, true);
-			QMessageBox::information(this, tr("Delete Save States"), tr("%1 save states deleted.").arg(deleted));
+			QMessageBox::information(this, tr("Delete Save States"), tr("%n save states deleted.", "", deleted));
 		});
 	}
 }

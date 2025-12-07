@@ -4688,7 +4688,7 @@ void FullscreenUI::DrawGraphicsSettingsPage(SettingsInterface* bsi, bool show_ad
 		FSUI_NSTR("Disabled (Ignore Transfers)"),
 	};
 	static constexpr const char* s_screenshot_sizes[] = {
-		FSUI_NSTR("Screen Resolution"),
+		FSUI_NSTR("Display Resolution"),
 		FSUI_NSTR("Internal Resolution"),
 		FSUI_NSTR("Internal Resolution (Aspect Uncorrected)"),
 	};
