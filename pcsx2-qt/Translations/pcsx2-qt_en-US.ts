@@ -4,8 +4,8 @@
 <context>
     <name>AchievementSettingsWidget</name>
     <message numerus="yes">
-        <location filename="../Settings/AchievementSettingsWidget.cpp" line="134"/>
-        <location filename="../Settings/AchievementSettingsWidget.cpp" line="141"/>
+        <location filename="../Settings/AchievementSettingsWidget.cpp" line="196"/>
+        <location filename="../Settings/AchievementSettingsWidget.cpp" line="203"/>
         <source>%n seconds</source>
         <translation>
             <numerusform>%n second</numerusform>
@@ -16,7 +16,7 @@
 <context>
     <name>Achievements</name>
     <message numerus="yes">
-        <location filename="../../pcsx2/Achievements.cpp" line="1023"/>
+        <location filename="../../pcsx2/Achievements.cpp" line="1098"/>
         <source>You have unlocked {} of %n achievements</source>
         <comment>Achievement popup</comment>
         <translation>
@@ -25,7 +25,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../../pcsx2/Achievements.cpp" line="1026"/>
+        <location filename="../../pcsx2/Achievements.cpp" line="1101"/>
         <source>and earned {} of %n points</source>
         <comment>Achievement popup</comment>
         <translation>
@@ -34,7 +34,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../../pcsx2/Achievements.cpp" line="1111"/>
+        <location filename="../../pcsx2/Achievements.cpp" line="1185"/>
         <source>%n achievements</source>
         <comment>Mastery popup</comment>
         <translation>
@@ -43,7 +43,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../../pcsx2/Achievements.cpp" line="1113"/>
+        <location filename="../../pcsx2/Achievements.cpp" line="1187"/>
         <source>%n points</source>
         <comment>Mastery popup</comment>
         <translation>
@@ -55,8 +55,8 @@
 <context>
     <name>GameList</name>
     <message numerus="yes">
-        <location filename="../GameList/GameListModel.cpp" line="268"/>
-        <location filename="../../pcsx2/GameList.cpp" line="1142"/>
+        <location filename="../GameList/GameListModel.cpp" line="223"/>
+        <location filename="../../pcsx2/GameList.cpp" line="1210"/>
         <source>%n hours</source>
         <translation>
             <numerusform>%n hour</numerusform>
@@ -64,19 +64,28 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../GameList/GameListModel.cpp" line="270"/>
-        <location filename="../../pcsx2/GameList.cpp" line="1144"/>
+        <location filename="../GameList/GameListModel.cpp" line="227"/>
+        <location filename="../../pcsx2/GameList.cpp" line="1212"/>
         <source>%n minutes</source>
         <translation>
             <numerusform>%n minute</numerusform>
             <numerusform>%n minutes</numerusform>
         </translation>
     </message>
+    <message numerus="yes">
+        <location filename="../GameList/GameListModel.cpp" line="229"/>
+        <location filename="../../pcsx2/GameList.cpp" line="1214"/>
+        <source>%n seconds</source>
+        <translation type="unfinished">
+            <numerusform>%n second</numerusform>
+            <numerusform>%n seconds</numerusform>
+        </translation>
+    </message>
 </context>
 <context>
     <name>InputBindingWidget</name>
     <message numerus="yes">
-        <location filename="../Settings/InputBindingWidget.cpp" line="73"/>
+        <location filename="../Settings/InputBindingWidget.cpp" line="77"/>
         <source>%n bindings</source>
         <translation>
             <numerusform>%n binding</numerusform>
@@ -85,9 +94,20 @@
     </message>
 </context>
 <context>
+    <name>MainWindow</name>
+    <message numerus="yes">
+        <location filename="../MainWindow.cpp" line="3056"/>
+        <source>%n save states deleted.</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
+    </message>
+</context>
+<context>
     <name>Patch</name>
     <message numerus="yes">
-        <location filename="../../pcsx2/Patch.cpp" line="698"/>
+        <location filename="../../pcsx2/Patch.cpp" line="768"/>
         <source>%n GameDB patches are active.</source>
         <comment>OSD Message</comment>
         <translation>
@@ -96,7 +116,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../../pcsx2/Patch.cpp" line="705"/>
+        <location filename="../../pcsx2/Patch.cpp" line="775"/>
         <source>%n game patches are active.</source>
         <comment>OSD Message</comment>
         <translation>
@@ -105,7 +125,7 @@
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../../pcsx2/Patch.cpp" line="712"/>
+        <location filename="../../pcsx2/Patch.cpp" line="781"/>
         <source>%n cheat patches are active.</source>
         <comment>OSD Message</comment>
         <translation>
