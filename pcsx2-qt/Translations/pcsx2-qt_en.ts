@@ -590,18 +590,18 @@ Login token generated on %2.</source>
         <location filename="../../pcsx2/Achievements.cpp" line="1098"/>
         <source>You have unlocked {} of %n achievements</source>
         <comment>Achievement popup</comment>
-        <translation>
-            <numerusform>You have unlocked {} of %n achievements</numerusform>
-            <numerusform>You have unlocked {} of %n achievements</numerusform>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
         <location filename="../../pcsx2/Achievements.cpp" line="1101"/>
         <source>and earned {} of %n points</source>
         <comment>Achievement popup</comment>
-        <translation>
-            <numerusform>and earned {} of %n points</numerusform>
-            <numerusform>and earned {} of %n points</numerusform>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
         </translation>
     </message>
     <message>
@@ -623,18 +623,18 @@ Login token generated on %2.</source>
         <location filename="../../pcsx2/Achievements.cpp" line="1185"/>
         <source>%n achievements</source>
         <comment>Mastery popup</comment>
-        <translation>
-            <numerusform>%n achievement</numerusform>
-            <numerusform>%n achievements</numerusform>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
         </translation>
     </message>
     <message numerus="yes">
         <location filename="../../pcsx2/Achievements.cpp" line="1187"/>
         <source>%n points</source>
         <comment>Mastery popup</comment>
-        <translation>
-            <numerusform>%n point</numerusform>
-            <numerusform>%n points</numerusform>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
         </translation>
     </message>
     <message>
