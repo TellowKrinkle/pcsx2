@@ -76,7 +76,7 @@
         <location filename="../GameList/GameListModel.cpp" line="229"/>
         <location filename="../../pcsx2/GameList.cpp" line="1214"/>
         <source>%n seconds</source>
-        <translation type="unfinished">
+        <translation>
             <numerusform>%n second</numerusform>
             <numerusform>%n seconds</numerusform>
         </translation>
@@ -98,9 +98,9 @@
     <message numerus="yes">
         <location filename="../MainWindow.cpp" line="3056"/>
         <source>%n save states deleted.</source>
-        <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+        <translation>
+            <numerusform>%n save state deleted.</numerusform>
+            <numerusform>%n save states deleted.</numerusform>
         </translation>
     </message>
 </context>
