@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     name: "Create Tag and Release"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
 
       # Docs - https://github.com/mathieudutour/github-tag-action
       - name: Bump Version and Push Tag
