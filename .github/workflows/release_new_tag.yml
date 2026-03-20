@@ -62,7 +62,7 @@ jobs:
           mv ./release-notes.md ${GITHUB_WORKSPACE}/release-notes.md
 
       - name: Create a GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: steps.tag_version.outputs.new_tag
         with:
           body_path: ./release-notes.md
