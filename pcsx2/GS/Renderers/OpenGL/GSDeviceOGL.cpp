@@ -710,6 +710,9 @@ bool GSDeviceOGL::Create(GSVSyncMode vsync_mode, bool allow_present_throttle)
 	if (GLAD_GL_VERSION_4_5 || GLAD_GL_ARB_clip_control)
 		glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
 
+	// Please treat our SRGB textures as SRGB when rendering
+	glEnable(GL_FRAMEBUFFER_SRGB);
+
 	// ****************************************************************
 	// HW renderer shader
 	// ****************************************************************

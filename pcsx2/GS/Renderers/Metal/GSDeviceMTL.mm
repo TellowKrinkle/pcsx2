@@ -587,6 +587,7 @@ static constexpr MTLPixelFormat ConvertPixelFormat(GSTexture::Format format)
 {
 	switch (format)
 	{
+		case GSTexture::Format::Invalid:      return MTLPixelFormatInvalid;
 		case GSTexture::Format::DepthColor:   return MTLPixelFormatR32Float;
 		case GSTexture::Format::PrimID:       return MTLPixelFormatR32Float;
 		case GSTexture::Format::UInt32:       return MTLPixelFormatR32Uint;
@@ -597,11 +598,41 @@ static constexpr MTLPixelFormat ConvertPixelFormat(GSTexture::Format format)
 		case GSTexture::Format::ColorHDR:     return MTLPixelFormatRGBA16Float;
 		case GSTexture::Format::ColorClip:    return MTLPixelFormatRGBA16Unorm;
 		case GSTexture::Format::DepthStencil: return MTLPixelFormatDepth32Float_Stencil8;
-		case GSTexture::Format::Invalid:      return MTLPixelFormatInvalid;
 		case GSTexture::Format::BC1:          return MTLPixelFormatBC1_RGBA;
 		case GSTexture::Format::BC2:          return MTLPixelFormatBC2_RGBA;
 		case GSTexture::Format::BC3:          return MTLPixelFormatBC3_RGBA;
 		case GSTexture::Format::BC7:          return MTLPixelFormatBC7_RGBAUnorm;
+
+		case GSTexture::Format::R8UNorm:      return MTLPixelFormatR8Unorm;
+		case GSTexture::Format::R8UInt:       return MTLPixelFormatR8Uint;
+		case GSTexture::Format::R8SInt:       return MTLPixelFormatR8Sint;
+		case GSTexture::Format::RG8UNorm:     return MTLPixelFormatRG8Unorm;
+		case GSTexture::Format::RG8UInt:      return MTLPixelFormatRG8Uint;
+		case GSTexture::Format::RG8SInt:      return MTLPixelFormatRG8Sint;
+		case GSTexture::Format::RGBA8UNorm:   return MTLPixelFormatRGBA8Unorm;
+		case GSTexture::Format::RGBA8UInt:    return MTLPixelFormatRGBA8Uint;
+		case GSTexture::Format::RGBA8SInt:    return MTLPixelFormatRGBA8Sint;
+		case GSTexture::Format::RGBA8SRGB:    return MTLPixelFormatRGBA8Unorm_sRGB;
+		case GSTexture::Format::RGB10A2UNorm: return MTLPixelFormatRGB10A2Unorm;
+		case GSTexture::Format::RGB10A2UInt:  return MTLPixelFormatRGB10A2Uint;
+		case GSTexture::Format::R16UInt:      return MTLPixelFormatR16Uint;
+		case GSTexture::Format::R16SInt:      return MTLPixelFormatR16Sint;
+		case GSTexture::Format::R16Float:     return MTLPixelFormatR16Float;
+		case GSTexture::Format::RG16UInt:     return MTLPixelFormatRG16Uint;
+		case GSTexture::Format::RG16SInt:     return MTLPixelFormatRG16Sint;
+		case GSTexture::Format::RG16Float:    return MTLPixelFormatRG16Float;
+		case GSTexture::Format::RGBA16UInt:   return MTLPixelFormatRGBA16Uint;
+		case GSTexture::Format::RGBA16SInt:   return MTLPixelFormatRGBA16Sint;
+		case GSTexture::Format::RGBA16Float:  return MTLPixelFormatRGBA16Float;
+		case GSTexture::Format::R32UInt:      return MTLPixelFormatR32Uint;
+		case GSTexture::Format::R32SInt:      return MTLPixelFormatR32Sint;
+		case GSTexture::Format::R32Float:     return MTLPixelFormatR32Float;
+		case GSTexture::Format::RG32UInt:     return MTLPixelFormatRG32Uint;
+		case GSTexture::Format::RG32SInt:     return MTLPixelFormatRG32Sint;
+		case GSTexture::Format::RG32Float:    return MTLPixelFormatRG32Float;
+		case GSTexture::Format::RGBA32UInt:   return MTLPixelFormatRGBA32Uint;
+		case GSTexture::Format::RGBA32SInt:   return MTLPixelFormatRGBA32Sint;
+		case GSTexture::Format::RGBA32Float:  return MTLPixelFormatRGBA32Float;
 	}
 }
 
