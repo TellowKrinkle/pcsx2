@@ -21,6 +21,66 @@ static constexpr u32 TEXTURE_UPLOAD_ALIGNMENT = 64;
 // We need 32 here for AVX2, so 64 is also fine.
 static constexpr u32 TEXTURE_UPLOAD_PITCH_ALIGNMENT = 64;
 
+struct OGLFormatInfo
+{
+	GLenum gl_format;
+	GLenum int_format;
+	GLenum cpu_type;
+	u32 shift;
+};
+
+static constexpr OGLFormatInfo s_format_mapping[] = {
+	{}, // Invalid
+	{GL_RGBA8,    GL_RGBA, GL_UNSIGNED_BYTE,               2}, // Color
+	{GL_RGB10_A2, GL_RGBA, GL_UNSIGNED_INT_2_10_10_10_REV, 2}, // ColorHQ
+	{GL_RGBA16F,  GL_RGBA, GL_HALF_FLOAT,                  3}, // ColorHDR
+	{GL_RGBA16,   GL_RGBA, GL_UNSIGNED_SHORT,              3}, // ColorClip
+	{}, // DepthStencil, has special handling
+	{GL_R32F,  GL_RED,         GL_FLOAT,          2}, // DepthColor
+	{GL_R8,    GL_RED,         GL_UNSIGNED_BYTE,  0}, // UNorm8
+	{GL_R16UI, GL_RED_INTEGER, GL_UNSIGNED_SHORT, 1}, // UInt16
+	{GL_R32UI, GL_RED_INTEGER, GL_UNSIGNED_INT,   2}, // UInt32
+	{GL_R32F,  GL_RED,         GL_INT,            2}, // PrimID
+	{GL_COMPRESSED_RGBA_S3TC_DXT1_EXT,  GL_COMPRESSED_RGBA_S3TC_DXT1_EXT,  GL_UNSIGNED_BYTE, 1}, // BC1
+	{GL_COMPRESSED_RGBA_S3TC_DXT3_EXT,  GL_COMPRESSED_RGBA_S3TC_DXT3_EXT,  GL_UNSIGNED_BYTE, 1}, // BC2
+	{GL_COMPRESSED_RGBA_S3TC_DXT5_EXT,  GL_COMPRESSED_RGBA_S3TC_DXT5_EXT,  GL_UNSIGNED_BYTE, 1}, // BC3
+	{GL_COMPRESSED_RGBA_BPTC_UNORM_ARB, GL_COMPRESSED_RGBA_BPTC_UNORM_ARB, GL_UNSIGNED_BYTE, 1}, // BC7
+
+	// rashader formats
+	{GL_R8,           GL_RED,          GL_UNSIGNED_BYTE,               0}, // R8UNorm
+	{GL_R8UI,         GL_RED_INTEGER,  GL_UNSIGNED_BYTE,               0}, // R8UInt
+	{GL_R8I,          GL_RED_INTEGER,  GL_BYTE,                        0}, // R8SInt
+	{GL_RG8,          GL_RG,           GL_UNSIGNED_BYTE,               1}, // RG8UNorm
+	{GL_RG8UI,        GL_RG_INTEGER,   GL_UNSIGNED_BYTE,               1}, // RG8UInt
+	{GL_RG8I,         GL_RG_INTEGER,   GL_BYTE,                        1}, // RG8SInt
+	{GL_RGBA8,        GL_RGBA,         GL_UNSIGNED_BYTE,               2}, // RGBA8UNorm
+	{GL_RGBA8UI,      GL_RGBA_INTEGER, GL_UNSIGNED_BYTE,               2}, // RGBA8UInt
+	{GL_RGBA8I,       GL_RGBA_INTEGER, GL_BYTE,                        2}, // RGBA8SInt
+	{GL_SRGB8_ALPHA8, GL_RGBA,         GL_UNSIGNED_BYTE,               2}, // RGBA8SRGB
+	{GL_RGB10_A2,     GL_RGBA,         GL_UNSIGNED_INT_2_10_10_10_REV, 2}, // RGB10A2UNorm
+	{GL_RGB10_A2UI,   GL_RGBA_INTEGER, GL_UNSIGNED_INT_2_10_10_10_REV, 2}, // RGB10A2UInt
+	{GL_R16UI,        GL_RED_INTEGER,  GL_UNSIGNED_SHORT,              1}, // R16UInt
+	{GL_R16I,         GL_RED_INTEGER,  GL_SHORT,                       1}, // R16SInt
+	{GL_R16F,         GL_RED,          GL_HALF_FLOAT,                  1}, // R16Float
+	{GL_RG16UI,       GL_RG_INTEGER,   GL_UNSIGNED_SHORT,              2}, // RG16UInt
+	{GL_RG16I,        GL_RG_INTEGER,   GL_SHORT,                       2}, // RG16SInt
+	{GL_RG16F,        GL_RG,           GL_HALF_FLOAT,                  2}, // RG16Float
+	{GL_RGBA16UI,     GL_RGBA_INTEGER, GL_UNSIGNED_SHORT,              3}, // RGBA16UInt
+	{GL_RGBA16I,      GL_RGBA_INTEGER, GL_SHORT,                       3}, // RGBA16SInt
+	{GL_RGBA16F,      GL_RGBA,         GL_HALF_FLOAT,                  3}, // RGBA16Float
+	{GL_R32UI,        GL_RED_INTEGER,  GL_UNSIGNED_INT,                2}, // R32UInt
+	{GL_R32I,         GL_RED_INTEGER,  GL_INT,                         2}, // R32SInt
+	{GL_R32F,         GL_RED,          GL_FLOAT,                       2}, // R32Float
+	{GL_RG32UI,       GL_RG_INTEGER,   GL_UNSIGNED_INT,                3}, // RG32UInt
+	{GL_RG32I,        GL_RG_INTEGER,   GL_INT,                         3}, // RG32SInt
+	{GL_RG32F,        GL_RG,           GL_FLOAT,                       3}, // RG32Float
+	{GL_RGBA32UI,     GL_RGBA_INTEGER, GL_UNSIGNED_INT,                4}, // RGBA32UInt
+	{GL_RGBA32I,      GL_RGBA_INTEGER, GL_INT,                         4}, // RGBA32SInt
+	{GL_RGBA32F,      GL_RGBA,         GL_FLOAT,                       4}, // RGBA32Float
+};
+
+static_assert(std::size(s_format_mapping) == static_cast<u32>(GSTexture::Format::Last) + 1);
+
 GSTextureOGL::GSTextureOGL(Usage usage, int width, int height, int levels, Format format)
 {
 	// OpenGL didn't like dimensions of size 0
@@ -31,130 +91,31 @@ GSTextureOGL::GSTextureOGL(Usage usage, int width, int height, int levels, Forma
 	m_texture_id = 0;
 	m_mipmap_levels = 1;
 
-	// Bunch of constant parameter
-	switch (m_format)
+	if (m_format == Format::DepthStencil)
 	{
-		// 1 channel integer
-		case Format::PrimID:
-			m_gl_format = GL_R32F;
-			m_int_format = GL_RED;
-			m_int_type = GL_INT;
-			m_int_shift = 2;
-			break;
-		case Format::UInt32:
-			m_gl_format = GL_R32UI;
-			m_int_format = GL_RED_INTEGER;
-			m_int_type = GL_UNSIGNED_INT;
-			m_int_shift = 2;
-			break;
-		case Format::UInt16:
-			m_gl_format = GL_R16UI;
-			m_int_format = GL_RED_INTEGER;
-			m_int_type = GL_UNSIGNED_SHORT;
-			m_int_shift = 1;
-			break;
-
-		// 1 channel normalized
-		case Format::UNorm8:
-			m_gl_format = GL_R8;
-			m_int_format = GL_RED;
-			m_int_type = GL_UNSIGNED_BYTE;
-			m_int_shift = 0;
-			break;
-		
-		// 1 channel float
-		case Format::DepthColor:
-			m_gl_format = GL_R32F;
-			m_int_format = GL_RED;
+		if (!g_gs_device->Features().framebuffer_fetch)
+		{
+			m_gl_format = GL_DEPTH32F_STENCIL8;
+			m_int_format = GL_DEPTH_STENCIL;
+			m_int_type = GL_FLOAT_32_UNSIGNED_INT_24_8_REV;
+			m_int_shift = 3; // 4 bytes for depth + 4 bytes for stencil by texels
+		}
+		else
+		{
+			m_gl_format = GL_DEPTH_COMPONENT32F;
+			m_int_format = GL_DEPTH_COMPONENT;
 			m_int_type = GL_FLOAT;
 			m_int_shift = 2;
-			break;
-
-		// 4 channel normalized
-		case Format::Color:
-			m_gl_format = GL_RGBA8;
-			m_int_format = GL_RGBA;
-			m_int_type = GL_UNSIGNED_BYTE;
-			m_int_shift = 2;
-			break;
-
-		// 4 channel normalized with 2 bits of alpha
-		case Format::ColorHQ:
-			m_gl_format = GL_RGB10_A2;
-			m_int_format = GL_RGBA;
-			m_int_type = GL_UNSIGNED_INT_2_10_10_10_REV;
-			m_int_shift = 2;
-			break;
-
-		// 4 channel float
-		case Format::ColorHDR:
-			m_gl_format = GL_RGBA16F;
-			m_int_format = GL_RGBA;
-			m_int_type = GL_HALF_FLOAT;
-			m_int_shift = 3;
-			break;
-
-		// 4 channel normalized  
-		case Format::ColorClip:
-			m_gl_format = GL_RGBA16;
-			m_int_format = GL_RGBA;
-			m_int_type = GL_UNSIGNED_SHORT;
-			m_int_shift = 3;
-			break;
-
-		// Depth buffer
-		case Format::DepthStencil:
-		{
-			if (!g_gs_device->Features().framebuffer_fetch)
-			{
-				m_gl_format = GL_DEPTH32F_STENCIL8;
-				m_int_format = GL_DEPTH_STENCIL;
-				m_int_type = GL_FLOAT_32_UNSIGNED_INT_24_8_REV;
-				m_int_shift = 3; // 4 bytes for depth + 4 bytes for stencil by texels
-			}
-			else
-			{
-				m_gl_format = GL_DEPTH_COMPONENT32F;
-				m_int_format = GL_DEPTH_COMPONENT;
-				m_int_type = GL_FLOAT;
-				m_int_shift = 2;
-			}
 		}
-		break;
-
-		case Format::BC1:
-			m_gl_format = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
-			m_int_format = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
-			m_int_type = GL_UNSIGNED_BYTE;
-			m_int_shift = 1;
-			break;
-
-		case Format::BC2:
-			m_gl_format = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
-			m_int_format = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
-			m_int_type = GL_UNSIGNED_BYTE;
-			m_int_shift = 1;
-			break;
-
-		case Format::BC3:
-			m_gl_format = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-			m_int_format = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-			m_int_type = GL_UNSIGNED_BYTE;
-			m_int_shift = 1;
-			break;
-
-		case Format::BC7:
-			m_gl_format = GL_COMPRESSED_RGBA_BPTC_UNORM_ARB;
-			m_int_format = GL_COMPRESSED_RGBA_BPTC_UNORM_ARB;
-			m_int_type = GL_UNSIGNED_BYTE;
-			m_int_shift = 1;
-			break;
-
-		case Format::Invalid:
-			m_int_format = 0;
-			m_int_type = 0;
-			m_int_shift = 0;
-			pxAssert(0);
+	}
+	else
+	{
+		const OGLFormatInfo& info = s_format_mapping[static_cast<u32>(m_format)];
+		m_gl_format  = info.gl_format;
+		m_int_format = info.int_format;
+		m_int_type   = info.cpu_type;
+		m_int_shift  = info.shift;
+		pxAssert(info.gl_format != 0);
 	}
 
 	// Only 32 bits input texture will be supported for mipmap

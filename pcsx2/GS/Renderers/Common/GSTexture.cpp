@@ -93,8 +93,6 @@ const char* GSTexture::GetFormatName(Format format)
 {
 	switch (format)
 	{
-		default:
-			pxFailRel("Invalid texture format");
 		case Format::Invalid:      return "Invalid";
 		case Format::Color:        return "Color";
 		case Format::ColorHQ:      return "ColorHQ";
@@ -110,7 +108,40 @@ const char* GSTexture::GetFormatName(Format format)
 		case Format::BC2:          return "BC2";
 		case Format::BC3:          return "BC3";
 		case Format::BC7:          return "BC7";
+
+		case Format::R8UNorm:      return "R8UNorm";
+		case Format::R8UInt:       return "R8UInt";
+		case Format::R8SInt:       return "R8SInt";
+		case Format::RG8UNorm:     return "RG8UNorm";
+		case Format::RG8UInt:      return "RG8UInt";
+		case Format::RG8SInt:      return "RG8SInt";
+		case Format::RGBA8UNorm:   return "RGBA8UNorm";
+		case Format::RGBA8UInt:    return "RGBA8UInt";
+		case Format::RGBA8SInt:    return "RGBA8SInt";
+		case Format::RGBA8SRGB:    return "RGBA8SRGB";
+		case Format::RGB10A2UNorm: return "RGB10A2UNorm";
+		case Format::RGB10A2UInt:  return "RGB10A2UInt";
+		case Format::R16UInt:      return "R16UInt";
+		case Format::R16SInt:      return "R16SInt";
+		case Format::R16Float:     return "R16Float";
+		case Format::RG16UInt:     return "RG16UInt";
+		case Format::RG16SInt:     return "RG16SInt";
+		case Format::RG16Float:    return "RG16Float";
+		case Format::RGBA16UInt:   return "RGBA16UInt";
+		case Format::RGBA16SInt:   return "RGBA16SInt";
+		case Format::RGBA16Float:  return "RGBA16Float";
+		case Format::R32UInt:      return "R32UInt";
+		case Format::R32SInt:      return "R32SInt";
+		case Format::R32Float:     return "R32Float";
+		case Format::RG32UInt:     return "RG32UInt";
+		case Format::RG32SInt:     return "RG32SInt";
+		case Format::RG32Float:    return "RG32Float";
+		case Format::RGBA32UInt:   return "RGBA32UInt";
+		case Format::RGBA32SInt:   return "RGBA32SInt";
+		case Format::RGBA32Float:  return "RGBA32Float";
 	}
+	pxFail("Bad format");
+	return nullptr;
 }
 
 bool GSTexture::IsBlockCompressedFormat(Format format)
@@ -136,8 +167,6 @@ u32 GSTexture::GetCompressedBytesPerBlock(Format format)
 {
 	switch (format)
 	{
-		default:
-			pxFailRel("Invalid texture format");
 		case Format::Invalid:      return 1;  // Invalid
 		case Format::Color:        return 4;  // Color/RGBA8
 		case Format::ColorHQ:      return 4;  // ColorHQ/RGB10A2
@@ -145,7 +174,7 @@ u32 GSTexture::GetCompressedBytesPerBlock(Format format)
 		case Format::ColorClip:    return 8;  // ColorClip/RGBA16
 		case Format::DepthStencil: return 4;  // DepthStencil
 		case Format::DepthColor:   return 4;  // DepthColor/R32
-		case Format::UNorm8:       return 1;  // UNorm8/R8
+		case Format::UNorm8:       return 1;  // UNorm8/A8
 		case Format::UInt16:       return 2;  // UInt16/R16UI
 		case Format::UInt32:       return 4;  // UInt32/R32UI
 		case Format::PrimID:       return 4;  // PrimID/R32
@@ -153,7 +182,40 @@ u32 GSTexture::GetCompressedBytesPerBlock(Format format)
 		case Format::BC2:          return 16; // BC2 - 16 pixels in 128 bits
 		case Format::BC3:          return 16; // BC3 - 16 pixels in 128 bits
 		case Format::BC7:          return 16; // BC7 - 16 pixels in 128 bits
+
+		case Format::R8UNorm:      return 1;
+		case Format::R8UInt:       return 1;
+		case Format::R8SInt:       return 1;
+		case Format::RG8UNorm:     return 2;
+		case Format::RG8UInt:      return 2;
+		case Format::RG8SInt:      return 2;
+		case Format::RGBA8UNorm:   return 4;
+		case Format::RGBA8UInt:    return 4;
+		case Format::RGBA8SInt:    return 4;
+		case Format::RGBA8SRGB:    return 4;
+		case Format::RGB10A2UNorm: return 4;
+		case Format::RGB10A2UInt:  return 4;
+		case Format::R16UInt:      return 2;
+		case Format::R16SInt:      return 2;
+		case Format::R16Float:     return 2;
+		case Format::RG16UInt:     return 4;
+		case Format::RG16SInt:     return 4;
+		case Format::RG16Float:    return 4;
+		case Format::RGBA16UInt:   return 8;
+		case Format::RGBA16SInt:   return 8;
+		case Format::RGBA16Float:  return 8;
+		case Format::R32UInt:      return 4;
+		case Format::R32SInt:      return 4;
+		case Format::R32Float:     return 4;
+		case Format::RG32UInt:     return 8;
+		case Format::RG32SInt:     return 8;
+		case Format::RG32Float:    return 8;
+		case Format::RGBA32UInt:   return 16;
+		case Format::RGBA32SInt:   return 16;
+		case Format::RGBA32Float:  return 16;
 	}
+	pxFail("Bad format");
+	return 0;
 }
 
 u32 GSTexture::GetCompressedBlockSize() const

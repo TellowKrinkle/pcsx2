@@ -28,6 +28,7 @@ DXGI_FORMAT GSTexture11::GetDXGIFormat(Format format)
 	// clang-format off
 	switch (format)
 	{
+		case GSTexture::Format::Invalid:      break;
 		case GSTexture::Format::Color:        return DXGI_FORMAT_R8G8B8A8_UNORM;
 		case GSTexture::Format::ColorHQ:      return DXGI_FORMAT_R10G10B10A2_UNORM;
 		case GSTexture::Format::ColorHDR:     return DXGI_FORMAT_R16G16B16A16_FLOAT;
@@ -42,12 +43,41 @@ DXGI_FORMAT GSTexture11::GetDXGIFormat(Format format)
 		case GSTexture::Format::BC2:          return DXGI_FORMAT_BC2_UNORM;
 		case GSTexture::Format::BC3:          return DXGI_FORMAT_BC3_UNORM;
 		case GSTexture::Format::BC7:          return DXGI_FORMAT_BC7_UNORM;
-		case GSTexture::Format::Invalid:
-		default:
-			pxAssert(0);
-			return DXGI_FORMAT_UNKNOWN;
+
+		case GSTexture::Format::R8UNorm:      return DXGI_FORMAT_R8_UNORM;
+		case GSTexture::Format::R8UInt:       return DXGI_FORMAT_R8_UINT;
+		case GSTexture::Format::R8SInt:       return DXGI_FORMAT_R8_SINT;
+		case GSTexture::Format::RG8UNorm:     return DXGI_FORMAT_R8G8_UNORM;
+		case GSTexture::Format::RG8UInt:      return DXGI_FORMAT_R8G8_UINT;
+		case GSTexture::Format::RG8SInt:      return DXGI_FORMAT_R8G8_SINT;
+		case GSTexture::Format::RGBA8UNorm:   return DXGI_FORMAT_R8G8B8A8_UNORM;
+		case GSTexture::Format::RGBA8UInt:    return DXGI_FORMAT_R8G8B8A8_UINT;
+		case GSTexture::Format::RGBA8SInt:    return DXGI_FORMAT_R8G8B8A8_SINT;
+		case GSTexture::Format::RGBA8SRGB:    return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+		case GSTexture::Format::RGB10A2UNorm: return DXGI_FORMAT_R10G10B10A2_UNORM;
+		case GSTexture::Format::RGB10A2UInt:  return DXGI_FORMAT_R10G10B10A2_UINT;
+		case GSTexture::Format::R16UInt:      return DXGI_FORMAT_R16_UINT;
+		case GSTexture::Format::R16SInt:      return DXGI_FORMAT_R16_SINT;
+		case GSTexture::Format::R16Float:     return DXGI_FORMAT_R16_FLOAT;
+		case GSTexture::Format::RG16UInt:     return DXGI_FORMAT_R16G16_UINT;
+		case GSTexture::Format::RG16SInt:     return DXGI_FORMAT_R16G16_SINT;
+		case GSTexture::Format::RG16Float:    return DXGI_FORMAT_R16G16_FLOAT;
+		case GSTexture::Format::RGBA16UInt:   return DXGI_FORMAT_R16G16B16A16_UINT;
+		case GSTexture::Format::RGBA16SInt:   return DXGI_FORMAT_R16G16B16A16_SINT;
+		case GSTexture::Format::RGBA16Float:  return DXGI_FORMAT_R16G16B16A16_FLOAT;
+		case GSTexture::Format::R32UInt:      return DXGI_FORMAT_R32_UINT;
+		case GSTexture::Format::R32SInt:      return DXGI_FORMAT_R32_SINT;
+		case GSTexture::Format::R32Float:     return DXGI_FORMAT_R32_FLOAT;
+		case GSTexture::Format::RG32UInt:     return DXGI_FORMAT_R32G32_UINT;
+		case GSTexture::Format::RG32SInt:     return DXGI_FORMAT_R32G32_SINT;
+		case GSTexture::Format::RG32Float:    return DXGI_FORMAT_R32G32_FLOAT;
+		case GSTexture::Format::RGBA32UInt:   return DXGI_FORMAT_R32G32B32A32_UINT;
+		case GSTexture::Format::RGBA32SInt:   return DXGI_FORMAT_R32G32B32A32_SINT;
+		case GSTexture::Format::RGBA32Float:  return DXGI_FORMAT_R32G32B32A32_FLOAT;
 	}
 	// clang-format on
+	pxAssert(0);
+	return DXGI_FORMAT_UNKNOWN;
 }
 
 void* GSTexture11::GetNativeHandle() const

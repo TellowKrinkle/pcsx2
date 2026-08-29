@@ -62,7 +62,39 @@ public:
 		BC2,          ///< BC2, aka DXT2/3 compressed texture for replacements
 		BC3,          ///< BC3, aka DXT4/5 compressed texture for replacements
 		BC7,          ///< BC7, aka BPTC compressed texture for replacements
-		Last = BC7,
+
+		// For rashader
+		R8UNorm,
+		R8UInt,
+		R8SInt,
+		RG8UNorm,
+		RG8UInt,
+		RG8SInt,
+		RGBA8UNorm,
+		RGBA8UInt,
+		RGBA8SInt,
+		RGBA8SRGB,
+		RGB10A2UNorm,
+		RGB10A2UInt,
+		R16UInt,
+		R16SInt,
+		R16Float,
+		RG16UInt,
+		RG16SInt,
+		RG16Float,
+		RGBA16UInt,
+		RGBA16SInt,
+		RGBA16Float,
+		R32UInt,
+		R32SInt,
+		R32Float,
+		RG32UInt,
+		RG32SInt,
+		RG32Float,
+		RGBA32UInt,
+		RGBA32SInt,
+		RGBA32Float,
+		Last = RGBA32Float,
 	};
 
 	static bool ValidateUsageAndFormat(Usage usage, Format format);
