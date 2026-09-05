@@ -86,7 +86,8 @@ public:
 	{
 		// Use dynamic rendering only if the local ready feature is present.
 		// Otherwise we can't use feedback barriers within a dynamic render pass.
-		return m_optional_extensions.vk_khr_dynamic_rendering_local_read;
+		// return m_optional_extensions.vk_khr_dynamic_rendering_local_read;
+		return false;
 	}
 
 	void SetPipelineRenderPass(const RenderPass& rp, Vulkan::GraphicsPipelineBuilder& gpb);
