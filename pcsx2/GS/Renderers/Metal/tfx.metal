@@ -26,7 +26,6 @@
 #define UNROLL _Pragma("unroll")
 
 template <uint N> static inline vec<uint, N> asuint(vec<float, N> v) { return as_type<vec<uint, N>>(v); }
-static inline uint asuint(float v) { return as_type<uint>(v); }
 template <typename T> static inline vec<T, 2> splat2(T val) { return val; }
 template <typename T> static inline vec<T, 3> splat3(T val) { return val; }
 template <typename T> static inline vec<T, 4> splat4(T val) { return val; }
@@ -72,11 +71,9 @@ static constexpr constant ATST PS_ATST_EQUAL    = ATST::EQUAL;
 static constexpr constant ATST PS_ATST_NOTEQUAL = ATST::NOTEQUAL;
 static constexpr constant AA1 PS_AA1_NONE          = AA1::NONE;
 static constexpr constant AA1 PS_AA1_LINE          = AA1::LINE;
-static constexpr constant AA1 PS_AA1_TRIANGLE      = AA1::TRIANGLE;
 static constexpr constant AA1 PS_AA1_TRIANGLE_SW_Z = AA1::TRIANGLE_SW_Z;
 static constexpr constant ROV_DEPTH PS_ROV_DEPTH_NONE       = ROV_DEPTH::NONE;
 static constexpr constant ROV_DEPTH PS_ROV_DEPTH_READ_WRITE = ROV_DEPTH::READ_WRITE;
-static constexpr constant ROV_DEPTH PS_ROV_DEPTH_READ_ONLY  = ROV_DEPTH::READ_ONLY;
 
 /// End helper macros for shared shader code
 
@@ -212,7 +209,6 @@ constant bool PS_INTERIOR = PS_AA1 == AA1::TRIANGLE_SW_Z;
 constant bool VS_FST = FST;
 constant bool PS_FST = FST;
 constant bool VS_IIP = IIP;
-constant bool PS_IIP = IIP;
 constant bool PS_POINT_SAMPLER = false;
 constant bool FALSE = false;
 
