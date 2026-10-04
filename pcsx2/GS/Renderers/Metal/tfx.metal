@@ -5,8 +5,6 @@
 
 /// Start helper macros for shared shader code
 
-#define PCSX2_MSL
-
 // Builtin keywords/functions
 #define ddx dfdx
 #define ddy dfdy
@@ -41,12 +39,6 @@ static constexpr constant float EXP2_POS_32 = 0x1p+32f;
 
 // Vertex shader helpers
 #define VS_SCALE_RAW_Z(Z) (float(Z) * EXP2_NEG_32)
-#define VS_VERTICES_PARAM(NAME) device const GSMTLMainVertex* NAME
-#define VS_INDICES_PARAM(NAME) device const ushort* NAME
-#define VS_BASE_VERTEX 0
-#define VS_BASE_INDEX 0
-#define VS_LOAD_VERTEX(VERTICES, VID) VERTICES[VID]
-#define VS_LOAD_INDEX(INDICES, VID) INDICES[VID]
 
 // Pixel shader helpers
 #define PS_STATIC
@@ -301,41 +293,38 @@ struct MainPSOut
 
 // MARK: - Vertex functions
 
-// Convert VS constants for shared code.
-VSUniformsGeneric GetVSUniforms(constant GSMTLMainVSUniform& cb [[buffer(GSMTLBufferIndexHWUniforms)]])
+struct VSMain
 {
-	VSUniformsGeneric cb_gen;
-	#define X(TYPE, NAME) cb_gen.NAME = cb.NAME;
-		VS_UNIFORMS(X)
-	#undef X
-	return cb_gen;
-}
+	constant GSMTLMainVSUniform& cb;
+	device const GSMTLMainVertex* vertices;
+	device const ushort* indices;
 
-static VSInput load_vertex(device const GSMTLMainVertex* vertices, uint idx)
-{
-	GSMTLMainVertex base = vertices[idx];
-	VSInput out;
-	out.st = base.st;
-	out.c = uint4(base.rgba);
-	out.q = base.q;
-	out.p = uint2(base.xy);
-	out.z = base.z;
-	out.uv = uint2(base.uv);
-	out.f = float4(static_cast<float>(base.fog) / 255.f);
-	return out;
-}
+	VSInput load_vertex(uint idx)
+	{
+		GSMTLMainVertex base = vertices[idx];
+		VSInput out;
+		out.st = base.st;
+		out.c = uint4(base.rgba);
+		out.q = base.q;
+		out.p = uint2(base.xy);
+		out.z = base.z;
+		out.uv = uint2(base.uv);
+		out.f = float4(static_cast<float>(base.fog) / 255.f);
+		return out;
+	}
 
-static uint load_index(device const ushort* indices [[buffer(GSMTLBufferIndexHWIndices)]], uint idx)
-{
-	return indices[idx];
-}
+	uint load_index(uint idx)
+	{
+		return indices[idx];
+	}
 
-// Note: load_vertex() and load_index() must be declared before including common code.
-#include "../../../../bin/resources/shaders/common/tfx_vs.inc"
+	#include "../../../../bin/resources/shaders/common/tfx_vs.inc"
+};
 
 vertex MainVSOut vs_main(VSInput v [[stage_in]], constant GSMTLMainVSUniform& cb [[buffer(GSMTLBufferIndexHWUniforms)]])
 {
-	return MainVSOut(vs_main_impl(v, GetVSUniforms(cb)));
+	VSMain main{cb};
+	return main.vs_main_impl(v);
 }
 
 vertex MainVSOut vs_main_expand(
@@ -344,7 +333,8 @@ vertex MainVSOut vs_main_expand(
 	constant GSMTLMainVSUniform& cb [[buffer(GSMTLBufferIndexHWUniforms)]],
 	device const ushort* indices [[buffer(GSMTLBufferIndexHWIndices), function_constant(VS_NEEDS_INDEX_BUFFER)]])
 {
-	return MainVSOut(vs_expand_impl(vid, vertices, GetVSUniforms(cb), indices));
+	VSMain main{cb, vertices, VS_NEEDS_INDEX_BUFFER ? indices : nullptr};
+	return main.vs_expand_impl(vid);
 }
 
 // MARK: - Fragment functions

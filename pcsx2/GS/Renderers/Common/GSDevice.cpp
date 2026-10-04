@@ -433,6 +433,7 @@ static const std::map<std::string, const unsigned char*> s_baked_shaders = {
 	{ "shaders/opengl/present.glsl"         , opengl_present },
 	{ "shaders/opengl/shadeboost.glsl"      , opengl_shadeboost },
 	{ "shaders/common/tfx_defs.inc"         , common_tfx_defs},
+	{ "shaders/common/tfx_uniforms.inc"     , common_tfx_uniforms},
 	{ "shaders/common/tfx_ps_atst.inc"      , common_tfx_ps_atst},
 	{ "shaders/common/tfx_ps_blend.inc"     , common_tfx_ps_blend},
 	{ "shaders/common/tfx_ps_color.inc"     , common_tfx_ps_color},
@@ -1268,6 +1269,7 @@ bool GSDevice::GetTFXShaderSource(std::string* source)
 {
 	static constexpr const char* names[] = {
 		"tfx_defs.inc",
+		"tfx_uniforms.inc",
 		"tfx_vs.inc",
 		"tfx_ps.inc", // Must comes before other PS files since it includes them.
 		"tfx_ps_header.inc",

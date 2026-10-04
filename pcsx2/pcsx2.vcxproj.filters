@@ -423,6 +423,9 @@
     <None Include="..\bin\resources\shaders\common\tfx_defs.inc">
       <Filter>System\Ps2\GS\Shaders\Common</Filter>
     </None>
+    <None Include="..\bin\resources\shaders\common\tfx_uniforms.inc">
+      <Filter>System\Ps2\GS\Shaders\Common</Filter>
+    </None>
     <None Include="..\bin\resources\shaders\common\tfx_ps_atst.inc">
       <Filter>System\Ps2\GS\Shaders\Common</Filter>
     </None>

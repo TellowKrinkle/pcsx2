@@ -154,6 +154,9 @@
     <ShaderToCpp Include="..\bin\resources\shaders\common\tfx_defs.inc">
       <VarName>common_tfx_defs</VarName>
     </ShaderToCpp>
+    <ShaderToCpp Include="..\bin\resources\shaders\common\tfx_uniforms.inc">
+      <VarName>common_tfx_uniforms</VarName>
+    </ShaderToCpp>
     <ShaderToCpp Include="..\bin\resources\shaders\common\tfx_ps_atst.inc">
       <VarName>common_tfx_ps_atst</VarName>
     </ShaderToCpp>

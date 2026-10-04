@@ -53,12 +53,8 @@
 
 // Vertex shader helpers
 #define VS_SCALE_RAW_Z(Z) (float(Z) * EXP2_NEG_32)
-#define VS_VERTICES_PARAM(NAME) uint NAME
-#define VS_INDICES_PARAM(NAME) uint NAME
-#define VS_BASE_VERTEX BaseVertex
-#define VS_BASE_INDEX BaseIndex
-#define VS_LOAD_VERTEX(VERTICES, IDX) (VertexBuffer.Load(IDX))
-#define VS_LOAD_INDEX(INDICES, IDX) (IndexBuffer.Load(IDX))
+#define VS_LOAD_VERTEX(IDX) (VertexBuffer.Load(IDX))
+#define VS_LOAD_INDEX(IDX) (IndexBuffer.Load(IDX))
 #define VS_NEEDS_EXPAND (VS_EXPAND_TYPE != VS_EXPAND_NONE)
 // Unused in DX
 #define VS_POINT_SIZE 0
@@ -70,6 +66,7 @@
 /// End helper macros for shared shader code.
 
 #include "tfx_defs.inc"
+#include "tfx_uniforms.inc"
 
 #ifdef VERTEX_SHADER
 
@@ -127,20 +124,8 @@ struct VSOutput
 // VS Constant Buffer
 cbuffer cb0 : register(b0)
 {
-	#define X(TYPE, NAME) TYPE NAME;
-		VS_UNIFORMS(X)
-	#undef X
+	VSUniforms cb;
 };
-
-// Convert VS constants for shared code.
-VSUniformsGeneric GetVSUniforms()
-{
-	VSUniformsGeneric cb;
-	#define X(TYPE, NAME) cb.NAME = NAME;
-		VS_UNIFORMS(X)
-	#undef X
-	return cb;
-}
 
 // Convert VS outputs from generic outputs to real outputs.
 VSOutput GetVSOutput(VSOutputGeneric vout_gen)
@@ -159,8 +144,7 @@ VSOutput GetVSOutput(VSOutputGeneric vout_gen)
 
 VSOutput vs_main(VSInput vin)
 {
-	VSUniformsGeneric cb = GetVSUniforms();
-	VSOutputGeneric vout_gen = vs_main_impl(vin, cb);
+	VSOutputGeneric vout_gen = vs_main_impl(vin);
 	return GetVSOutput(vout_gen);
 }
 
@@ -168,8 +152,7 @@ VSOutput vs_main(VSInput vin)
 
 VSOutput vs_main_expand(uint vid : SV_VertexID)
 {
-	VSUniformsGeneric cb = GetVSUniforms();
-	VSOutputGeneric vout_gen = vs_expand_impl(vid, 0, cb, 0);
+	VSOutputGeneric vout_gen = vs_expand_impl(vid);
 	return GetVSOutput(vout_gen);
 }
 
@@ -242,15 +225,10 @@ Texture2D<float> PrimMinTexture : register(t3);
 
 // Pixel shader constant buffer.
 #if PCSX2_DX12
-cbuffer cb1 : register(b1)
+ConstantBuffer<PSUniforms> ps_cb : register(b1);
 #elif PCSX2_DX11
-cbuffer cb1 : register(b0)
+cbuffer cb1 : register(b0) { PSUniforms ps_cb; };
 #endif
-{
-	#define X(TYPE, NAME) TYPE NAME;
-		PS_UNIFORMS(X)
-	#undef X
-};
 
 static float4 sample_tex(float2 uv)
 {
@@ -297,16 +275,6 @@ PSInputGeneric GetPSInput(PS_INPUT ps_in)
 	return psin_gen;
 }
 
-// Get pixel shader constants for passing to shared code.
-PSUniformsGeneric GetPSUniforms()
-{
-	PSUniformsGeneric cb;
-	#define X(TYPE, NAME) cb.NAME = NAME;
-		PS_UNIFORMS(X)
-	#undef X
-	return cb;
-}
-
 float4 RtLoad(int2 xy)
 {
 #if PS_ROV_COLOR
@@ -341,7 +309,6 @@ void DepthWrite(int2 xy, float d)
 
 // Pixel shader global state
 static PSInputGeneric ps_in;
-static PSUniformsGeneric ps_cb;
 static float4 ps_current_color;
 static float ps_current_depth;
 static uint ps_prim_id;
@@ -362,7 +329,6 @@ void ps_main(PS_INPUT input)
 #endif
 {
 	ps_in = GetPSInput(input);
-	ps_cb = GetPSUniforms();
 	#if NEED_PRIMID
 		ps_prim_id = input.prim_id;
 	#else

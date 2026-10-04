@@ -1,27 +1,23 @@
 #ifndef __METAL_VERSION__
 // Non-Metal backends can only define buffers with u32 elements, but PCSX2 indices are u16.
-uint load_index(VS_INDICES_PARAM(ignored), uint _i)
+uint load_index(uint i)
 {
 	#if VS_NEEDS_EXPAND
-		uint i = _i + VS_BASE_INDEX;
+		i += BaseIndex;
 		// i is even => load lower 16 bits; i odd => load upper 16 bits.
-		// Intel Haswell seems to be having issues on dx11/12 with running the bfi instruction below in this specific case,
-		// so let's use an alternative that gives the same result, note this is only broken on Haswell, Ivy Bridge and Skylake are fine,
-		// the issue appears when running the D3D compiler with optimizations, running with D3DCOMPILE_SKIP_OPTIMIZATION is fine with bfi.
-		// uint shift = (i & 1u) << 4u;
-		uint shift = (i & 1u) != 0u ? 16u : 0u;
-		return (VS_LOAD_INDEX(ignored, i >> 1u) >> shift) & 0xFFFFu;
+		uint twoidx = VS_LOAD_INDEX(i >> 1u);
+		return (i & 1u) != 0u ? (twoidx >> 16u) : (twoidx & 0xFFFFu);
 	#else
 		// Don't reference the index buffer unless we really need to.
 		return 0u;
 	#endif
 }
 
-VSInput load_vertex(VS_VERTICES_PARAM(vertices), uint index)
+VSInput load_vertex(uint index)
 {
 	VSInput vert;
 	#if VS_NEEDS_EXPAND
-		VSRawVertex raw = VS_LOAD_VERTEX(vertices, VS_BASE_VERTEX + index);
+		VSRawVertex raw = VS_LOAD_VERTEX(BaseVertex + index);
 		vert.st = raw.ST;
 		vert.c = uint4(raw.RGBA & 0xFFu, (raw.RGBA >> 8) & 0xFFu, (raw.RGBA >> 16) & 0xFFu, raw.RGBA >> 24);
 		vert.q = raw.Q;
@@ -53,7 +49,7 @@ static void vs_broken_shader_depth(IN_OUT_PARAM(VSOutputGeneric, vout))
 	vout.p.z += EXP2_NEG_32;
 }
 
-static VSOutputGeneric vs_main_impl(IN_PARAM(VSInput, v), IN_PARAM(VSUniformsGeneric, cb))
+VSOutputGeneric vs_main_impl(IN_PARAM(VSInput, v))
 {
 	VSOutputGeneric vout;
 	// Clamp to max depth, GS doesn't wrap
@@ -104,17 +100,17 @@ static VSOutputGeneric vs_main_impl(IN_PARAM(VSInput, v), IN_PARAM(VSUniformsGen
 }
 
 // Convert XY from NDC to GS pixel coordinates (i.e. 1.0 = 1 GS pixel).
-static float2 get_xy_unscaled(float2 xy, IN_PARAM(VSUniformsGeneric, cb))
+float2 get_xy_unscaled(float2 xy)
 {
 	return round(xy / cb.vertex_scale) / 16.0f;
 }
 
 // Get the XY deltas in GS pixel coordinates, using first vertex as the origin.
-static float2x2 get_xy_deltas_unscaled(IN_PARAM(VSOutputGeneric, v0), IN_PARAM(VSOutputGeneric, v1), IN_PARAM(VSOutputGeneric, v2), IN_PARAM(VSUniformsGeneric, cb))
+float2x2 get_xy_deltas_unscaled(IN_PARAM(VSOutputGeneric, v0), IN_PARAM(VSOutputGeneric, v1), IN_PARAM(VSOutputGeneric, v2))
 {
-	float2 xy0 = get_xy_unscaled(v0.p.xy, cb);
-	float2 xy1 = get_xy_unscaled(v1.p.xy, cb);
-	float2 xy2 = get_xy_unscaled(v2.p.xy, cb);
+	float2 xy0 = get_xy_unscaled(v0.p.xy);
+	float2 xy1 = get_xy_unscaled(v1.p.xy);
+	float2 xy2 = get_xy_unscaled(v2.p.xy);
 	return float2x2(xy1 - xy0, xy2 - xy0);
 }
 
@@ -122,9 +118,9 @@ static float2x2 get_xy_deltas_unscaled(IN_PARAM(VSOutputGeneric, v0), IN_PARAM(V
 // This is up or down for shallow (X dominant) edges, and right or left for steep (Y dominant) edges.
 // Similar expansion to line AA1 except instead of expanding on both sides of the line,
 // expand on on the side towards the outside of the triangle.
-static float2 get_aa1_triangle_expand_dir(IN_PARAM(VSOutputGeneric, v0), IN_PARAM(VSOutputGeneric, v1), IN_PARAM(VSOutputGeneric, v2), IN_PARAM(VSUniformsGeneric, cb))
+float2 get_aa1_triangle_expand_dir(IN_PARAM(VSOutputGeneric, v0), IN_PARAM(VSOutputGeneric, v1), IN_PARAM(VSOutputGeneric, v2))
 {
-	float2x2 xy_deltas = get_xy_deltas_unscaled(v0, v1, v2, cb);
+	float2x2 xy_deltas = get_xy_deltas_unscaled(v0, v1, v2);
 	float2 line_delta = xy_deltas[0];
 	float2 line_opposite = xy_deltas[1];
 
@@ -148,8 +144,8 @@ static float2x2 get_inverse(IN_PARAM(float2x2, mat), float det)
 
 // Extrapolate triangle attributes from the first vertex along the given direction.
 // dp_mat is derived from the input vertices, it is passed in to avoid recomputing.
-static void extrapolate_aa1_triangle_edge(IN_OUT_PARAM(VSOutputGeneric, v0), IN_PARAM(VSOutputGeneric, v1), IN_PARAM(VSOutputGeneric, v2),
-	IN_PARAM(float2x2, dp_mat), float2 dp, IN_PARAM(VSUniformsGeneric, cb))
+void extrapolate_aa1_triangle_edge(IN_OUT_PARAM(VSOutputGeneric, v0), IN_PARAM(VSOutputGeneric, v1), IN_PARAM(VSOutputGeneric, v2),
+	IN_PARAM(float2x2, dp_mat), float2 dp)
 {
 	// Get texture deltas
 	float2x2 dt;
@@ -215,14 +211,14 @@ static void extrapolate_aa1_triangle_edge(IN_OUT_PARAM(VSOutputGeneric, v0), IN_
 	v0.t.z += dot(df, weights); // Extrapolate fog
 }
 
-static VSOutputGeneric vs_expand_none_impl(uint vid, VS_VERTICES_PARAM(vertices), IN_PARAM(VSUniformsGeneric, cb))
+VSOutputGeneric vs_expand_none_impl(uint vid)
 {
-	return vs_main_impl(load_vertex(vertices, vid), cb);
+	return vs_main_impl(load_vertex(vid));
 }
 
-static VSOutputGeneric vs_expand_point_impl(uint vid, VS_VERTICES_PARAM(vertices), IN_PARAM(VSUniformsGeneric, cb))
+VSOutputGeneric vs_expand_point_impl(uint vid)
 {
-	VSOutputGeneric vout = vs_main_impl(load_vertex(vertices, vid), cb);
+	VSOutputGeneric vout = vs_main_impl(load_vertex(vid));
 	if ((vid & 1u) != 0u)
 		vout.p.x += cb.point_size.x;
 	if ((vid & 2u) != 0u)
@@ -230,14 +226,14 @@ static VSOutputGeneric vs_expand_point_impl(uint vid, VS_VERTICES_PARAM(vertices
 	return vout;
 }
 
-static VSOutputGeneric vs_expand_line_impl(uint vid, VS_VERTICES_PARAM(vertices), IN_PARAM(VSUniformsGeneric, cb))
+VSOutputGeneric vs_expand_line_impl(uint vid)
 {
 	uint vid_base = vid >> 2;
 	bool is_bottom = (vid & 2u) != 0u;
 	bool is_right = (vid & 1u) != 0u;
 	uint vid_other = is_bottom ? vid_base - 1u : vid_base + 1u;
-	VSOutputGeneric vout = vs_main_impl(load_vertex(vertices, vid_base), cb);
-	VSOutputGeneric other = vs_main_impl(load_vertex(vertices, vid_other), cb);
+	VSOutputGeneric vout = vs_main_impl(load_vertex(vid_base));
+	VSOutputGeneric other = vs_main_impl(load_vertex(vid_other));
 
 	// Use bottom minus top for delta regardless of which vertex we are expanding.
 	float2 line_delta = is_bottom ? vout.p.xy - other.p.xy : other.p.xy - vout.p.xy;
@@ -261,7 +257,7 @@ static VSOutputGeneric vs_expand_line_impl(uint vid, VS_VERTICES_PARAM(vertices)
 	return vout;
 }
 
-static VSOutputGeneric vs_expand_sprite_impl(uint vid, VS_VERTICES_PARAM(vertices), IN_PARAM(VSUniformsGeneric, cb))
+VSOutputGeneric vs_expand_sprite_impl(uint vid)
 {
 	uint vid_base = vid >> 1;
 	bool is_bottom = (vid & 2u) != 0u;
@@ -270,8 +266,8 @@ static VSOutputGeneric vs_expand_sprite_impl(uint vid, VS_VERTICES_PARAM(vertice
 	uint vid_lt = vid_base & ~1u;
 	uint vid_rb = vid_base | 1u;
 
-	VSOutputGeneric lt = vs_main_impl(load_vertex(vertices, vid_lt), cb);
-	VSOutputGeneric rb = vs_main_impl(load_vertex(vertices, vid_rb), cb);
+	VSOutputGeneric lt = vs_main_impl(load_vertex(vid_lt));
+	VSOutputGeneric rb = vs_main_impl(load_vertex(vid_rb));
 	VSOutputGeneric vout = rb;
 
 	if (!is_right)
@@ -291,8 +287,7 @@ static VSOutputGeneric vs_expand_sprite_impl(uint vid, VS_VERTICES_PARAM(vertice
 	return vout;
 }
 
-static VSOutputGeneric vs_expand_triangle_aa1_impl(uint vid, VS_VERTICES_PARAM(vertices), IN_PARAM(VSUniformsGeneric, cb),
-	VS_INDICES_PARAM(indices))
+VSOutputGeneric vs_expand_triangle_aa1_impl(uint vid)
 {
 	// Triangles with AA1 are expanded as follows:
 	// - Vertices 0-2: Interior of triangle (1 triangle).
@@ -311,7 +306,7 @@ static VSOutputGeneric vs_expand_triangle_aa1_impl(uint vid, VS_VERTICES_PARAM(v
 	VSOutputGeneric vout;
 	if (interior)
 	{
-		vout = vs_main_impl(load_vertex(vertices, load_index(indices, 3u * prim_id + prim_offset)), cb);
+		vout = vs_main_impl(load_vertex(load_index(3u * prim_id + prim_offset)));
 		vout.inv_cov = 0.f;
 		vout.interior = 1u;
 	}
@@ -329,16 +324,16 @@ static VSOutputGeneric vs_expand_triangle_aa1_impl(uint vid, VS_VERTICES_PARAM(v
 		bool is_bottom = (2u <= edge_offset) && (edge_offset <= 4u);
 		bool is_outside = (edge_offset & 1u) != 0u;
 
-		vout                     = vs_main_impl(load_vertex(vertices, load_index(indices, 3u * prim_id + (is_bottom ? i1 : i0))), cb);
-		VSOutputGeneric other    = vs_main_impl(load_vertex(vertices, load_index(indices, 3u * prim_id + (is_bottom ? i0 : i1))), cb);
-		VSOutputGeneric opposite = vs_main_impl(load_vertex(vertices, load_index(indices, 3u * prim_id + i2)), cb);
+		vout                     = vs_main_impl(load_vertex(load_index(3u * prim_id + (is_bottom ? i1 : i0))));
+		VSOutputGeneric other    = vs_main_impl(load_vertex(load_index(3u * prim_id + (is_bottom ? i0 : i1))));
+		VSOutputGeneric opposite = vs_main_impl(load_vertex(load_index(3u * prim_id + i2)));
 
-		float2x2 pos_deltas = get_xy_deltas_unscaled(vout, other, opposite, cb);
+		float2x2 pos_deltas = get_xy_deltas_unscaled(vout, other, opposite);
 
-		float2 expand_dir = is_outside ? get_aa1_triangle_expand_dir(vout, other, opposite, cb) : splat2(0.0f);
+		float2 expand_dir = is_outside ? get_aa1_triangle_expand_dir(vout, other, opposite) : splat2(0.0f);
 
 		// Do actual extrapolation, or no-op if expand_dir == 0.
-		extrapolate_aa1_triangle_edge(vout, other, opposite, pos_deltas, expand_dir, cb);
+		extrapolate_aa1_triangle_edge(vout, other, opposite, pos_deltas, expand_dir);
 
 		vout.inv_cov = is_outside ? 1.0f : 0.0f; // No coverage on outside, otherwise full.
 
@@ -357,15 +352,15 @@ static VSOutputGeneric vs_expand_triangle_aa1_impl(uint vid, VS_VERTICES_PARAM(v
 		bool is_far_corner = cap_offset == 2u || cap_offset == 5u;
 		bool is_first_tri = cap_offset < 3u;
 
-		vout                     = vs_main_impl(load_vertex(vertices, load_index(indices, 3u * prim_id + i0)), cb);
-		VSOutputGeneric other    = vs_main_impl(load_vertex(vertices, load_index(indices, 3u * prim_id + (is_first_tri ? i1 : i2))), cb);
-		VSOutputGeneric opposite = vs_main_impl(load_vertex(vertices, load_index(indices, 3u * prim_id + (is_first_tri ? i2 : i1))), cb);
+		vout                     = vs_main_impl(load_vertex(load_index(3u * prim_id + i0)));
+		VSOutputGeneric other    = vs_main_impl(load_vertex(load_index(3u * prim_id + (is_first_tri ? i1 : i2))));
+		VSOutputGeneric opposite = vs_main_impl(load_vertex(load_index(3u * prim_id + (is_first_tri ? i2 : i1))));
 
-		float2x2 pos_deltas = get_xy_deltas_unscaled(vout, other, opposite, cb);
+		float2x2 pos_deltas = get_xy_deltas_unscaled(vout, other, opposite);
 
 		// Get the edge expansion directions of both incident edges.
-		float2 edge_expand_dir_0 = get_aa1_triangle_expand_dir(vout, other, opposite, cb);
-		float2 edge_expand_dir_1 = get_aa1_triangle_expand_dir(vout, opposite, other, cb);
+		float2 edge_expand_dir_0 = get_aa1_triangle_expand_dir(vout, other, opposite);
+		float2 edge_expand_dir_1 = get_aa1_triangle_expand_dir(vout, opposite, other);
 
 		// Check if the corner is already filled by the expanded edges.
 		// This happens if the expand directions are the same.
@@ -381,7 +376,7 @@ static VSOutputGeneric vs_expand_triangle_aa1_impl(uint vid, VS_VERTICES_PARAM(v
 		                  :                  edge_expand_dir_0; // Standard AA1 edge expansion
 
 		// Do the actual extrapolation (no-op if expand_dir == 0).
-		extrapolate_aa1_triangle_edge(vout, other, opposite, pos_deltas, expand_dir, cb);
+		extrapolate_aa1_triangle_edge(vout, other, opposite, pos_deltas, expand_dir);
 
 		vout.inv_cov = is_near_corner ? 0.0f : 1.0f; // Full coverage at near corner, otherwise none.
 	
@@ -391,20 +386,20 @@ static VSOutputGeneric vs_expand_triangle_aa1_impl(uint vid, VS_VERTICES_PARAM(v
 	return vout;
 }
 
-static VSOutputGeneric vs_expand_impl(uint vid, VS_VERTICES_PARAM(vertices), IN_PARAM(VSUniformsGeneric, cb), VS_INDICES_PARAM(indices))
+VSOutputGeneric vs_expand_impl(uint vid)
 {
 	switch (VS_EXPAND_TYPE)
 	{
 		case VS_EXPAND_NONE:
-			return vs_expand_none_impl(vid, vertices, cb);
+			return vs_expand_none_impl(vid);
 		case VS_EXPAND_POINT:
-			return vs_expand_point_impl(vid, vertices, cb);
+			return vs_expand_point_impl(vid);
 		case VS_EXPAND_LINE:
 		case VS_EXPAND_LINE_AA1:
-			return vs_expand_line_impl(vid, vertices, cb);
+			return vs_expand_line_impl(vid);
 		case VS_EXPAND_SPRITE:
-			return vs_expand_sprite_impl(vid, vertices, cb);
+			return vs_expand_sprite_impl(vid);
 		case VS_EXPAND_TRIANGLE_AA1:
-			return vs_expand_triangle_aa1_impl(vid, vertices, cb, indices);
+			return vs_expand_triangle_aa1_impl(vid);
 	}
 }

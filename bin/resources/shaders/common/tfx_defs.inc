@@ -69,24 +69,6 @@ struct VSRawVertex
 	uint FOG;
 };
 
-// Vertex shader constant buffer fields. Shared by all shaders except Metal.
-#define VS_UNIFORMS(X) \
-	X(float2, vertex_scale) \
-	X(float2, vertex_offset) \
-	X(float2, texture_scale) \
-	X(float2, texture_offset) \
-	X(float2, point_size) \
-	X(uint, max_depth_vs) \
-	X(float, line_aa1_width)
-
-// Generic VS constant buffer for passing to shared shader code.
-struct VSUniformsGeneric
-{
-	#define X(TYPE, NAME) TYPE NAME;
-		VS_UNIFORMS(X)
-	#undef X
-};
-
 // Vertex shader push constant fields for non-Metal backends.
 #define VS_PUSH_CONSTANTS(X) \
 	X(uint, BaseVertex) \
@@ -104,42 +86,6 @@ struct VSOutputGeneric
 	float inv_cov;
 	uint interior;
 	float point_size;
-};
-
-// Pixel shader constant buffer fields.
-// Shared by all shaders except Metal, which defines its own version.
-#define PS_UNIFORMS(X) \
-	X(float3, fog_color) \
-	X(float, aref) \
-	X(float4, wh)  \
-	X(float2, ta) \
-	X(float, max_depth_ps) \
-	X(float, alpha_fix) \
-	X(uint4, fbmask) \
-	X(float4, half_texel) \
-	X(float4, uv_min_max) \
-	X(float4, lod_params) \
-	X(float4, st_range) \
-	X(uint, channel_shuffle_blue_mask) \
-	X(uint, channel_shuffle_blue_shift) \
-	X(uint, channel_shuffle_green_mask) \
-	X(uint, channel_shuffle_green_shift) \
-	X(float2, channel_shuffle_offset) \
-	X(float2, tc_offset) \
-	X(float2, st_scale) \
-	X(float4x4, dither_matrix) \
-	X(float4, scale_factor) \
-	X(float, line_cov_scale) \
-	X(float, _pad0) \
-	X(float, _pad1) \
-	X(float, _pad2)
-
-// Generic PS constant buffer for passing to shared shader code.
-struct PSUniformsGeneric
-{
-	#define X(TYPE, NAME) TYPE NAME;
-		PS_UNIFORMS(X)
-	#undef X
 };
 
 // Generic PS inputs for passing to shared shader code.

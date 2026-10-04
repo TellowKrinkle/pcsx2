@@ -65,16 +65,8 @@
 #elif PCSX2_OPENGL
 	#define VS_SCALE_RAW_Z(Z) ((HAS_CLIP_CONTROL != FALSE) ? (float(Z) * EXP2_NEG_32) : ((float(Z) * EXP2_NEG_32) * 2.0f - 1.0f))
 #endif
-#define VS_VERTICES_PARAM(NAME) uint NAME
-#define VS_INDICES_PARAM(NAME) uint NAME
-#define VS_BASE_VERTEX BaseVertex
-#define VS_BASE_INDEX BaseIndex
-#define VS_LOAD_VERTEX(VERTICES, IDX) vertex_buffer[IDX]
-#if HAS_INDEX_BUFFER
-	#define VS_LOAD_INDEX(INDICES, IDX) index_buffer[IDX]
-#else
-	#define VS_LOAD_INDEX(INDICES, IDX) 0
-#endif
+#define VS_LOAD_VERTEX(IDX) vertex_buffer[IDX]
+#define VS_LOAD_INDEX(IDX) index_buffer[IDX]
 #define VS_NEEDS_EXPAND (VS_EXPAND_TYPE != VS_EXPAND_NONE)
 
 // Pixel shader helpers
@@ -86,6 +78,7 @@
 /// End helper macros for shared shader code
 
 #include "tfx_defs.inc"
+#include "tfx_uniforms.inc"
 
 #ifdef VERTEX_SHADER
 
@@ -144,28 +137,6 @@ readonly buffer VertexBuffer
 
 // Note: vertex/index buffers must be defined before common code is included.
 #include "tfx_vs.inc"
-
-// Vertex shader constant buffer.
-#if PCSX2_VULKAN
-layout(std140, set = 0, binding = 0) uniform cb0
-#elif PCSX2_OPENGL
-layout(std140, binding = 1) uniform cb20
-#endif
-{
-	#define X(TYPE, NAME) TYPE NAME;
-		VS_UNIFORMS(X)
-	#undef X
-};
-
-// Get VS constants for shared code.
-VSUniformsGeneric GetVSUniforms()
-{
-	VSUniformsGeneric cb;
-	#define X(TYPE, NAME) cb.NAME = NAME;
-		VS_UNIFORMS(X)
-	#undef X
-	return cb;
-}
 
 // Vertex shader outputs
 #if PCSX2_VULKAN
@@ -264,18 +235,6 @@ void main()
 #ifdef FRAGMENT_SHADER
 
 #define USE_FEEDBACK_SAMPLER (DISABLE_TEXTURE_BARRIER || HAS_FEEDBACK_LOOP_LAYOUT)
-
-// Pixel shader constant buffer.
-#if PCSX2_VULKAN
-layout(std140, set = 0, binding = 1) uniform cb1
-#elif PCSX2_OPENGL
-layout(std140, binding = 0) uniform cb21
-#endif
-{
-	#define X(TYPE, NAME) TYPE NAME;
-		PS_UNIFORMS(X)
-	#undef X
-};
 
 // Pixel shader inputs
 #if PCSX2_VULKAN
@@ -464,16 +423,6 @@ vec4 sample_p(uint idx)
 	return texelFetch(Palette, int2(idx, 0), 0);
 }
 
-// Get pixel shader constants for shared code.
-PSUniformsGeneric GetPSUniforms()
-{
-	PSUniformsGeneric cb;
-	#define X(TYPE, NAME) cb.NAME = NAME;
-		PS_UNIFORMS(X)
-	#undef X
-	return cb;
-}
-
 // Get pixel shader inputs for shared code.
 PSInputGeneric GetPSInput()
 {
@@ -489,7 +438,6 @@ PSInputGeneric GetPSInput()
 
 // Pixel shader global state
 PSInputGeneric ps_in;
-PSUniformsGeneric ps_cb;
 vec4 ps_current_color;
 float ps_current_depth;
 uint ps_prim_id;
@@ -502,7 +450,6 @@ bool ps_depth_discarded;
 void main()
 {
 	ps_in = GetPSInput();
-	ps_cb = GetPSUniforms();
 	ps_prim_id = gl_PrimitiveID;
 	ps_color_discarded = false;
 	ps_depth_discarded = false;
