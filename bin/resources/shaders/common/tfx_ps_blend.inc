@@ -7,7 +7,7 @@ PS_STATIC void ps_blend(IN_OUT_PARAM(float4, Color), IN_OUT_PARAM(float4, As_rgb
 	if (SW_BLEND)
 	{
 		// PABE
-		if (PS_PABE != FALSE)
+		if (PS_PABE != 0)
 		{
 			// As_rgba needed for accumulation blend to manipulate Cd.
 			// No blending so early exit
@@ -24,13 +24,13 @@ PS_STATIC void ps_blend(IN_OUT_PARAM(float4, Color), IN_OUT_PARAM(float4, As_rgb
 		if (NEEDS_RT_FOR_BLEND)
 		{
 			RT = ps_current_color;
-			float color_multi = PS_COLCLIP_HW != FALSE ? 65535.0f : 255.0f;
-			float alpha_multi = PS_RTA_CORRECTION != FALSE ? 128.0f : 255.0f;
+			float color_multi = PS_COLCLIP_HW != 0 ? 65535.0f : 255.0f;
+			float alpha_multi = PS_RTA_CORRECTION != 0 ? 128.0f : 255.0f;
 			RT.rgb = trunc(RT.rgb * color_multi + 0.1f);
 			RT.a = trunc(RT.a * alpha_multi + 0.1f);
 		}
 		
-		if (PS_SHUFFLE != FALSE && NEEDS_RT_FOR_BLEND)
+		if (PS_SHUFFLE != 0 && NEEDS_RT_FOR_BLEND)
 		{
 			uint4 denorm_rt = uint4(RT);
 			if ((PS_PROCESS_BA & SHUFFLE_WRITE) != 0)

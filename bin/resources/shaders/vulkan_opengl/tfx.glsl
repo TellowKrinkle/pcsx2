@@ -63,7 +63,7 @@
 #if PCSX2_VULKAN
 	#define VS_SCALE_RAW_Z(Z) (float(Z) * EXP2_NEG_32)
 #elif PCSX2_OPENGL
-	#define VS_SCALE_RAW_Z(Z) ((HAS_CLIP_CONTROL != FALSE) ? (float(Z) * EXP2_NEG_32) : ((float(Z) * EXP2_NEG_32) * 2.0f - 1.0f))
+	#define VS_SCALE_RAW_Z(Z) ((HAS_CLIP_CONTROL != 0) ? (float(Z) * EXP2_NEG_32) : ((float(Z) * EXP2_NEG_32) * 2.0f - 1.0f))
 #endif
 #define VS_LOAD_VERTEX(IDX) vertex_buffer[IDX]
 #define VS_LOAD_INDEX(IDX) index_buffer[IDX]

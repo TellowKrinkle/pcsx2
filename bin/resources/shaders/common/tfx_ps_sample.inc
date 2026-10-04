@@ -14,7 +14,7 @@ PS_STATIC float4 sample_c(float2 uv)
 		return ps_current_color;
 	if (PS_REGION_RECT != 0)
 		return read_tex(uint2(uv));
-	if (PS_POINT_SAMPLER != FALSE)
+	if (PS_POINT_SAMPLER != 0)
 	{
 		// Weird issue with ATI/AMD cards on DX,
 		// it looks like they add 127/128 of a texel to sampling coordinates
@@ -25,17 +25,17 @@ PS_STATIC float4 sample_c(float2 uv)
 		uv = (trunc(uv * ps_cb.wh.zw) + float2(0.5, 0.5)) / ps_cb.wh.zw;
 	}
 
-	if (PS_ADJS == FALSE && PS_ADJT == FALSE)
+	if (PS_ADJS == 0 && PS_ADJT == 0)
 	{
 		uv *= ps_cb.st_scale;
 	}
 	else
 	{
-		if (PS_ADJS != FALSE)
+		if (PS_ADJS != 0)
 			uv.x = (uv.x - ps_cb.st_range.x) * ps_cb.st_range.z;
 		else
 			uv.x = uv.x * ps_cb.st_scale.x;
-		if (PS_ADJT != FALSE)
+		if (PS_ADJT != 0)
 			uv.y = (uv.y - ps_cb.st_range.y) * ps_cb.st_range.w;
 		else
 			uv.y = uv.y * ps_cb.st_scale.y;
@@ -43,9 +43,9 @@ PS_STATIC float4 sample_c(float2 uv)
 
 	if (PS_SW_ANISO > 1)
 		return sample_c_af(uv, ps_in.t.w);
-	else if (PS_AUTOMATIC_LOD != FALSE)
+	else if (PS_AUTOMATIC_LOD != 0)
 		return sample_tex(uv);
-	else if (PS_MANUAL_LOD != FALSE)
+	else if (PS_MANUAL_LOD != 0)
 		return sample_tex_lod(uv, manual_lod(ps_in.t.w));
 	else
 		return sample_tex_lod(uv, 0);
@@ -62,11 +62,11 @@ PS_STATIC float4 clamp_wrap_uv(float4 uv)
 
 	if (PS_WMS == PS_WMT)
 	{
-		if (PS_REGION_RECT != FALSE && PS_WMS == 0)
+		if (PS_REGION_RECT != 0 && PS_WMS == 0)
 		{
 			uv = frac(uv);
 		}
-		else if (PS_REGION_RECT != FALSE && PS_WMS == 1)
+		else if (PS_REGION_RECT != 0 && PS_WMS == 1)
 		{
 			uv = saturate(uv);
 		}
@@ -78,7 +78,7 @@ PS_STATIC float4 clamp_wrap_uv(float4 uv)
 		{
 			// wrap negative uv coords to avoid an off by one error that shifted
 			// textures. Fixes Xenosaga's hair issue.
-			if (PS_FST == FALSE)
+			if (PS_FST == 0)
 				uv = frac(uv);
 
 			uint4 uv_msk_fix = asuint(ps_cb.uv_min_max);
@@ -87,11 +87,11 @@ PS_STATIC float4 clamp_wrap_uv(float4 uv)
 	}
 	else
 	{
-		if (PS_REGION_RECT != FALSE && PS_WMS == 0)
+		if (PS_REGION_RECT != 0 && PS_WMS == 0)
 		{
 			uv.xz = frac(uv.xz);
 		}
-		else if (PS_REGION_RECT != FALSE && PS_WMS == 1)
+		else if (PS_REGION_RECT != 0 && PS_WMS == 1)
 		{
 			uv.xz = saturate(uv.xz);
 		}
@@ -101,18 +101,18 @@ PS_STATIC float4 clamp_wrap_uv(float4 uv)
 		}
 		else if (PS_WMS == 3)
 		{
-			if (PS_FST == FALSE)
+			if (PS_FST == 0)
 				uv.xz = frac(uv.xz);
 
 			uint4 uv_msk_fix = asuint(ps_cb.uv_min_max);
 			uv.xz = float2((ushort2(uv.xz * tex_size.xx) & ushort2(uv_msk_fix.xx)) | ushort2(uv_msk_fix.zz)) / tex_size.xx;
 		}
 
-		if (PS_REGION_RECT != FALSE && PS_WMT == 0)
+		if (PS_REGION_RECT != 0 && PS_WMT == 0)
 		{
 			uv.yw = frac(uv.yw);
 		}
-		else if (PS_REGION_RECT != FALSE && PS_WMT == 1)
+		else if (PS_REGION_RECT != 0 && PS_WMT == 1)
 		{
 			uv.yw = saturate(uv.yw);
 		}
@@ -122,7 +122,7 @@ PS_STATIC float4 clamp_wrap_uv(float4 uv)
 		}
 		else if (PS_WMT == 3)
 		{
-			if (PS_FST == FALSE)
+			if (PS_FST == 0)
 				uv.yw = frac(uv.yw);
 
 			uint4 uv_msk_fix = asuint(ps_cb.uv_min_max);
@@ -130,7 +130,7 @@ PS_STATIC float4 clamp_wrap_uv(float4 uv)
 		}
 	}
 
-	if (PS_REGION_RECT != FALSE)
+	if (PS_REGION_RECT != 0)
 	{
 		// Normalized -> Integer Coordinates.
 		uv = clamp(uv * ps_cb.wh.zwzw + ps_cb.st_range.xyxy, ps_cb.st_range.xyxy, ps_cb.st_range.zwzw);
@@ -165,7 +165,7 @@ PS_STATIC uint4 sample_4_index(float4 uv)
 	
 	uint4 i;
 	
-	if (PS_RTA_SRC_CORRECTION != FALSE)
+	if (PS_RTA_SRC_CORRECTION != 0)
 	{
 		i = uint4(round(c * 128.25f)); // Denormalize value
 	}
@@ -194,25 +194,25 @@ PS_STATIC float4x4 sample_4p(uint4 u)
 
 PS_STATIC float4 sample_color(float2 st)
 {
-	if (PS_TCOFFSETHACK != FALSE)
+	if (PS_TCOFFSETHACK != 0)
 		st += ps_cb.tc_offset;
 
 	float4 t;
 	float4x4 c;
 	float2 dd;
 
-	if (PS_LTF == FALSE && PS_AEM_FMT == FMT_32 && PS_PAL_FMT == 0 && PS_REGION_RECT == FALSE && PS_WMS < 2 && PS_WMT < 2)
+	if (PS_LTF == 0 && PS_AEM_FMT == FMT_32 && PS_PAL_FMT == 0 && PS_REGION_RECT == 0 && PS_WMS < 2 && PS_WMT < 2)
 	{
 		c[0] = sample_c(st);
 	}
 	else
 	{
 		float4 uv;
-		if (PS_LTF != FALSE)
+		if (PS_LTF != 0)
 		{
 			uv = st.xyxy + ps_cb.half_texel;
 			dd = frac(uv.xy * ps_cb.wh.zw);
-			if (PS_FST == FALSE)
+			if (PS_FST == 0)
 			{
 				// Background in Shin Megami Tensei Lucifers
 				// I suspect that uv isn't a standard number, so fract is outside of the [0;1] range
@@ -236,17 +236,17 @@ PS_STATIC float4 sample_color(float2 st)
 	for (int i = 0; i < 4; i++)
 	{
 		if (PS_AEM_FMT == FMT_24)
-			c[i].a = (PS_AEM == FALSE || any_nonzero(c[i].rgb)) ? ps_cb.ta.x : 0.f;
+			c[i].a = (PS_AEM == 0 || any_nonzero(c[i].rgb)) ? ps_cb.ta.x : 0.f;
 		else if (PS_AEM_FMT == FMT_16)
-			c[i].a = c[i].a >= 0.5 ? ps_cb.ta.y : PS_AEM == FALSE || any_nonzero(int3(c[i].rgb * 255.0f) & int(0xF8)) ? ps_cb.ta.x : 0.f;
+			c[i].a = c[i].a >= 0.5 ? ps_cb.ta.y : PS_AEM == 0 || any_nonzero(int3(c[i].rgb * 255.0f) & int(0xF8)) ? ps_cb.ta.x : 0.f;
 	}
 
-	if (PS_LTF != FALSE)
+	if (PS_LTF != 0)
 		t = lerp(lerp(c[0], c[1], dd.x), lerp(c[2], c[3], dd.x), dd.y);
 	else
 		t = c[0];
 
-	if (PS_AEM_FMT == FMT_32 && PS_PAL_FMT == 0 && PS_RTA_SRC_CORRECTION != FALSE)
+	if (PS_AEM_FMT == FMT_32 && PS_PAL_FMT == 0 && PS_RTA_SRC_CORRECTION != 0)
 		t.a = t.a * (128.5f / 255.0f);
 		
 	// The 0.05f helps to fix the overbloom of sotc
@@ -291,20 +291,20 @@ PS_STATIC float4 sample_depth(float2 st)
 {
 	float2 uv_f = float2(clamp_wrap_uv_depth(ushort2(st))) * splat2(ps_cb.scale_factor.x);
 
-	if (PS_REGION_RECT != FALSE)
+	if (PS_REGION_RECT != 0)
 		uv_f = clamp(uv_f + ps_cb.st_range.xy, ps_cb.st_range.xy, ps_cb.st_range.zw);
 
 	uint2 uv = uint2(uv_f);
 	float4 t = splat4(0.0f);
 
-	if (PS_TALES_OF_ABYSS_HLE != FALSE)
+	if (PS_TALES_OF_ABYSS_HLE != 0)
 	{
 		// Warning: UV can't be used in channel effect
 		uint depth = fetch_raw_depth();
 		// Convert msb based on the palette
 		t = sample_p((depth >> 8) & 0xFFu) * 255.f;
 	}
-	else if (PS_URBAN_CHAOS_HLE != FALSE)
+	else if (PS_URBAN_CHAOS_HLE != 0)
 	{
 		// Depth buffer is read as a RGB5A1 texture. The game try to extract the green channel.
 		// So it will do a first channel trick to extract lsb, value is right-shifted.
@@ -338,10 +338,10 @@ PS_STATIC float4 sample_depth(float2 st)
 	}
 
 	if (PS_AEM_FMT == FMT_24)
-		t.a = (PS_AEM == FALSE || any_nonzero(t.rgb)) ? 255.f * ps_cb.ta.x : 0.f;
+		t.a = (PS_AEM == 0 || any_nonzero(t.rgb)) ? 255.f * ps_cb.ta.x : 0.f;
 	else if (PS_AEM_FMT == FMT_16)
-		t.a = t.a >= 128.f ? 255.f * ps_cb.ta.y : (PS_AEM == FALSE || any_nonzero(t.rgb)) ? 255.f * ps_cb.ta.x : 0.f;
-	else if (PS_PAL_FMT != 0 && PS_TALES_OF_ABYSS_HLE == FALSE && PS_URBAN_CHAOS_HLE == FALSE)
+		t.a = t.a >= 128.f ? 255.f * ps_cb.ta.y : (PS_AEM == 0 || any_nonzero(t.rgb)) ? 255.f * ps_cb.ta.x : 0.f;
+	else if (PS_PAL_FMT != 0 && PS_TALES_OF_ABYSS_HLE == 0 && PS_URBAN_CHAOS_HLE == 0)
 		t = trunc(sample_4p(uint4(t.aaaa))[0] * 255.0f + 0.05f);
 	
 	return t;

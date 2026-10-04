@@ -5,7 +5,7 @@ PS_STATIC uint fetch_raw_depth()
 
 PS_STATIC float4 fetch_raw_color()
 {
-	if (PS_TEX_IS_FB != FALSE)
+	if (PS_TEX_IS_FB != 0)
 		return ps_current_color;
 	else
 		return read_tex(uint2(ps_in.p.xy + ps_cb.channel_shuffle_offset));
@@ -13,7 +13,7 @@ PS_STATIC float4 fetch_raw_color()
 
 PS_STATIC float4 fetch_c(uint2 uv)
 {
-	if (PS_TEX_IS_FB != FALSE)
+	if (PS_TEX_IS_FB != 0)
 		return ps_current_color;
 	else
 		return read_tex(uv);

@@ -1,7 +1,7 @@
 PS_STATIC float4 ps_color()
 {
 	float2 st, st_int;
-	if (PS_FST == FALSE)
+	if (PS_FST == 0)
 	{
 		st = ps_in.t.xy / ps_in.t.w;
 		st_int = ps_in.ti.zw / ps_in.t.w;
@@ -31,11 +31,11 @@ PS_STATIC float4 ps_color()
 	else
 		T = sample_color(st);
 
-	if (PS_SHUFFLE != FALSE && PS_SHUFFLE_SAME == FALSE && PS_READ16_SRC == FALSE &&
+	if (PS_SHUFFLE != 0 && PS_SHUFFLE_SAME == 0 && PS_READ16_SRC == 0 &&
 		!(PS_PROCESS_BA == SHUFFLE_READWRITE && PS_PROCESS_RG == SHUFFLE_READWRITE))
 	{
 		uint4 denorm_c_before = uint4(T);
-		if ((PS_PROCESS_BA & SHUFFLE_READ) != FALSE)
+		if ((PS_PROCESS_BA & SHUFFLE_READ) != 0)
 		{
 			T.r = float((denorm_c_before.b << 3) & 0xF8u);
 			T.g = float(((denorm_c_before.b >> 2) & 0x38u) | ((denorm_c_before.a << 6) & 0xC0u));
@@ -50,7 +50,7 @@ PS_STATIC float4 ps_color()
 			T.a = float(denorm_c_before.g & 0x80u);
 		}
 		
-		T.a = (T.a >= 127.5 ? ps_cb.ta.y : PS_AEM == FALSE || any_nonzero(int3(T.rgb) & int(0xF8)) ? ps_cb.ta.x : 0.f) * 255.f;
+		T.a = (T.a >= 127.5 ? ps_cb.ta.y : PS_AEM == 0 || any_nonzero(int3(T.rgb) & int(0xF8)) ? ps_cb.ta.x : 0.f) * 255.f;
 	}
 
 	float4 C = tfx(T, ps_in.c);

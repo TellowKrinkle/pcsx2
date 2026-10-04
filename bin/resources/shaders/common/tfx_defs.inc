@@ -1,8 +1,4 @@
 #if !defined(PCSX2_MSL)
-	// GLSL is strict about casting integers to bools and all selector macros are integers,
-	// so use != FALSE with FALSE = 0 to get around this.
-	#define FALSE 0
-
 	// Constants for non-Metal backends (Metal defines them separately).
 	#define FMT_32 0
 	#define FMT_24 1
@@ -214,9 +210,9 @@ static bool any_nonzero(int3 val)
 	#define PS_TEX_IS_DEPTH (PS_DEPTH_FMT == 1 || PS_DEPTH_FMT == 2)
 
 	#define SW_BLEND (PS_BLEND_A != 0 || PS_BLEND_B != 0 || PS_BLEND_D != 0)
-	#define SW_AD_TO_HW (PS_BLEND_C == 1 && PS_A_MASKED != FALSE)
+	#define SW_AD_TO_HW (PS_BLEND_C == 1 && PS_A_MASKED != 0)
 	#define NEEDS_RT_FOR_BLEND (((PS_BLEND_A != PS_BLEND_B) && (PS_BLEND_A == 1 || PS_BLEND_B == 1 || PS_BLEND_C == 1)) || PS_BLEND_D == 1 || SW_AD_TO_HW)
-	#define NEEDS_RT_EARLY (PS_TEX_IS_FB != FALSE || PS_DATE >= 5)
+	#define NEEDS_RT_EARLY (PS_TEX_IS_FB != 0 || PS_DATE >= 5)
 	#define NEEDS_RT_FOR_AFAIL (PS_AFAIL == AFAIL_ZB_ONLY || PS_AFAIL == AFAIL_RGB_ONLY || PS_AFAIL == AFAIL_RGB_ONLY_SW_Z)
 	#define NEEDS_RT (NEEDS_RT_FOR_AFAIL || NEEDS_RT_EARLY || (!PS_PRIM_CHECKING_INIT && (PS_FBMASK != 0 || NEEDS_RT_FOR_BLEND)))
 	
@@ -224,7 +220,7 @@ static bool any_nonzero(int3 val)
 	#define NEEDS_DEPTH_FOR_ZTST (PS_ZTST == ZTST_GEQUAL || PS_ZTST == ZTST_GREATER)
 	#define NEEDS_DEPTH_FOR_AA1 (PS_AA1 == PS_AA1_TRIANGLE_SW_Z)
 	#define SW_DEPTH (NEEDS_DEPTH_FOR_AFAIL || NEEDS_DEPTH_FOR_ZTST || NEEDS_DEPTH_FOR_AA1)
-	#define ZWRITE (PS_ZFLOOR != FALSE || PS_ZCLAMP != FALSE || SW_DEPTH)
+	#define ZWRITE (PS_ZFLOOR != 0 || PS_ZCLAMP != 0 || SW_DEPTH)
 	#define NEED_PRIMID (PS_DATE >= 1 && PS_DATE <= 3)
 
 	#define PS_RETURN_COLOR_ROV (!PS_NO_COLOR && PS_ROV_COLOR)

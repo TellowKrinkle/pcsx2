@@ -100,7 +100,7 @@ PS_STATIC float4 sample_c_af(float2 uv, float uv_w)
 		aniso_line = aniso_line_dir * 0.5f * (1.0f / sz);
 	}
 
-	float lod = PS_AUTOMATIC_LOD != FALSE ? log2(length_lod) : PS_MANUAL_LOD != FALSE ? manual_lod(uv_w) : 0.0f;
+	float lod = PS_AUTOMATIC_LOD != 0 ? log2(length_lod) : PS_MANUAL_LOD != 0 ? manual_lod(uv_w) : 0.0f;
 
 	float4 colour;
 	if (aniso_ratio == 1.0f)

@@ -13,7 +13,7 @@ PS_STATIC float4 tfx(float4 T, float4 C)
 	else
 		C_out = C;
 
-	if (PS_TCC == FALSE)
+	if (PS_TCC == 0)
 		C_out.a = C.a;
 
 	// Clamp only when it is useful

@@ -70,7 +70,7 @@ VSOutputGeneric vs_main_impl(IN_PARAM(VSInput, v))
 	// Integer coordinate => normalized
 	vout.ti.xy = uv * cb.texture_scale;
 
-	if (VS_FST != FALSE)
+	if (VS_FST != 0)
 	{
 		// Integer coordinate => integral
 		vout.ti.zw = uv;
@@ -85,12 +85,12 @@ VSOutputGeneric vs_main_impl(IN_PARAM(VSInput, v))
 
 	vout.t.z = v.f.x; // pack fog with texture
 
-	if (VS_POINT_SIZE != FALSE)
+	if (VS_POINT_SIZE != 0)
 		vout.point_size = cb.point_size.x;
 	else
 		vout.point_size = 0.0f;
 
-	if (BROKEN_SHADER_DEPTH != FALSE)
+	if (BROKEN_SHADER_DEPTH != 0)
 		vs_broken_shader_depth(vout);
 
 	vout.inv_cov = 0.0f;
@@ -149,7 +149,7 @@ void extrapolate_aa1_triangle_edge(IN_OUT_PARAM(VSOutputGeneric, v0), IN_PARAM(V
 {
 	// Get texture deltas
 	float2x2 dt;
-	if (VS_FST != FALSE)
+	if (VS_FST != 0)
 	{
 		dt = float2x2(v1.ti.zw - v0.ti.zw, v2.ti.zw - v0.ti.zw);
 	}
@@ -160,7 +160,7 @@ void extrapolate_aa1_triangle_edge(IN_OUT_PARAM(VSOutputGeneric, v0), IN_PARAM(V
 
 	// Get color delta if interpolating
 	float2x4 dc;
-	if (VS_IIP != FALSE)
+	if (VS_IIP != 0)
 	{
 		dc = float2x4(v1.c - v0.c, v2.c - v0.c);
 	}
@@ -187,7 +187,7 @@ void extrapolate_aa1_triangle_edge(IN_OUT_PARAM(VSOutputGeneric, v0), IN_PARAM(V
 	v0.p.xy += dp * cb.point_size; // Extrapolate position
 
 	// Extrapolate texture coords
-	if (VS_FST != FALSE)
+	if (VS_FST != 0)
 	{
 			v0.ti.zw += MAT_MUL(dt, weights);
 			v0.ti.xy = v0.ti.zw * cb.texture_scale;
@@ -200,7 +200,7 @@ void extrapolate_aa1_triangle_edge(IN_OUT_PARAM(VSOutputGeneric, v0), IN_PARAM(V
 	}
 
 	// Extrapolate and clamp color
-	if (VS_IIP != FALSE)
+	if (VS_IIP != 0)
 	{
 		v0.c += MAT_MUL(dc, weights);
 		v0.c = clamp(v0.c, 0, 255);

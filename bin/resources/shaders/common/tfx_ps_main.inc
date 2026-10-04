@@ -1,8 +1,8 @@
 PS_STATIC void ps_shuffle(IN_OUT_PARAM(float4, C))
 {
-	if (PS_SHUFFLE != FALSE)
+	if (PS_SHUFFLE != 0)
 	{
-		if ((PS_SHUFFLE_SAME == FALSE) && (PS_READ16_SRC == FALSE) &&
+		if ((PS_SHUFFLE_SAME == 0) && (PS_READ16_SRC == 0) &&
 			!(PS_PROCESS_BA == SHUFFLE_READWRITE && PS_PROCESS_RG == SHUFFLE_READWRITE))
 		{
 			uint4 denorm_c_after = uint4(C);
@@ -19,7 +19,7 @@ PS_STATIC void ps_shuffle(IN_OUT_PARAM(float4, C))
 		}
 
 		// Special case for 32bit input and 16bit output, shuffle used by The Godfather
-		if (PS_SHUFFLE_SAME != FALSE)
+		if (PS_SHUFFLE_SAME != 0)
 		{
 			uint4 denorm_c = uint4(C);
 			
@@ -29,7 +29,7 @@ PS_STATIC void ps_shuffle(IN_OUT_PARAM(float4, C))
 				C.ga = C.rg;
 		}
 		// Copy of a 16bit source in to this target
-		else if (PS_READ16_SRC != FALSE)
+		else if (PS_READ16_SRC != 0)
 		{
 			uint4 denorm_c = uint4(C);
 			uint2 denorm_TA = uint2(ps_cb.ta * 255.5f);
@@ -37,7 +37,7 @@ PS_STATIC void ps_shuffle(IN_OUT_PARAM(float4, C))
 			C.rb = splat2(float((denorm_c.r >> 3) | (((denorm_c.g >> 3) & 0x7u) << 5)));
 			C.ga = splat2(float((denorm_c.g >> 6) | ((denorm_c.b >> 3) << 2) | (denorm_TA.x & 0x80u)));
 		}
-		else if (PS_SHUFFLE_ACROSS != FALSE)
+		else if (PS_SHUFFLE_ACROSS != 0)
 		{
 			if (PS_PROCESS_BA == SHUFFLE_READWRITE && PS_PROCESS_RG == SHUFFLE_READWRITE)
 			{
@@ -67,10 +67,10 @@ PS_STATIC PSOutputGeneric ps_main_impl()
 
 	float input_z = ps_in.p.z;
 
-	if (BROKEN_SHADER_DEPTH != FALSE)
+	if (BROKEN_SHADER_DEPTH != 0)
 		input_z -= EXP2_NEG_32;
 
-	if (PS_ZFLOOR != FALSE)
+	if (PS_ZFLOOR != 0)
 		input_z = floor(input_z * EXP2_POS_32) * EXP2_NEG_32;
 
 	if (PS_ZTST == ZTST_GEQUAL || PS_ZTST == ZTST_GREATER)
@@ -90,8 +90,8 @@ PS_STATIC PSOutputGeneric ps_main_impl()
 	if (PS_DATE >= 5)
 	{
 		// 1 => DATM == 0, 2 => DATM == 1
-		float rt_a = PS_WRITE_RG != FALSE ? ps_current_color.g : ps_current_color.a;
-		bool bad = PS_RTA_CORRECTION != FALSE ?
+		float rt_a = PS_WRITE_RG != 0 ? ps_current_color.g : ps_current_color.a;
+		bool bad = PS_RTA_CORRECTION != 0 ?
 			((uint(PS_DATE) & 3u) == 1u ? (rt_a > (254.5f / 255.f)) : (rt_a < (254.5f / 255.f))) :
 			((uint(PS_DATE) & 3u) == 1u ? (rt_a > 0.5) : (rt_a < 0.5));
 
@@ -117,10 +117,10 @@ PS_STATIC PSOutputGeneric ps_main_impl()
 		float cov = PS_AA1 == PS_AA1_LINE
 			? saturate(ps_cb.line_cov_scale * (1.f - abs(ps_in.inv_cov))) // Blur only outer part of the line by scaling coverage.
 			: saturate(1.f - abs(ps_in.inv_cov));
-		if (PS_ABE == FALSE || floor(C.a) == 128.f) // The coverage is only used if the fragment alpha is 128.
+		if (PS_ABE == 0 || floor(C.a) == 128.f) // The coverage is only used if the fragment alpha is 128.
 			C.a = 128.f * cov;
 	}
-	else if (PS_FIXED_ONE_A != FALSE)
+	else if (PS_FIXED_ONE_A != 0)
 	{
 		// AA (Fixed one) will output a coverage of 1.0 as alpha
 		C.a = 128.0f;
@@ -133,7 +133,7 @@ PS_STATIC PSOutputGeneric ps_main_impl()
 	float4 alpha_blend = splat4(0.f);
 	if (SW_AD_TO_HW)
 	{
-		float RT_a = trunc(ps_current_color.a * (PS_RTA_CORRECTION != FALSE ? 128.f : 255.f) + 0.1f);
+		float RT_a = trunc(ps_current_color.a * (PS_RTA_CORRECTION != 0 ? 128.f : 255.f) + 0.1f);
 		alpha_blend = splat4(RT_a / 128.f);
 	}
 	else
@@ -172,15 +172,15 @@ PS_STATIC PSOutputGeneric ps_main_impl()
 	if (PS_AFAIL == AFAIL_RGB_ONLY_DSB)
 		alpha_blend.a = float(atst_pass);
 
-	if (PS_NO_COLOR == FALSE)
+	if (PS_NO_COLOR == 0)
 	{
-		psout.c0.a = PS_RTA_CORRECTION != FALSE ? C.a / 128.f : C.a / 255.f;
-		psout.c0.rgb = PS_COLCLIP_HW != FALSE ? float3(C.rgb / 65535.f) : C.rgb / 255.f;
+		psout.c0.a = PS_RTA_CORRECTION != 0 ? C.a / 128.f : C.a / 255.f;
+		psout.c0.rgb = PS_COLCLIP_HW != 0 ? float3(C.rgb / 65535.f) : C.rgb / 255.f;
 	}
-	if (PS_NO_COLOR1 == FALSE)
+	if (PS_NO_COLOR1 == 0)
 		psout.c1 = alpha_blend;
 
-	if (PS_ZCLAMP != FALSE)
+	if (PS_ZCLAMP != 0)
 		input_z = min(input_z, ps_cb.max_depth_ps);
 
 	if (PS_AA1 == PS_AA1_TRIANGLE_SW_Z && ps_in.interior == 0)
