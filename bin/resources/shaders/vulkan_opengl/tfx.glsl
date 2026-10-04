@@ -93,7 +93,7 @@
 struct VSInput
 {
 	float2 st;
-	uint4 c;
+	uint4  c;
 	float  q;
 	uint2  p;
 	uint   z;
@@ -226,7 +226,7 @@ VSInput GetVSInput()
 {
 	VSInput vin;
 	vin.st = a_st;
-	vin.c = uint4(a_c);
+	vin.c = a_c;
 	vin.q = a_q;
 	vin.p = a_p;
 	vin.z = a_z;
