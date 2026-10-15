@@ -3668,16 +3668,13 @@ namespace
 		FullscreenUI::s_librashader_pass_names.clear();
 		FullscreenUI::s_librashader_param_search.clear();
 		FullscreenUI::s_librashader_editing_param_index.reset();
-#ifdef ENABLE_LIBRASHADER
 		FullscreenUI::s_librashader_params.clear();
-#endif
 		FullscreenUI::s_librashader_page_index = 0;
 	}
 } // namespace
 
 void FullscreenUI::CommitLibrashaderParams(SettingsInterface* bsi, const std::string& preset_path)
 {
-#ifdef ENABLE_LIBRASHADER
 	if (preset_path.empty())
 		return;
 
@@ -3691,15 +3688,10 @@ void FullscreenUI::CommitLibrashaderParams(SettingsInterface* bsi, const std::st
 		Host::RunOnCPUThread([]() { VMManager::ReloadGameSettings(); });
 	else
 		Host::RunOnCPUThread([]() { VMManager::ApplySettings(); });
-#else
-	(void)bsi;
-	(void)preset_path;
-#endif
 }
 
 void FullscreenUI::StartLibrashaderLoad(SettingsInterface* bsi, const std::string& preset_path)
 {
-#ifdef ENABLE_LIBRASHADER
 	const u64 request_id = ++s_librashader_load_request_id;
 	s_librashader_load_pending = true;
 	s_librashader_load_success = false;
@@ -3721,18 +3713,10 @@ void FullscreenUI::StartLibrashaderLoad(SettingsInterface* bsi, const std::strin
 		s_librashader_async_load.result = std::move(result);
 		s_librashader_async_load.complete = true;
 	});
-#else
-	(void)bsi;
-	(void)preset_path;
-	s_librashader_pass_names = GetSlangpPassNames(preset_path);
-	s_librashader_loaded_preset = preset_path;
-	s_librashader_load_pending = false;
-#endif
 }
 
 void FullscreenUI::PollLibrashaderLoad()
 {
-#ifdef ENABLE_LIBRASHADER
 	LibrashaderPresetLoad result;
 	std::string preset_path;
 	u64 request_id = 0;
@@ -3771,12 +3755,10 @@ void FullscreenUI::PollLibrashaderLoad()
 	s_librashader_load_success = true;
 	s_librashader_load_error = LibrashaderLoadError::None;
 	s_librashader_params = std::move(result.parameters);
-#endif
 }
 
 void FullscreenUI::DrawLibrashaderFloatParam(size_t param_index, const LibrashaderParam& param, bool enabled)
 {
-#ifdef ENABLE_LIBRASHADER
 	ImGui::PushID(static_cast<int>(param_index));
 	const std::string label = param.GetLabel();
 	const std::string value_text = param.FormatValue(param.value);
@@ -3790,16 +3772,10 @@ void FullscreenUI::DrawLibrashaderFloatParam(size_t param_index, const Librashad
 		const std::string popup_id = GetLibrashaderParamPopupId(param, param_index);
 		ImGui::OpenPopup(popup_id.c_str());
 	}
-#else
-	(void)param_index;
-	(void)param;
-	(void)enabled;
-#endif
 }
 
 void FullscreenUI::DrawLibrashaderFloatParamPopup(SettingsInterface* bsi, const std::string& preset_path, bool enabled)
 {
-#ifdef ENABLE_LIBRASHADER
 	if (!s_librashader_editing_param_index.has_value())
 		return;
 
@@ -3888,16 +3864,10 @@ void FullscreenUI::DrawLibrashaderFloatParamPopup(SettingsInterface* bsi, const 
 
 	ImGui::PopStyleVar(4);
 	ImGui::PopFont();
-#else
-	(void)bsi;
-	(void)preset_path;
-	(void)enabled;
-#endif
 }
 
 void FullscreenUI::DrawLibrashaderParamsPage(SettingsInterface* bsi)
 {
-#ifdef ENABLE_LIBRASHADER
 	PollLibrashaderLoad();
 
 	const std::string preset_path = GetEffectiveLibrashaderPresetPath(bsi);
@@ -4049,14 +4019,6 @@ void FullscreenUI::DrawLibrashaderParamsPage(SettingsInterface* bsi)
 	EndMenuButtons();
 
 	DrawLibrashaderFloatParamPopup(bsi, preset_path, enabled);
-#else
-	(void)bsi;
-	BeginMenuButtons();
-	if (MenuButton(FSUI_ICONSTR(ICON_PF_BACKWARD, "Back"), FSUI_CSTR("Return to Post-Processing settings.")))
-		s_post_processing_subview = PostProcessingSubview::Main;
-	ActiveButton(FSUI_CSTR("Shader preset parameters are not available because this build was compiled without librashader."), false, false);
-	EndMenuButtons();
-#endif
 }
 
 void FullscreenUI::DrawPostProcessingMainSettings(SettingsInterface* bsi)
@@ -4066,7 +4028,6 @@ void FullscreenUI::DrawPostProcessingMainSettings(SettingsInterface* bsi)
 	const bool has_preset = !preset_path.empty();
 	const bool preset_exists = has_preset && FileSystem::FileExists(preset_path.c_str());
 
-#ifdef ENABLE_LIBRASHADER
 	PollLibrashaderLoad();
 
 	if (!librashader_active || !has_preset)
@@ -4083,7 +4044,6 @@ void FullscreenUI::DrawPostProcessingMainSettings(SettingsInterface* bsi)
 		ClearLibrashaderState();
 		s_librashader_pass_names = GetSlangpPassNames(preset_path);
 	}
-#endif
 
 	MenuHeading(FSUI_CSTR("Post-Processing"));
 	{
@@ -4133,11 +4093,7 @@ void FullscreenUI::DrawPostProcessingMainSettings(SettingsInterface* bsi)
 
 	MenuHeading(FSUI_CSTR("Shader Preset (librashader)"));
 	{
-#ifdef ENABLE_LIBRASHADER
 		const bool librashader_enabled = true;
-#else
-		const bool librashader_enabled = false;
-#endif
 
 		DrawToggleSetting(bsi, FSUI_ICONSTR(ICON_FA_WAND_MAGIC_SPARKLES, "Shader Preset (librashader)"),
 			librashader_enabled ?
@@ -4191,7 +4147,6 @@ void FullscreenUI::DrawPostProcessingMainSettings(SettingsInterface* bsi)
 			{
 				ActiveButton(FSUI_CSTR("The selected preset file does not exist."), false, false);
 			}
-#ifdef ENABLE_LIBRASHADER
 			else if (s_librashader_load_pending)
 			{
 				ActiveButton(FSUI_CSTR("Loading shader parameters..."), false, false);
@@ -4221,17 +4176,6 @@ void FullscreenUI::DrawPostProcessingMainSettings(SettingsInterface* bsi)
 					s_post_processing_subview = PostProcessingSubview::LibrashaderParams;
 				}
 			}
-#else
-			else
-			{
-				MenuHeading(FSUI_CSTR("Passes"));
-				const std::vector<std::string> pass_names = GetSlangpPassNames(preset_path);
-				for (const std::string& pass_name : pass_names)
-					ActiveButton(pass_name.c_str(), false, false);
-
-				ActiveButton(FSUI_CSTR("librashader support is not compiled into this build."), false, false);
-			}
-#endif
 		}
 	}
 }

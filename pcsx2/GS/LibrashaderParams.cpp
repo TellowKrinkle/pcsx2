@@ -10,14 +10,13 @@
 #include "Config.h"
 #include "VMManager.h"
 
+#include "common/Console.h"
 #include "common/Error.h"
 #include "common/StringUtil.h"
 
 #include "fmt/format.h"
 
-#ifdef ENABLE_LIBRASHADER
-#include <librashader/librashader.h>
-#endif
+#include <rashader-lite.h>
 
 namespace
 {
@@ -328,7 +327,6 @@ LibrashaderVisiblePage GetVisibleLibrashaderPage(
 	return result;
 }
 
-#ifdef ENABLE_LIBRASHADER
 namespace
 {
 
@@ -404,57 +402,57 @@ std::string GetLibrashaderGameParamsPath(std::string_view game_serial, u32 game_
 	return fmt::format("{}_librashader_params.ini", Path::StripExtension(VMManager::GetGameSettingsPath(game_serial, game_crc)));
 }
 
+static std::optional<std::string> ShaderReadCallback(void *ctx, const char* path) {
+	return FileSystem::ReadFileToString(path);
+}
+
+static void LogRAShaderErrors(const std::vector<rashader::Error>& errors) {
+	for (const rashader::Error& error : errors) {
+		if (error.extra.empty())
+			Console.ErrorFmt("\t{}:{}: {}", error.file, error.line, error.message);
+		else
+			Console.ErrorFmt("\t{}:{}: {}: {}", error.file, error.line, error.message, error.extra);
+	}
+}
+
 LibrashaderPresetLoad LoadLibrashaderPreset(const std::string& preset_path, const LibrashaderParamsContext& context)
 {
 	LibrashaderPresetLoad result;
 	const std::string native_path = Path::ToNativePath(StringUtil::StripWhitespace(preset_path));
 	result.pass_names = GetSlangpPassNames(preset_path);
 
-	libra_shader_preset_t preset = nullptr;
-	libra_error_t err = libra_preset_create(native_path.c_str(), &preset);
-	if (err)
-	{
-		libra_error_free(&err);
+	std::vector<rashader::Error> errors;
+	rashader::SlangParseConfig config;
+	config.has_sensors = false;
+	rashader::FilterChain chain = rashader::parse_slangp(native_path.c_str(), &errors, config, ShaderReadCallback);
+	// rashader-lite errors just indicate something might have gone wrong.  It's only a real error if the resulting filter chain can't compile.
+	if (!chain.ok()) {
+		Console.ErrorFmt("Failed to load slangp {}:", preset_path);
+		LogRAShaderErrors(errors);
 		result.error = LibrashaderLoadError::PresetFailed;
-		return result;
-	}
-
-	libra_preset_param_list_t list = {};
-	err = libra_preset_get_runtime_params(&preset, &list);
-	if (err)
-	{
-		libra_error_free(&err);
-		libra_preset_free(&preset);
-		result.error = LibrashaderLoadError::ParamsFailed;
 		return result;
 	}
 
 	const std::unordered_map<std::string, float> saved_values = LoadLibrashaderSavedParams(
 		native_path, context.game_serial, context.IsPerGame() ? context.game_crc : 0);
 
-	result.parameters.reserve(static_cast<size_t>(list.length));
-	for (uint64_t i = 0; i < list.length; ++i)
-	{
-		const libra_preset_param_t& p = list.parameters[i];
-		const std::string name = p.name ? std::string(StringUtil::StripWhitespace(p.name)) : std::string();
-		if (name.empty())
-			continue;
+	result.parameters.reserve(chain.parameters.size());
+	for (rashader::Parameter& p : chain.parameters) {
+		const std::string_view name = StringUtil::StripWhitespace(p.name);
 
 		LibrashaderParam param;
 		param.name = name;
-		param.description = p.description ? p.description : "";
+		param.description = p.description;
 		param.minimum = p.minimum;
 		param.maximum = p.maximum;
 		param.step = p.step;
 		param.default_value = p.initial;
 
-		const auto saved_it = saved_values.find(name);
+		const auto saved_it = saved_values.find(param.name);
 		param.value = (saved_it != saved_values.end()) ? saved_it->second : param.default_value;
-		result.parameters.push_back(std::move(param));
+		result.parameters.emplace_back(std::move(param));
 	}
 
-	libra_preset_free_runtime_params(list);
-	libra_preset_free(&preset);
 	result.success = true;
 	return result;
 }
@@ -534,6 +532,8 @@ bool ClearLibrashaderGameOverrides(const std::string& preset_path, const Librash
 	return params_si.Save(&err);
 }
 
+#ifdef ENABLE_LIBRASHADER
+#include <librashader/librashader.h>
 std::string GetLibrashaderError(libra_error_t err)
 {
 	if (!err)

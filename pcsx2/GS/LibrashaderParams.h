@@ -101,10 +101,6 @@ LibrashaderPage GetLibrashaderPage(size_t visible_count, size_t page_index);
 LibrashaderVisiblePage GetVisibleLibrashaderPage(
 	const std::vector<LibrashaderParam>& parameters, const std::string& search_query, size_t page_index);
 
-#ifdef ENABLE_LIBRASHADER
-struct _libra_error;
-typedef struct _libra_error* libra_error_t;
-
 std::string GetLibrashaderParamsSectionName(const std::string& preset_path);
 std::string GetLibrashaderParamsFilePath();
 std::string GetLibrashaderGameParamsPath(std::string_view game_serial, u32 game_crc);
@@ -119,5 +115,9 @@ std::unordered_map<std::string, float> LoadLibrashaderSavedParams(
 	const std::string& preset_path, std::string_view game_serial, u32 game_crc);
 bool HasLibrashaderGameOverrides(const std::string& preset_path, const LibrashaderParamsContext& context);
 bool ClearLibrashaderGameOverrides(const std::string& preset_path, const LibrashaderParamsContext& context);
+
+#ifdef ENABLE_LIBRASHADER
+struct _libra_error;
+typedef struct _libra_error* libra_error_t;
 std::string GetLibrashaderError(libra_error_t err);
 #endif

@@ -932,7 +932,6 @@ bool Pcsx2Config::GSOptions::RestartOptionsAreEqual(const GSOptions& right) cons
 
 void Pcsx2Config::GSOptions::LoadLibrashaderPresetParams(std::string_view game_serial, u32 game_crc)
 {
-#ifdef ENABLE_LIBRASHADER
 	LibrashaderPresetParams.clear();
 	StringUtil::StripWhitespace(&LibrashaderPreset);
 	Path::ToNativePath(&LibrashaderPreset);
@@ -941,7 +940,6 @@ void Pcsx2Config::GSOptions::LoadLibrashaderPresetParams(std::string_view game_s
 
 	for (auto& [key, value] : LoadLibrashaderSavedParams(LibrashaderPreset, game_serial, game_crc))
 		LibrashaderPresetParams.emplace_back(std::move(key), value);
-#endif
 }
 
 void Pcsx2Config::GSOptions::LoadSave(SettingsWrapper& wrap)
