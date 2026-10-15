@@ -109,6 +109,8 @@ if(USE_VULKAN)
 	add_subdirectory(3rdparty/vulkan EXCLUDE_FROM_ALL)
 endif()
 
+add_subdirectory(3rdparty/rashader-lite EXCLUDE_FROM_ALL)
+
 add_subdirectory(3rdparty/cubeb EXCLUDE_FROM_ALL)
 disable_compiler_warnings_for_target(cubeb)
 disable_compiler_warnings_for_target(speex)

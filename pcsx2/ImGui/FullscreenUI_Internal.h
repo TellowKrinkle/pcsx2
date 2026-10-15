@@ -544,9 +544,7 @@ namespace FullscreenUI
 	inline std::atomic<bool> s_librashader_load_pending{false};
 	inline bool s_librashader_load_success = false;
 	inline LibrashaderLoadError s_librashader_load_error = LibrashaderLoadError::None;
-#ifdef ENABLE_LIBRASHADER
 	inline std::vector<LibrashaderParam> s_librashader_params;
-#endif
 	inline std::unique_ptr<INISettingsInterface> s_game_settings_interface;
 	inline std::unique_ptr<GameList::Entry> s_game_settings_entry;
 	inline std::vector<std::pair<std::string, bool>> s_game_list_directories_cache;
