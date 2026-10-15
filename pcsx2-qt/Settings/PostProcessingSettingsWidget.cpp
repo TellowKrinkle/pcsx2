@@ -33,10 +33,6 @@ PostProcessingSettingsWidget::PostProcessingSettingsWidget(SettingsWindow* setti
 
 	SettingWidgetBinder::BindWidgetToBoolSetting(sif, m_post.librashaderGroup, "EmuCore/GS", "LibrashaderEnabled", false);
 	SettingWidgetBinder::BindWidgetToStringSetting(sif, m_post.librashaderPreset, "EmuCore/GS", "LibrashaderPreset", std::string());
-#ifndef ENABLE_LIBRASHADER
-	m_post.librashaderGroup->setToolTip(tr("librashader support is not compiled into this build."));
-	m_post.librashaderGroup->setEnabled(false);
-#endif
 
 	connect(m_post.librashaderBrowse, &QPushButton::clicked, this, &PostProcessingSettingsWidget::onLibrashaderBrowse);
 	connect(m_post.librashaderClear, &QPushButton::clicked, this, &PostProcessingSettingsWidget::onLibrashaderClear);
@@ -45,10 +41,8 @@ PostProcessingSettingsWidget::PostProcessingSettingsWidget(SettingsWindow* setti
 	connect(m_post.librashaderPreset, &QLineEdit::textChanged, this, &PostProcessingSettingsWidget::scheduleLibrashaderParamsRebuild);
 	connect(m_post.librashaderParamSearch, &QLineEdit::textChanged, this, &PostProcessingSettingsWidget::onLibrashaderParamSearchChanged);
 	connect(m_post.librashaderGroup, &QGroupBox::toggled, this, &PostProcessingSettingsWidget::rebuildLibrashaderParamsUi);
-#ifdef ENABLE_LIBRASHADER
 	connect(m_post.librashaderPrevPage, &QPushButton::clicked, this, &PostProcessingSettingsWidget::onLibrashaderPrevPage);
 	connect(m_post.librashaderNextPage, &QPushButton::clicked, this, &PostProcessingSettingsWidget::onLibrashaderNextPage);
-#endif
 	m_librashader_rebuild_timer = new QTimer(this);
 	m_librashader_rebuild_timer->setSingleShot(true);
 	m_librashader_rebuild_timer->setInterval(200);
@@ -61,11 +55,7 @@ PostProcessingSettingsWidget::PostProcessingSettingsWidget(SettingsWindow* setti
 	rebuildLibrashaderParamsUi();
 
 	dialog()->registerWidgetHelp(m_post.librashaderGroup, tr("Shader Preset (librashader)"), tr("Unchecked"),
-#ifdef ENABLE_LIBRASHADER
 		tr("Enables a shader preset chain using librashader. Some presets may impact performance."));
-#else
-		tr("librashader support is not compiled into this build."));
-#endif
 
 	dialog()->registerWidgetHelp(m_post.librashaderPreset, tr("Preset Path"), tr(""),
 		tr("Path to the .slangp shader preset file to load."));
@@ -166,15 +156,10 @@ void PostProcessingSettingsWidget::updateLibrashaderParamsVisibility()
 	m_post.librashaderNextPage->setEnabled(has_preset);
 	m_post.librashaderParamsScrollArea->setVisible(show);
 	m_post.librashaderParamsScrollArea->setEnabled(has_preset);
-#ifdef ENABLE_LIBRASHADER
 	m_post.librashaderRestoreDefaults->setVisible(show);
 	m_post.librashaderRestoreDefaults->setEnabled(false);
 	m_post.librashaderUseGlobalParams->setVisible(show && dialog()->isPerGameSettings());
 	m_post.librashaderUseGlobalParams->setEnabled(false);
-#else
-	m_post.librashaderRestoreDefaults->setVisible(false);
-	m_post.librashaderUseGlobalParams->setVisible(false);
-#endif
 }
 
 void PostProcessingSettingsWidget::clearLibrashaderParamsLayout()
@@ -190,7 +175,6 @@ void PostProcessingSettingsWidget::clearLibrashaderParamsLayout()
 
 void PostProcessingSettingsWidget::commitLibrashaderParams()
 {
-#ifdef ENABLE_LIBRASHADER
 	const QString preset_path = m_post.librashaderPreset->text().trimmed();
 	if (preset_path.isEmpty())
 		return;
@@ -203,7 +187,6 @@ void PostProcessingSettingsWidget::commitLibrashaderParams()
 
 	applyLibrashaderChanges();
 	updateUseGlobalParamsButton();
-#endif
 }
 
 LibrashaderParamsContext PostProcessingSettingsWidget::librashaderContext() const
@@ -216,7 +199,6 @@ LibrashaderParamsContext PostProcessingSettingsWidget::librashaderContext() cons
 
 void PostProcessingSettingsWidget::onLibrashaderUseGlobalParams()
 {
-#ifdef ENABLE_LIBRASHADER
 	const QString preset_path = m_post.librashaderPreset->text().trimmed();
 	if (preset_path.isEmpty())
 		return;
@@ -231,26 +213,20 @@ void PostProcessingSettingsWidget::onLibrashaderUseGlobalParams()
 	startLibrashaderLoad(preset_path);
 
 	applyLibrashaderChanges();
-#endif
 }
 
 void PostProcessingSettingsWidget::updateUseGlobalParamsButton()
 {
-#ifdef ENABLE_LIBRASHADER
 	if (!dialog()->isPerGameSettings())
 		return;
 
 	const QString preset_path = m_post.librashaderPreset->text().trimmed();
 	const bool has_preset = m_post.librashaderGroup->isChecked() && !preset_path.isEmpty();
 	m_post.librashaderUseGlobalParams->setEnabled(has_preset && HasLibrashaderGameOverrides(preset_path.toStdString(), librashaderContext()));
-#else
-	(void)0;
-#endif
 }
 
 void PostProcessingSettingsWidget::onLibrashaderRestoreDefaults()
 {
-#ifdef ENABLE_LIBRASHADER
 	const QString preset_path = m_post.librashaderPreset->text().trimmed();
 	if (preset_path.isEmpty())
 		return;
@@ -265,7 +241,6 @@ void PostProcessingSettingsWidget::onLibrashaderRestoreDefaults()
 
 	applyLibrashaderChanges();
 	updateUseGlobalParamsButton();
-#endif
 }
 
 void PostProcessingSettingsWidget::populateLibrashaderPassList(const QString& preset_path)
@@ -289,7 +264,6 @@ void PostProcessingSettingsWidget::setLibrashaderPassList(const std::vector<std:
 		m_post.librashaderPassList->setCurrentRow(0);
 }
 
-#ifdef ENABLE_LIBRASHADER
 void PostProcessingSettingsWidget::startLibrashaderLoad(const QString& preset_path)
 {
 	const u64 request_id = ++m_librashader_load_request_id;
@@ -495,7 +469,6 @@ void PostProcessingSettingsWidget::onLibrashaderNextPage()
 	m_librashader_page_index++;
 	renderLibrashaderParamsPage();
 }
-#endif
 
 void PostProcessingSettingsWidget::rebuildLibrashaderParamsUi()
 {
@@ -518,11 +491,6 @@ void PostProcessingSettingsWidget::rebuildLibrashaderParamsUi()
 	}
 
 	const QString preset_path = m_post.librashaderPreset->text().trimmed();
-#ifndef ENABLE_LIBRASHADER
-	populateLibrashaderPassList(preset_path);
-	showMessage(tr("librashader support is not compiled into this build."));
-	return;
-#else
 	if (preset_path.isEmpty())
 	{
 		clearLibrashaderState();
@@ -545,19 +513,15 @@ void PostProcessingSettingsWidget::rebuildLibrashaderParamsUi()
 	m_post.librashaderPageLabel->setText(tr("Loading..."));
 	showMessage(tr("Loading shader parameters..."));
 	startLibrashaderLoad(preset_path);
-#endif
 }
 
 void PostProcessingSettingsWidget::onLibrashaderParamSearchChanged(const QString& text)
 {
 	Q_UNUSED(text);
-#ifdef ENABLE_LIBRASHADER
 	m_librashader_page_index = 0;
 	renderLibrashaderParamsPage();
-#endif
 }
 
-#ifdef ENABLE_LIBRASHADER
 void PostProcessingSettingsWidget::applyLibrashaderChanges()
 {
 	if (dialog()->getSettingsInterface())
@@ -565,19 +529,16 @@ void PostProcessingSettingsWidget::applyLibrashaderChanges()
 	else
 		g_emu_thread->applySettings();
 }
-#endif
 
 void PostProcessingSettingsWidget::clearLibrashaderState()
 {
 	++m_librashader_load_request_id;
-#ifdef ENABLE_LIBRASHADER
 	m_librashader_params.clear();
 	m_librashader_page_index = 0;
 	m_post.librashaderRestoreDefaults->setEnabled(false);
 	m_post.librashaderPrevPage->setVisible(false);
 	m_post.librashaderNextPage->setVisible(false);
 	updateUseGlobalParamsButton();
-#endif
 	m_post.librashaderPageLabel->setText(tr("Page 1/1"));
 }
 

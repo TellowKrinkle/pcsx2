@@ -44,7 +44,6 @@ private:
 	void scheduleLibrashaderParamsRebuild();
 	u64 m_librashader_load_request_id = 0;
 
-#ifdef ENABLE_LIBRASHADER
 	void startLibrashaderLoad(const QString& preset_path);
 	void applyLibrashaderLoad(u64 request_id, const QString& preset_path, LibrashaderPresetLoad&& result);
 	void renderLibrashaderParamsPage();
@@ -53,7 +52,6 @@ private:
 	void applyLibrashaderChanges();
 	std::vector<LibrashaderParam> m_librashader_params;
 	size_t m_librashader_page_index = 0;
-#endif
 
 	QTimer* m_librashader_rebuild_timer = nullptr;
 	Ui::PostProcessingSettingsWidget m_post;
