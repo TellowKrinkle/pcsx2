@@ -4,6 +4,7 @@
 #pragma once
 
 #include "GS/Renderers/Vulkan/VKLoader.h"
+#include "GS/GSSPIRVCompiler.h"
 
 #include "common/HashCombine.h"
 
@@ -43,7 +44,7 @@ private:
 		u64 source_hash_low;
 		u64 source_hash_high;
 		u32 source_length;
-		u32 shader_type;
+		GSSPIRVCompiler::Type shader_type;
 
 		bool operator==(const CacheIndexKey& key) const;
 		bool operator!=(const CacheIndexKey& key) const;
@@ -71,9 +72,7 @@ private:
 
 	static std::string GetShaderCacheBaseFileName(bool debug);
 	static std::string GetPipelineCacheBaseFileName(bool debug);
-	static CacheIndexKey GetCacheKey(u32 type, const std::string_view shader_code);
-	static std::optional<VKShaderCache::SPIRVCodeVector> CompileShaderToSPV(
-		u32 stage, std::string_view source, bool debug);
+	static CacheIndexKey GetCacheKey(GSSPIRVCompiler::Type type, const std::string_view shader_code);
 
 	void Open();
 
@@ -85,9 +84,10 @@ private:
 	bool ReadExistingPipelineCache();
 	void ClosePipelineCache();
 
-	std::optional<SPIRVCodeVector> GetShaderSPV(u32 type, std::string_view shader_code);
+	std::optional<SPIRVCodeVector> CompileShaderToSPV(GSSPIRVCompiler::Type stage, std::string_view source, bool debug);
+	std::optional<SPIRVCodeVector> GetShaderSPV(GSSPIRVCompiler::Type type, std::string_view shader_code);
 	std::optional<SPIRVCodeVector> CompileAndAddShaderSPV(const CacheIndexKey& key, std::string_view shader_code);
-	VkShaderModule GetShaderModule(u32 type, std::string_view shader_code);
+	VkShaderModule GetShaderModule(GSSPIRVCompiler::Type type, std::string_view shader_code);
 
 	std::FILE* m_index_file = nullptr;
 	std::FILE* m_blob_file = nullptr;
@@ -95,6 +95,7 @@ private:
 
 	CacheIndex m_index;
 
+	GSSPIRVCompiler m_compiler;
 	VkPipelineCache m_pipeline_cache = VK_NULL_HANDLE;
 	bool m_pipeline_cache_dirty = false;
 };
