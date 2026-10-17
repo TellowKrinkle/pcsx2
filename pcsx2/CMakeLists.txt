@@ -504,6 +504,7 @@ set(pcsx2GSSources
 	GS/GSPerfMon.cpp
 	GS/GSPng.cpp
 	GS/GSRingHeap.cpp
+	GS/GSSPIRVCompiler.cpp
 	GS/GSState.cpp
 	GS/GSTables.cpp
 	GS/GSUtil.cpp
@@ -544,6 +545,7 @@ set(pcsx2GSHeaders
 	GS/GSPerfMon.h
 	GS/GSPng.h
 	GS/GSRingHeap.h
+	GS/GSSPIRVCompiler.h
 	GS/GSState.h
 	GS/GSTables.h
 	GS/GSUtil.h

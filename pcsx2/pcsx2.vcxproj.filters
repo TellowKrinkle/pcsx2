@@ -998,6 +998,9 @@
     <ClCompile Include="GS\GSPerfMon.cpp">
       <Filter>System\Ps2\GS</Filter>
     </ClCompile>
+    <ClCompile Include="GS\GSSPIRVCompiler.cpp">
+      <Filter>System\Ps2\GS</Filter>
+    </ClCompile>
     <ClCompile Include="GS\GSState.cpp">
       <Filter>System\Ps2\GS</Filter>
     </ClCompile>
@@ -1890,6 +1893,9 @@
       <Filter>System\Ps2\GS</Filter>
     </ClInclude>
     <ClInclude Include="GS\GSPerfMon.h">
+      <Filter>System\Ps2\GS</Filter>
+    </ClInclude>
+    <ClInclude Include="GS\GSSPIRVCompiler.h">
       <Filter>System\Ps2\GS</Filter>
     </ClInclude>
     <ClInclude Include="GS\GSState.h">
