@@ -127,6 +127,7 @@
     <ClInclude Include="BitUtils.h" />
     <ClInclude Include="AlignedMalloc.h" />
     <ClInclude Include="ByteSwap.h" />
+    <ClInclude Include="CheckedMath.h" />
     <ClInclude Include="CrashHandler.h" />
     <ClInclude Include="DynamicLibrary.h" />
     <ClInclude Include="Easing.h" />

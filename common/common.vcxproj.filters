@@ -147,6 +147,9 @@
     <ClInclude Include="boost_spsc_queue.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CheckedMath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="Console.h">
       <Filter>Header Files</Filter>
     </ClInclude>

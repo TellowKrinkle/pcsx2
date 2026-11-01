@@ -44,6 +44,7 @@ target_sources(common PRIVATE
 	BitUtils.h
 	Buffer.h
 	ByteSwap.h
+	CheckedMath.h
 	Console.h
 	CrashHandler.h
 	DynamicLibrary.h

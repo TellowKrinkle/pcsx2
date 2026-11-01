@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0+
 
 #include "common/BitUtils.h"
+#include "common/CheckedMath.h"
 #include "common/Console.h"
 #include "common/FileSystem.h"
 #include "common/Path.h"
@@ -186,15 +187,15 @@ bool PNGLoader(GSTextureReplacements::File& file, const char* filename, GSTextur
 	}
 
 	const u32 pitch = width * sizeof(u32);
-	const u64 data_size = static_cast<u64>(pitch) * height;
-	if (data_size > UINT32_MAX)
+	const std::optional<u32> data_size = Common::CheckedMul(pitch, height);
+	if (!data_size)
 		return false;
 
 	tex->width = width;
 	tex->height = height;
 	tex->format = GSTexture::Format::Color;
 	tex->pitch = pitch;
-	tex->data.resize(static_cast<size_t>(data_size));
+	tex->data.resize(*data_size);
 
 	const png_uint_32 row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 	std::vector<u8> row_data(row_bytes);
@@ -564,10 +565,10 @@ static bool ParseDDSHeader(GSTextureReplacements::File& file, DDSLoadInfo* info)
 		info->base_image_pitch = blocks_wide * info->bytes_per_block;
 	}
 
-	const u64 base_image_size = static_cast<u64>(info->base_image_pitch) * blocks_high;
-	if (base_image_size > UINT32_MAX)
+	if (std::optional<u32> size = Common::CheckedMul(info->base_image_pitch, blocks_high))
+		info->base_image_size = *size;
+	else
 		return false;
-	info->base_image_size = static_cast<u32>(base_image_size);
 
 	// Check for truncated or corrupted files.
 	info->base_image_offset = sizeof(magic) + header_size;
