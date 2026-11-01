@@ -130,7 +130,7 @@ static const char* compilation_status_to_string(shaderc_compilation_status statu
 	return "unknown_error";
 }
 
-static void DumpBadShader(std::string_view code, std::string_view errors)
+void DumpBadShader(std::string_view code, std::string_view errors)
 {
 	static u32 s_next_bad_shader_id = 0;
 	const std::string filename = Path::Combine(EmuFolders::Logs, fmt::format("pcsx2_bad_shader_{}.txt", ++s_next_bad_shader_id));
