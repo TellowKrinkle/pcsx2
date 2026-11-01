@@ -16,6 +16,13 @@
 #include <future>
 #include <span>
 
+struct GSRAFilterChain;
+struct GSRAPipeline;
+
+namespace rashader {
+	struct FilterChain;
+}
+
 enum class Filter
 {
 	Nearest = 0,
@@ -1533,6 +1540,8 @@ protected:
 
 	GSVector4 m_blur_source_rect = GSVector4::zero();
 
+	GSRAFilterChain* m_rashader_filter_chain = nullptr;
+	u64 m_last_rashader_frame_time = 0;
 #ifdef ENABLE_LIBRASHADER
 	// The libra_*_filter_chain is in each backend, since librashader.h has to be
 	// included with a runtime #define that can't happen here.
@@ -1572,6 +1581,28 @@ protected:
 
 	/// Applies Gaussian blur and writes to the destination texture.
 	void DoGaussianBlur(GSTexture* sTex, const GSVector4& sRect, GSTexture* dTex, GSTexture* tempTex);
+
+protected:
+	/// Create an empty GSRAFilterChain
+	virtual GSRAFilterChain* CreateRAFilterChain() { return nullptr; }
+	/// Destroy an RAFilterChain
+	virtual void DestroyRAFilterChain(GSRAFilterChain* chain) {}
+	/// Fill any private fields on a filter chain whose public fields have been fully initialized
+	virtual bool FinalizeRAFilterChain(GSRAFilterChain& chain) { return false; }
+	/// Run after an RT is allocated or resized
+	virtual void DidUpdateRAShaderRT(const GSRAFilterChain& chain, size_t rt) {}
+	/// Upload uniforms for the given buffers.  `ubo` and `push` are bit arrays with one bit per pass
+	virtual void UploadRAUniforms(const GSRAFilterChain& chain, const u32* ubo, const u32* push) {}
+	virtual void RunRAShaderPass(const GSRAFilterChain& chain, size_t pass, GSTexture* target) {}
+	virtual GSRAPipeline* CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass) { return nullptr; }
+public:
+	/// Fully create an RA filter chain (todo: do this on a multithreaded background queue)
+	GSRAFilterChain* CreateRAFilterChain(std::string path);
+	void ReloadRAUserParams();
+	void UpdateRAUniforms(GSRAFilterChain& chain);
+	void PrepareRAShader();
+	void RAShader(const GSVector4& draw_rect);
+	bool IsRAShaderActive() const { return m_rashader_filter_chain; }
 
 #ifdef ENABLE_LIBRASHADER
 	virtual bool CreateLibrashaderFilterChain(const std::string& preset_path) { return false; }

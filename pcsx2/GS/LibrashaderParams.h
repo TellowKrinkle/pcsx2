@@ -105,6 +105,9 @@ std::string GetLibrashaderParamsSectionName(const std::string& preset_path);
 std::string GetLibrashaderParamsFilePath();
 std::string GetLibrashaderGameParamsPath(std::string_view game_serial, u32 game_crc);
 
+namespace rashader { struct FilterChain; struct Error; struct SlangParseConfig; }
+void ParseSlangP(rashader::FilterChain& out, const char* path, std::vector<rashader::Error>& errors, rashader::SlangParseConfig& config);
+void LogRAShaderErrors(const std::vector<rashader::Error>& errors);
 LibrashaderPresetLoad LoadLibrashaderPreset(
 	const std::string& preset_path, const LibrashaderParamsContext& context = {});
 bool SaveLibrashaderParams(const std::string& preset_path, std::span<const LibrashaderParam> parameters,
