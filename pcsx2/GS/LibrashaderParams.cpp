@@ -406,13 +406,18 @@ static std::optional<std::string> ShaderReadCallback(void *ctx, const char* path
 	return FileSystem::ReadFileToString(path);
 }
 
-static void LogRAShaderErrors(const std::vector<rashader::Error>& errors) {
+void LogRAShaderErrors(const std::vector<rashader::Error>& errors) {
 	for (const rashader::Error& error : errors) {
 		if (error.extra.empty())
 			Console.ErrorFmt("\t{}:{}: {}", error.file, error.line, error.message);
 		else
 			Console.ErrorFmt("\t{}:{}: {}: {}", error.file, error.line, error.message, error.extra);
 	}
+}
+
+void ParseSlangP(rashader::FilterChain& out, const char* path, std::vector<rashader::Error>& errors, rashader::SlangParseConfig& config)
+{
+	out = rashader::parse_slangp(path, &errors, config, ShaderReadCallback);
 }
 
 LibrashaderPresetLoad LoadLibrashaderPreset(const std::string& preset_path, const LibrashaderParamsContext& context)

@@ -254,8 +254,10 @@ bool GSRenderer::Merge(int field)
 		g_gs_device->Librashader();
 #endif
 
+	g_gs_device->PrepareRAShader();
+
 	// Sharpens biinear at lower resolutions, almost nearest but with more uniform pixels.
-	if (GSConfig.LinearPresent == GSPostBilinearMode::BilinearSharp && (g_gs_device->GetWindowWidth() > fs.x || g_gs_device->GetWindowHeight() > fs.y))
+	if (!g_gs_device->IsRAShaderActive() && GSConfig.LinearPresent == GSPostBilinearMode::BilinearSharp && (g_gs_device->GetWindowWidth() > fs.x || g_gs_device->GetWindowHeight() > fs.y))
 	{
 		g_gs_device->Resize(g_gs_device->GetWindowWidth(), g_gs_device->GetWindowHeight());
 	}
@@ -673,9 +675,12 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 				GetVideoMode() == GSVideoMode::SDTV_480P);
 			s_last_draw_rect = draw_rect;
 
-			const float blur_scale = FullscreenUI::GetBackgroundBlurScale();
-			m_background_blurred = blur_scale > 0.0f && g_gs_device->GaussianBlur(current, src_uv, draw_rect, blur_scale, true);
-			if (!m_background_blurred && GSConfig.CASMode != GSCASMode::Disabled)
+			if (g_gs_device->IsRAShaderActive())
+			{
+				g_gs_device->RAShader(draw_rect);
+				current = g_gs_device->GetCurrent();
+			}
+			else if (GSConfig.CASMode != GSCASMode::Disabled)
 			{
 				static bool cas_log_once = false;
 				if (g_gs_device->Features().cas_sharpening)
@@ -694,6 +699,9 @@ void GSRenderer::VSync(u32 field, bool registers_written, bool idle_frame)
 					cas_log_once = true;
 				}
 			}
+
+			const float blur_scale = FullscreenUI::GetBackgroundBlurScale();
+			m_background_blurred = blur_scale > 0.0f && g_gs_device->GaussianBlur(current, src_uv, draw_rect, blur_scale, true);
 		}
 
 		if (BeginPresentFrame(false))

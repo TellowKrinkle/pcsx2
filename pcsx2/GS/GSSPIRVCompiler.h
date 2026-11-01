@@ -11,6 +11,8 @@
 
 typedef struct shaderc_compiler* shaderc_compiler_t;
 
+void DumpBadShader(std::string_view code, std::string_view errors);
+
 class GSSPIRVCompiler
 {
 	shaderc_compiler_t compiler;

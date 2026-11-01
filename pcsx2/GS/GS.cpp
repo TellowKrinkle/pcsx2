@@ -931,6 +931,11 @@ void GSUpdateConfig(const Pcsx2Config::GSOptions& new_config)
 		if (!g_gs_device->SetGPUPipelineStatisticsEnabled(GSConfig.OsdShowGPUStats))
 			GSConfig.OsdShowGPUStats = false;
 	}
+
+	if (g_gs_device->IsRAShaderActive() && GSConfig.LibrashaderPresetParams != old_config.LibrashaderPresetParams)
+	{
+		g_gs_device->ReloadRAUserParams();
+	}
 }
 
 void GSSetSoftwareRendering(bool software_renderer, GSInterlaceMode new_interlace)
