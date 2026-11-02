@@ -2527,7 +2527,7 @@ GSDevice::PresentResult GSDeviceVK::BeginPresent(bool frame_skip)
 	// Present render pass gets started out here, so we can't transition source textures in DoStretchRect
 	// Make sure they're ready now
 	if (!frame_skip && m_current)
-		static_cast<GSTextureVK*>(m_current)->TransitionToLayout(GSTextureVK::Layout::ShaderReadOnly);
+		static_cast<GSTextureVK*>(*m_current)->TransitionToLayout(GSTextureVK::Layout::ShaderReadOnly);
 	if (m_blur)
 		static_cast<GSTextureVK*>(m_blur)->TransitionToLayout(GSTextureVK::Layout::ShaderReadOnly);
 
