@@ -1041,7 +1041,7 @@ void GSDevice::Merge(GSTexture* sTex[3], GSVector4* sRect, GSVector4* dRect, con
 	if (ResizeRenderTarget(&m_merge, fs.x, fs.y, false, false))
 		DoMerge(sTex, sRect, m_merge, dRect, PMODE, EXTBUF, c, BilnIf(GSConfig.PCRTCOffsets));
 
-	m_current = m_merge;
+	m_current = &m_merge;
 }
 
 void GSDevice::Interlace(const GSVector2i& ds, int field, int mode, float yoffset)
@@ -1080,20 +1080,20 @@ void GSDevice::Interlace(const GSVector2i& ds, int field, int mode, float yoffse
 		case 0: // Weave
 			ResizeRenderTarget(&m_weavebob, ds.x, ds.y, true, false);
 			do_interlace(m_merge, m_weavebob, ShaderInterlace::WEAVE, Nearest, offset, field);
-			m_current = m_weavebob;
+			m_current = &m_weavebob;
 			break;
 		case 1: // Bob
 			// Field is reversed here as we are countering the bounce.
 			ResizeRenderTarget(&m_weavebob, ds.x, ds.y, true, false);
 			do_interlace(m_merge, m_weavebob, ShaderInterlace::BOB, Biln, yoffset * (1 - field), 0);
-			m_current = m_weavebob;
+			m_current = &m_weavebob;
 			break;
 		case 2: // Blend
 			ResizeRenderTarget(&m_weavebob, ds.x, ds.y, true, false);
 			do_interlace(m_merge, m_weavebob, ShaderInterlace::WEAVE, Nearest, offset, field);
 			ResizeRenderTarget(&m_blend, ds.x, ds.y, true, false);
 			do_interlace(m_weavebob, m_blend, ShaderInterlace::BLEND, Biln, 0, 0);
-			m_current = m_blend;
+			m_current = &m_blend;
 			break;
 		case 3: // FastMAD Motion Adaptive Deinterlacing
 			bufIdx++;
@@ -1104,10 +1104,10 @@ void GSDevice::Interlace(const GSVector2i& ds, int field, int mode, float yoffse
 			do_interlace(m_merge, m_mad, ShaderInterlace::MAD_BUFFER, Nearest, offset, bufIdx);
 			ResizeRenderTarget(&m_weavebob, ds.x, ds.y, true, false);
 			do_interlace(m_mad, m_weavebob, ShaderInterlace::MAD_RECONSTRUCT, Nearest, 0, bufIdx);
-			m_current = m_weavebob;
+			m_current = &m_weavebob;
 			break;
 		default:
-			m_current = m_merge;
+			m_current = &m_merge;
 			break;
 	}
 }
@@ -1115,17 +1115,19 @@ void GSDevice::Interlace(const GSVector2i& ds, int field, int mode, float yoffse
 void GSDevice::FXAA()
 {
 	// Combining FXAA+ShadeBoost can't share the same target.
-	GSTexture*& dTex = (m_current == m_target_tmp) ? m_merge : m_target_tmp;
-	if (ResizeRenderTarget(&dTex, m_current->GetWidth(), m_current->GetHeight(), false, false))
+	GSTexture** dTex = (m_current == &m_target_tmp) ? &m_merge : &m_target_tmp;
+	GSTexture* current = *m_current;
+	if (ResizeRenderTarget(dTex, current->GetWidth(), current->GetHeight(), false, false))
 	{
-		DoFXAA(m_current, dTex);
+		DoFXAA(current, *dTex);
 		m_current = dTex;
 	}
 }
 
 void GSDevice::ShadeBoost()
 {
-	if (ResizeRenderTarget(&m_target_tmp, m_current->GetWidth(), m_current->GetHeight(), false, false))
+	GSTexture* current = *m_current;
+	if (ResizeRenderTarget(&m_target_tmp, current->GetWidth(), current->GetHeight(), false, false))
 	{
 		// predivide to avoid the divide (multiply) in the shader
 		const GSVector4 params(
@@ -1134,9 +1136,9 @@ void GSDevice::ShadeBoost()
 			static_cast<float>(GSConfig.ShadeBoost_Saturation) * (1.0f / 50.0f),
 			static_cast<float>(GSConfig.ShadeBoost_Gamma) * (1.0f / 50.0f));
 
-		DoShadeBoost(m_current, m_target_tmp, params.v);
+		DoShadeBoost(current, m_target_tmp, params.v);
 
-		m_current = m_target_tmp;
+		m_current = &m_target_tmp;
 	}
 }
 
@@ -1280,12 +1282,13 @@ void GSDevice::Librashader()
 	if (m_librashader_compile_status.state != LibrashaderCompileState::Ready)
 		return;
 
-	GSTexture*& dTex = (m_current == m_target_tmp) ? m_merge : m_target_tmp;
-	if (ResizeRenderTarget(&dTex, m_current->GetWidth(), m_current->GetHeight(), false, false))
+	GSTexture* current = *m_current;
+	GSTexture** dTex = (m_current == &m_target_tmp) ? &m_merge : &m_target_tmp;
+	if (ResizeRenderTarget(dTex, current->GetWidth(), current->GetHeight(), false, false))
 	{
-		if (DoLibrashader(m_current, dTex))
+		if (DoLibrashader(current, *dTex))
 		{
-			dTex->SetState(GSTexture::State::Dirty);
+			(*dTex)->SetState(GSTexture::State::Dirty);
 			m_current = dTex;
 			++m_librashader_frame_count;
 		}
@@ -1295,25 +1298,26 @@ void GSDevice::Librashader()
 
 void GSDevice::Resize(int width, int height)
 {
-	GSTexture*& dTex = (m_current == m_target_tmp) ? m_merge : m_target_tmp;
-	GSVector2i s = m_current->GetSize();
+	GSTexture* current = *m_current;
+	GSTexture** dTex = (m_current == &m_target_tmp) ? &m_merge : &m_target_tmp;
+	GSVector2i s = current->GetSize();
 	int multiplier = 1;
 
 	if ((width > s.x || height > s.y))
 	{
 		while (width > s.x || height > s.y)
 		{
-			s = m_current->GetSize() * GSVector2i(++multiplier);
+			s = current->GetSize() * GSVector2i(++multiplier);
 		}
 	}
 	else
 		s = GSVector2i(width, height);
 
-	if (ResizeRenderTarget(&dTex, s.x, s.y, false, false))
+	if (ResizeRenderTarget(dTex, s.x, s.y, false, false))
 	{
 		const GSVector4 sRect(0, 0, 1, 1);
 		const GSVector4 dRect(0, 0, s.x, s.y);
-		StretchRectAuto(m_current, sRect, dTex, dRect, Nearest);
+		StretchRectAuto(current, sRect, *dTex, dRect, Nearest);
 		m_current = dTex;
 	}
 }

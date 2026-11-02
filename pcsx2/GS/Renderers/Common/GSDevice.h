@@ -1518,12 +1518,12 @@ protected:
 	bool m_allow_present_throttle = false;
 	u64 m_last_frame_displayed_time = 0;
 
+	GSTexture** m_current = nullptr;
 	GSTexture* m_merge = nullptr;
 	GSTexture* m_weavebob = nullptr;
 	GSTexture* m_blend = nullptr;
 	GSTexture* m_mad = nullptr;
 	GSTexture* m_target_tmp = nullptr;
-	GSTexture* m_current = nullptr;
 	GSTexture* m_cas = nullptr;
 	GSTexture* m_blur = nullptr;
 	GSTexture* m_colclip_rt = nullptr; ///< Temp hw colclip texture
@@ -1645,7 +1645,7 @@ public:
 	__fi GSVSyncMode GetVSyncMode() const { return m_vsync_mode; }
 	__fi bool IsPresentThrottleAllowed() const { return m_allow_present_throttle; }
 
-	__fi GSTexture* GetCurrent() const { return m_current; }
+	__fi GSTexture* GetCurrent() const { return *m_current; }
 	__fi GSTexture* GetMAD() const { return m_mad; }
 	
 	void Recycle(GSTexture* t);
