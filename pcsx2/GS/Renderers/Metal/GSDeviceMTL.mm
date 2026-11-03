@@ -3,17 +3,22 @@
 
 #include "Host.h"
 #include "GS/GSGL.h"
+#include "GS/Renderers/Common/GSRAShader.h"
 #include "GS/Renderers/Metal/GSMetalCPPAccessible.h"
 #include "GS/Renderers/Metal/GSDeviceMTL.h"
 #include "GS/Renderers/Metal/GSTextureMTL.h"
 #include "GS/GSPerfMon.h"
 #include "GS/GSShaderCompileIndicator.h"
+#include "GS/GSSPIRVCompiler.h"
 
 #include "common/Console.h"
 #include "common/HostSys.h"
 
 #include "cpuinfo.h"
 #include "imgui.h"
+
+#define SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+#include <spirv_msl.hpp>
 
 #ifdef __APPLE__
 #include "GSMTLSharedHeader.h"
@@ -2850,6 +2855,317 @@ void GSDeviceMTL::RenderImGui(ImDrawData* data)
 
 	[enc popDebugGroup];
 }
+
+struct GSRAPipelineMTL final : public GSRAPipeline
+{
+	MRCOwned<id<MTLRenderPipelineState>> pipeline;
+
+	GSRAPipelineMTL(MRCOwned<id<MTLRenderPipelineState>> pipeline_): pipeline(std::move(pipeline_)) {}
+};
+
+static spirv_cross::MSLResourceBinding MakeResourceBinding(spirv_cross::ExecutionModel stage, u32 set, u32 idx, u32 buffer, u32 texture)
+{
+	spirv_cross::MSLResourceBinding binding;
+	binding.stage = stage;
+	binding.desc_set = set;
+	binding.binding = idx;
+	binding.msl_buffer = buffer;
+	binding.msl_sampler = texture;
+	binding.msl_texture = texture;
+	return binding;
+}
+
+static MRCOwned<id<MTLFunction>> CompileSPIRV(const GSMTLDevice& dev, const std::vector<u32>& spirv, const rashader::Pass& pass, size_t pass_idx, spirv_cross::ExecutionModel stage)
+{
+	u32 stage_flag = stage == spv::ExecutionModelVertex ? rashader::STAGE_FLAG_VS : rashader::STAGE_FLAG_FS;
+	spirv_cross::CompilerMSL compiler(spirv);
+	{
+		// Set options
+		spirv_cross::CompilerMSL::Options options;
+		switch (dev.features.shader_version)
+		{
+			case GSMTLDevice::MetalVersion::Metal20: options.set_msl_version(2, 0); break;
+			case GSMTLDevice::MetalVersion::Metal21: options.set_msl_version(2, 1); break;
+			case GSMTLDevice::MetalVersion::Metal22: options.set_msl_version(2, 2); break;
+			case GSMTLDevice::MetalVersion::Metal23: options.set_msl_version(2, 3); break;
+		}
+		compiler.set_msl_options(options);
+	}
+
+	if (pass.ubo.stages & stage_flag)
+		compiler.add_msl_resource_binding(MakeResourceBinding(stage, 0, pass.ubo.binding, 0, 0));
+	if (pass.push.stages & stage_flag)
+		compiler.add_msl_resource_binding(MakeResourceBinding(stage, spirv_cross::kPushConstDescSet, spirv_cross::kPushConstBinding, 1, 0));
+	size_t nbindings = pass.bindings.size();
+	for (size_t i = 0; i < nbindings; i++)
+	{
+		const rashader::BoundTexture& tex = pass.bindings[i];
+		if (tex.stages & stage_flag)
+			compiler.add_msl_resource_binding(MakeResourceBinding(stage, 0, tex.binding, 0, static_cast<u32>(i)));
+	}
+
+	auto options = MRCTransfer([MTLCompileOptions new]);
+	if (@available(macOS 15.0, iOS 18.0, *))
+		[options setMathMode:MTLMathModeFast];
+	else
+		[options setFastMathEnabled:YES];
+	std::string msl = compiler.compile();
+	msl.insert(0, "#pragma clang diagnostic ignored \"-Wunused-variable\"\n"); // Holy warning spam
+	NSError* err = nil;
+	auto lib = MRCTransfer([dev.dev newLibraryWithSource:[NSString stringWithUTF8String:msl.c_str()]
+	                                             options:options
+	                                               error:&err]);
+	if (!lib)
+	{
+		DumpBadShader(msl, [[err localizedDescription] UTF8String]);
+		Console.ErrorFmt("Failed to compile MSL for rashader pass {} {}", pass_idx, stage == spv::ExecutionModelVertex ? "VS" : "FS");
+		return nullptr;
+	}
+
+	return MRCTransfer([lib newFunctionWithName:@"main0"]);
+}
+
+GSRAPipeline* GSDeviceMTL::CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass_idx)
+{ @autoreleasepool {
+	const rashader::Pass& pass = chain.passes[pass_idx];
+	auto vs = CompileSPIRV(m_dev, pass.vs_spirv, pass, pass_idx, spv::ExecutionModelVertex);
+	auto fs = CompileSPIRV(m_dev, pass.fs_spirv, pass, pass_idx, spv::ExecutionModelFragment);
+	if (!vs || !fs)
+		return nullptr;
+	GSTexture::Format gsfmt = MapRAShaderFormat(pass.out_format);
+	auto pdesc = MRCTransfer([MTLRenderPipelineDescriptor new]);
+	if (!pass.name.empty())
+		[pdesc setLabel:[NSString stringWithFormat:@"ra:%s", pass.name.c_str()]];
+	else
+		[pdesc setLabel:[NSString stringWithFormat:@"ra:pass%zd", pass_idx]];
+
+	MTLVertexDescriptor* vert = [pdesc vertexDescriptor];
+	[[[vert layouts] objectAtIndexedSubscript:2] setStride:sizeof(ConvertShaderVertex)];
+	applyAttribute(vert, 0, MTLVertexFormatFloat2, offsetof(ConvertShaderVertex, pos),    2);
+	applyAttribute(vert, 1, MTLVertexFormatFloat2, offsetof(ConvertShaderVertex, texpos), 2);
+
+	[pdesc setVertexFunction:vs];
+	[pdesc setFragmentFunction:fs];
+	[[[pdesc colorAttachments] objectAtIndexedSubscript:0] setPixelFormat:ConvertPixelFormat(gsfmt)];
+	NSError* err = nil;
+	auto pipe = MRCTransfer([m_dev.dev newRenderPipelineStateWithDescriptor:pdesc error:&err]);
+	if (!pipe)
+	{
+		Console.ErrorFmt("Failed to compile pipeline for rashader pass {}: {}", pass_idx, [[err localizedDescription] UTF8String]);
+		return nullptr;
+	}
+	return new GSRAPipelineMTL(std::move(pipe));
+}}
+
+static constexpr GSDeviceMTL::ConvertShaderVertex RA_VERTICES[] = {
+	{{-1,  1}, {0, 0}},
+	{{ 1,  1}, {1, 0}},
+	{{-1, -1}, {0, 1}},
+	{{ 1, -1}, {1, 1}},
+	{{ 0,  1}, {0, 0}},
+	{{ 1,  1}, {1, 0}},
+	{{ 0,  0}, {0, 1}},
+	{{ 1,  0}, {1, 1}},
+};
+
+static MTLSamplerAddressMode MapRAShaderWrap(rashader::WrapMode mode)
+{
+	switch (mode)
+	{
+		case rashader::WrapMode::ClampToEdge:    return MTLSamplerAddressModeClampToEdge;
+		case rashader::WrapMode::ClampToBorder:  return MTLSamplerAddressModeClampToZero;
+		case rashader::WrapMode::Repeat:         return MTLSamplerAddressModeRepeat;
+		case rashader::WrapMode::MirroredRepeat: return MTLSamplerAddressModeMirrorRepeat;
+	}
+}
+
+struct GSRAFilterChainMTL final : public GSRAFilterChain
+{
+	MRCOwned<id<MTLBuffer>> ubo;
+	MRCOwned<id<MTLBuffer>> vertices;
+	MRCOwned<id<MTLSamplerState>> samplers[2][static_cast<u32>(rashader::WrapMode::Last) + 1];
+	NSString** names = nullptr;
+
+	static void DestroyTexture(GSTexture* tex)      { delete static_cast<GSTextureMTL*>(tex); }
+	static void DestroyPipeline(GSRAPipeline* pipe) { delete static_cast<GSRAPipelineMTL*>(pipe); }
+	~GSRAFilterChainMTL()
+	{
+		Destroy(DestroyPipeline, DestroyTexture);
+		if (!names)
+			return;
+		size_t npasses = info.passes.size();
+		for (size_t i = 0; i < npasses; i++)
+			[names[i] release];
+		free(names);
+	}
+};
+
+GSRAFilterChain* GSDeviceMTL::CreateRAFilterChain()
+{
+	return new GSRAFilterChainMTL();
+}
+
+void GSDeviceMTL::DestroyRAFilterChain(GSRAFilterChain* chain)
+{
+	delete static_cast<GSRAFilterChainMTL*>(chain);
+}
+
+bool GSDeviceMTL::FinalizeRAFilterChain(GSRAFilterChain& chain_)
+{ @autoreleasepool {
+	GSRAFilterChainMTL& chain = static_cast<GSRAFilterChainMTL&>(chain_);
+	size_t npasses = chain.info.passes.size();
+	chain.names = static_cast<NSString**>(malloc(npasses * sizeof(*chain.names)));
+	for (size_t i = 0; i < npasses; i++)
+	{
+		if (!chain.info.passes[i].name.empty())
+			chain.names[i] = [[NSString alloc] initWithFormat:@"RAShader Pass %zd (%s)", i, chain.info.passes[i].name.c_str()];
+		else
+			chain.names[i] = [[NSString alloc] initWithFormat:@"RAShader Pass %zd", i];
+	}
+	id<MTLCommandBuffer> cb = [m_queue commandBuffer];
+
+	u32 align = std::max(1 << m_dev.features.constant_buffer_align_log2, 16);
+	u32 offset = 0;
+	for (size_t i = 0; i < npasses; i++)
+		GSRAFilterChain::AddUniform(offset, chain.uniform_offsets()[i].extra, Common::AlignUpPow2(chain.info.passes[i].ubo.size, align));
+	if (offset)
+		chain.ubo = MRCTransfer([m_dev.dev newBufferWithLength:offset options:MTLResourceStorageModePrivate]);
+	chain.vertices = CreatePrivateBufferWithContent(m_dev.dev, cb, MTLResourceStorageModePrivate, sizeof(RA_VERTICES), [](void *buf){
+		memcpy(buf, RA_VERTICES, sizeof(RA_VERTICES));
+	});
+	[chain.ubo setLabel:@"ra:ubo"];
+	[chain.vertices setLabel:@"ra:vertices"];
+
+	auto sdesc = MRCTransfer([MTLSamplerDescriptor new]);
+	for (u32 linear = 0; linear < 2; linear++)
+	{
+		[sdesc setMinFilter:linear ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest];
+		[sdesc setMagFilter:linear ? MTLSamplerMinMagFilterLinear : MTLSamplerMinMagFilterNearest];
+		[sdesc setMipFilter:linear ? MTLSamplerMipFilterLinear    : MTLSamplerMipFilterNearest];
+		for (u32 imode = 0; imode < std::size(chain.samplers[0]); imode++)
+		{
+			rashader::WrapMode mode = static_cast<rashader::WrapMode>(imode);
+			[sdesc setSAddressMode:MapRAShaderWrap(mode)];
+			[sdesc setTAddressMode:MapRAShaderWrap(mode)];
+			[sdesc setRAddressMode:MapRAShaderWrap(mode)];
+			[sdesc setLabel:[NSString stringWithFormat:@"ra:%s%s", linear ? "Ln" : "Pt", RAWrapDesc(mode)]];
+			chain.samplers[linear][imode] = MRCTransfer([m_dev.dev newSamplerStateWithDescriptor:sdesc]);
+		}
+	}
+
+	[cb commit];
+	return true;
+}}
+
+void GSDeviceMTL::UploadRAUniforms(const GSRAFilterChain& chain_, const u32* ubo, const u32* push)
+{ @autoreleasepool {
+	const GSRAFilterChainMTL& chain = static_cast<const GSRAFilterChainMTL&>(chain_);
+	size_t npasses = chain.info.passes.size();
+	size_t total = 0;
+	for (size_t i = 0; i < npasses; i++)
+		if ((ubo[i / 32] >> (i % 32)) & 1)
+			total += Common::AlignUpPow2(chain.info.passes[i].ubo.size, 16);
+	if (!total)
+		return;
+	EndRenderPass();
+	id<MTLBuffer> dst = chain.ubo;
+	Map map = Allocate(m_vertex_upload_buf, total);
+	u8* ptr = static_cast<u8*>(map.cpu_buffer);
+	size_t offset = 0;
+	id<MTLBlitCommandEncoder> blit = [GetRenderCmdBuf() blitCommandEncoder];
+	[blit setLabel:@"RAShader UBO Update"];
+	for (size_t i = 0; i < npasses; i++)
+	{
+		if (!((ubo[i / 32] >> (i % 32)) & 1))
+			continue;
+		size_t size = Common::AlignUpPow2(chain.info.passes[i].ubo.size, 16);
+		GSRAFilterChain::UniformMap& offsets = chain.uniform_offsets()[i];
+		memcpy(ptr + offset, chain.uniform_data + offsets.ubo, size);
+		[blit copyFromBuffer:map.gpu_buffer
+		        sourceOffset:map.gpu_offset + offset
+		            toBuffer:dst
+		   destinationOffset:offsets.extra
+		                size:size];
+		offset += size;
+	}
+	[blit endEncoding];
+}}
+
+static void GenMipmaps(const GSRAFilterChainMTL& chain, id<MTLCommandBuffer> cmdbuf, size_t begin, size_t end)
+{
+	// Generate mipmaps if needed
+	id<MTLBlitCommandEncoder> blit = nullptr;
+	for (size_t i = begin; i < end; i++)
+	{
+		if (chain.info.passes[i].mipmap_output)
+		{
+			const rashader::ExecutionPlanner::Pass& pass = chain.plan.pass(i);
+			GSTextureMTL* tex = static_cast<GSTextureMTL*>(chain.rts()[pass.rt_current]);
+			if (tex->GetWidth() <= 1 && tex->GetHeight() <= 1)
+				continue;
+			if (!blit)
+			{
+				blit = [cmdbuf blitCommandEncoder];
+				[blit setLabel:@"RAShader Mipmap"];
+			}
+			[blit generateMipmapsForTexture:tex->GetTexture()];
+		}
+	}
+	if (blit)
+		[blit endEncoding];
+}
+
+void GSDeviceMTL::RunRAShaderPass(const GSRAFilterChain& chain_, size_t pass_idx, GSTexture* target)
+{ @autoreleasepool {
+	const GSRAFilterChainMTL& chain = static_cast<const GSRAFilterChainMTL&>(chain_);
+	const rashader::Pass& pass = chain.info.passes[pass_idx];
+	const rashader::ExecutionPlanner::Pass& passinfo = chain.plan.pass(pass_idx);
+	EndRenderPass();
+
+	if (u32 num_transition = passinfo.num_transition_to_read)
+		GenMipmaps(chain, GetRenderCmdBuf(), pass_idx - num_transition, pass_idx);
+
+	BeginRenderPass(chain.names[pass_idx], target, MTLLoadActionDontCare, nullptr, MTLLoadActionDontCare);
+	id<MTLRenderCommandEncoder> enc = m_current_render.encoder;
+	const GSRAFilterChain::UniformMap& map = chain.uniform_offsets()[pass_idx];
+	[enc setRenderPipelineState:static_cast<GSRAPipelineMTL*>(chain.passes()[pass_idx])->pipeline];
+	if (pass.ubo.stages & rashader::STAGE_FLAG_VS)
+		[enc setVertexBuffer:chain.ubo offset:map.extra atIndex:0];
+	if (pass.push.stages & rashader::STAGE_FLAG_VS)
+		[enc setVertexBytes:chain.uniform_data + map.push length:Common::AlignUpPow2(pass.push.size, 16) atIndex:1];
+	[enc setVertexBuffer:chain.vertices offset:0 atIndex:2];
+	if (pass.ubo.stages & rashader::STAGE_FLAG_FS)
+		[enc setFragmentBuffer:chain.ubo offset:map.extra atIndex:0];
+	if (pass.push.stages & rashader::STAGE_FLAG_FS)
+		[enc setFragmentBytes:chain.uniform_data + map.push length:Common::AlignUpPow2(pass.push.size, 16) atIndex:1];
+	size_t ntex = pass.bindings.size();
+	for (size_t i = 0; i < ntex; i++)
+	{
+		const rashader::BoundTexture& tex = pass.bindings[i];
+		id<MTLTexture> texmtl = static_cast<GSTextureMTL*>(chain.GetTexture(tex.source, tex.index, tex.history))->GetTexture();
+		id<MTLSamplerState> samp = chain.samplers[tex.linear][static_cast<u32>(tex.wrap)];
+		if (tex.stages & rashader::STAGE_FLAG_VS)
+		{
+			[enc setVertexTexture:texmtl atIndex:i];
+			[enc setVertexSamplerState:samp atIndex:i];
+		}
+		if (tex.stages & rashader::STAGE_FLAG_FS)
+		{
+			[enc setFragmentTexture:texmtl atIndex:i];
+			[enc setFragmentSamplerState:samp atIndex:i];
+		}
+	}
+
+	size_t npasses = chain.info.passes.size();
+	bool is_final = pass_idx == npasses - 1;
+	[enc drawPrimitives:MTLPrimitiveTypeTriangleStrip
+	        vertexStart:is_final ? 4 : 0
+	        vertexCount:4];
+	EndRenderPass();
+
+	if (is_final)
+		GenMipmaps(chain, m_current_render_cmdbuf, npasses - chain.plan.num_final_transition_to_read(), npasses);
+}}
 
 #ifdef ENABLE_LIBRASHADER
 #define LIBRA_RUNTIME_METAL
