@@ -84,6 +84,13 @@ namespace Common
 		// Perform our count leading zero.
 		return std::countl_zero(static_cast<u32>(n));
 	}
+
+	__fi static u32 BitScanReverse32(u32 n)
+	{
+		unsigned long out;
+		_BitScanReverse(&out, n);
+		return static_cast<u32>(out);
+	}
 } // namespace Common
 
 template <typename T>
