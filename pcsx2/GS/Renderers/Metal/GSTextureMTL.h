@@ -17,7 +17,7 @@
 
 class GSDeviceMTL;
 
-class GSTextureMTL : public GSTexture
+class GSTextureMTL final : public GSTexture
 {
 	GSDeviceMTL* m_dev;
 	MRCOwned<id<MTLTexture>> m_texture;

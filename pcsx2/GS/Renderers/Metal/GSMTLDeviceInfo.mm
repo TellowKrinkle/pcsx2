@@ -141,17 +141,24 @@ GSMTLDevice::GSMTLDevice(MRCOwned<id<MTLDevice>> dev)
 	else
 		features.unified_memory = false;
 
+	features.constant_buffer_align_log2 = 8;
 	if (@available(macOS 10.15, iOS 13.0, *))
-		if ([dev supportsFamily:MTLGPUFamilyMac2] || [dev supportsFamily:MTLGPUFamilyApple1])
+	{
+		bool mac2 = [dev supportsFamily:MTLGPUFamilyMac2];
+		bool apple1 = [dev supportsFamily:MTLGPUFamilyApple1];
+		if (mac2 || apple1)
+		{
 			features.texture_swizzle = true;
+			features.has_fast_half = true; // Approximate guess
+			features.constant_buffer_align_log2 = 5;
+		}
+		if (apple1)
+			features.constant_buffer_align_log2 = 2;
+	}
 
 	if (@available(macOS 11.0, iOS 13.0, *))
 		if ([dev supportsFamily:MTLGPUFamilyApple1])
 			features.framebuffer_fetch = features.memoryless_textures = true;
-
-	if (@available(macOS 10.15, iOS 13.0, *))
-		if ([dev supportsFamily:MTLGPUFamilyMac2] || [dev supportsFamily:MTLGPUFamilyApple1])
-			features.has_fast_half = true; // Approximate guess
 
 	features.shader_version = detectLibraryVersion(shaders);
 	if (features.framebuffer_fetch && features.shader_version < MetalVersion::Metal23)

@@ -1267,6 +1267,7 @@ if (APPLE)
 	find_library(AVFOUNDATION_LIBRARY AVFoundation)
 	find_library(COREMEDIA_LIBRARY CoreMedia)
 	target_link_libraries(PCSX2_FLAGS INTERFACE
+		spirv-cross-msl
 		${APPKIT_LIBRARY}
 		${IOKIT_LIBRARY}
 		${METAL_LIBRARY}
