@@ -65,9 +65,13 @@ namespace Common
 #else
 	Timer::Value Timer::GetCurrentValue()
 	{
+#ifdef __APPLE__
+		return clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW);
+#else
 		struct timespec tv;
 		clock_gettime(CLOCK_MONOTONIC, &tv);
 		return ((Value)tv.tv_nsec + (Value)tv.tv_sec * 1000000000);
+#endif
 	}
 
 	double Timer::ConvertValueToNanoseconds(Timer::Value value)
