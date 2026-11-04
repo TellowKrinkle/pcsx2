@@ -10,6 +10,7 @@
 #include "GS/Renderers/Vulkan/VKShaderCache.h"
 #include "GS/Renderers/Vulkan/VKSwapChain.h"
 #include "GS/Renderers/Common/GSDevice.h"
+#include "GS/Renderers/Common/GSRAShader.h"
 
 #include "BuildVersion.h"
 #include "Host.h"
@@ -77,6 +78,13 @@ namespace ReplaceVK
 		VkDependencyFlags dependencyFlags = pDependencyInfo->dependencyFlags;
 		for (const VkMemoryBarrier2& barrier2 : std::span(pDependencyInfo->pMemoryBarriers, pDependencyInfo->memoryBarrierCount))
 		{
+			if (!barrier2.srcAccessMask && !barrier2.dstAccessMask)
+			{
+				// Execution only barrier
+				vkCmdPipelineBarrier(commandBuffer, TranslateStageFlags(barrier2.srcStageMask), TranslateStageFlags(barrier2.dstStageMask),
+				                     dependencyFlags, 0, nullptr, 0, nullptr, 0, nullptr);
+				continue;
+			}
 			VkMemoryBarrier barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER};
 			barrier.srcAccessMask = TranslateAccessFlags(barrier2.srcAccessMask);
 			barrier.dstAccessMask = TranslateAccessFlags(barrier2.dstAccessMask);
@@ -1543,6 +1551,16 @@ void GSDeviceVK::ActivateCommandBuffer(u32 index)
 		vkCmdBeginQuery(resources.command_buffers[1], m_pipeline_statistics_query_pool, index, 0);
 	}
 
+	// Barrier to prevent the previous pass's render from conflicting with the next pass's uniform upload
+	// (Do it up here so the uniform upload can run in parallel with other rendering)
+	if (m_rashader_filter_chain)
+	{
+		VkMemoryBarrier2 barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER_2};
+		barrier.srcStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+		barrier.dstStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+		Vulkan::CmdPipelineBarrier2KHR(resources.command_buffers[1], barrier);
+	}
+
 	resources.fence_counter = m_next_fence_counter++;
 	resources.init_buffer_used = false;
 
@@ -2119,7 +2137,7 @@ bool GSDeviceVK::AllocatePreinitializedGPUBuffer(u32 size, VkBuffer* gpu_buffer,
 
 	VkBufferCreateInfo gpu_bci = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
 	gpu_bci.size  = size;
-	gpu_bci.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	gpu_bci.usage = gpu_usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	gpu_bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	VmaAllocationCreateInfo gpu_aci = {};
 	gpu_aci.usage = VMA_MEMORY_USAGE_GPU_ONLY;
@@ -6825,6 +6843,597 @@ void GSDeviceVK::SendHWDraw(const GSHWDrawConfig& config, GSTextureVK* draw_rt, 
 
 	if (config.ps.HasColorROV() || config.ps.HasDepthROV())
 		g_perfmon.Put(GSPerfMon::DrawCallsROV, 1);
+}
+
+static constexpr GSVector4 RA_VERTICES[] = {
+	GSVector4::cxpr(-1.f, -1.f, 0.f, 0.f),
+	GSVector4::cxpr( 1.f, -1.f, 1.f, 0.f),
+	GSVector4::cxpr(-1.f,  1.f, 0.f, 1.f),
+	GSVector4::cxpr( 1.f,  1.f, 1.f, 1.f),
+	GSVector4::cxpr( 0.f,  0.f, 0.f, 0.f),
+	GSVector4::cxpr( 1.f,  0.f, 1.f, 0.f),
+	GSVector4::cxpr( 0.f,  1.f, 0.f, 1.f),
+	GSVector4::cxpr( 1.f,  1.f, 1.f, 1.f),
+};
+
+static VkSamplerAddressMode MapRAShaderWrap(rashader::WrapMode mode)
+{
+	switch (mode)
+	{
+		case rashader::WrapMode::ClampToEdge:    return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		case rashader::WrapMode::ClampToBorder:  return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+		case rashader::WrapMode::Repeat:         return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		case rashader::WrapMode::MirroredRepeat: return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+	}
+}
+
+struct GSRAPipelineVK final : public GSRAPipeline
+{
+	VkDescriptorSetLayout set_layout;
+	VkPipelineLayout pipeline_layout;
+	VkRenderPass render_pass;
+	VkPipeline pipeline;
+	~GSRAPipelineVK()
+	{
+		VkDevice device = static_cast<GSDeviceVK*>(g_gs_device.get())->GetDevice();
+		vkDestroyDescriptorSetLayout(device, set_layout, nullptr);
+		vkDestroyPipelineLayout(device, pipeline_layout, nullptr);
+		vkDestroyRenderPass(device, render_pass, nullptr);
+		vkDestroyPipeline(device, pipeline, nullptr);
+	}
+};
+
+struct GSRAFilterChainVK final : public GSRAFilterChain
+{
+	VkBuffer upload = VK_NULL_HANDLE;
+	VkBuffer ubo = VK_NULL_HANDLE;
+	VkBuffer vertices = VK_NULL_HANDLE;
+	u8* upload_ptr;
+	size_t ubo_size;
+	VkSampler samplers[2][static_cast<u32>(rashader::WrapMode::Last) + 1] = {};
+	VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
+	VkImageView* fbviews;
+	VkFramebuffer* framebuffers;
+	VkDescriptorSet* descriptor_sets[GSDeviceVK::NUM_COMMAND_BUFFERS];
+	VmaAllocation upload_allocation;
+	VmaAllocation ubo_allocation;
+	VmaAllocation vertices_allocation;
+
+	static void DestroyTexture(GSTexture* tex_)
+	{
+		GSTextureVK* tex = static_cast<GSTextureVK*>(tex_);
+		tex->Destroy(false);
+		delete tex;
+	}
+
+	static void DestroyPipeline(GSRAPipeline* pipe)
+	{
+		delete static_cast<GSRAPipelineVK*>(pipe);
+	}
+
+	void Destroy(VkDevice device, VmaAllocator allocator)
+	{
+		if (upload)
+			vmaDestroyBuffer(allocator, upload, upload_allocation);
+		if (ubo)
+			vmaDestroyBuffer(allocator, ubo, ubo_allocation);
+		if (vertices)
+			vmaDestroyBuffer(allocator, vertices, vertices_allocation);
+		for (auto& arr : samplers)
+			for (VkSampler samp : arr)
+				if (samp)
+					vkDestroySampler(device, samp, nullptr);
+		if (descriptor_pool)
+			vkDestroyDescriptorPool(device, descriptor_pool, nullptr);
+		if (framebuffers)
+		{
+			size_t nrt = plan.num_rts();
+			for (VkFramebuffer fb : std::span(framebuffers, nrt))
+				if (fb)
+					vkDestroyFramebuffer(device, fb, nullptr);
+			for (VkImageView iv : std::span(fbviews, nrt))
+				if (iv)
+					vkDestroyImageView(device, iv, nullptr);
+			free(framebuffers);
+		}
+		GSRAFilterChain::Destroy(DestroyPipeline, DestroyTexture);
+		delete this;
+	}
+};
+
+GSRAFilterChain* GSDeviceVK::CreateRAFilterChain()
+{
+	return new GSRAFilterChainVK();
+}
+
+void GSDeviceVK::DestroyRAFilterChain(GSRAFilterChain* chain_)
+{
+	GSRAFilterChainVK* chain = static_cast<GSRAFilterChainVK*>(chain_);
+	m_frame_resources[m_current_frame].cleanup_resources.push_back([this, chain]{
+		chain->Destroy(m_device, m_allocator);
+	});
+}
+
+bool GSDeviceVK::FinalizeRAFilterChain(GSRAFilterChain& chain_)
+{
+	VkResult res;
+#define CHECK(x, action) do { if ((res = (x)) != VK_SUCCESS) { LOG_VULKAN_ERROR(res, action " failed: "); return false; } } while (0)
+	GSRAFilterChainVK& chain = static_cast<GSRAFilterChainVK&>(chain_);
+	size_t npasses = chain.info.passes.size();
+	size_t nrt = chain.plan.num_rts();
+	size_t alloc_size = 0;
+	alloc_size += sizeof(VkFramebuffer) * nrt;
+	alloc_size += sizeof(VkImageView) * nrt;
+	alloc_size += sizeof(VkDescriptorSet) * npasses * NUM_COMMAND_BUFFERS;
+	void* ptr = calloc(1, alloc_size);
+	void* alloc = ptr;
+	chain.framebuffers = static_cast<VkFramebuffer*>(alloc);
+	alloc = chain.framebuffers + nrt;
+	chain.fbviews = static_cast<VkImageView*>(alloc);
+	alloc = chain.fbviews + nrt;
+	for (size_t i = 0; i < NUM_COMMAND_BUFFERS; i++)
+	{
+		chain.descriptor_sets[i] = static_cast<VkDescriptorSet*>(alloc);
+		alloc = chain.descriptor_sets[i] + npasses;
+	}
+	pxAssert(alloc == static_cast<u8*>(ptr) + alloc_size);
+
+	VkDescriptorPoolSize sizes[2] = {
+		{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0},
+		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 0},
+	};
+	VkDescriptorPoolCreateInfo pool_create = {VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+	pool_create.pPoolSizes = sizes;
+	pool_create.poolSizeCount = std::size(sizes);
+	pool_create.maxSets = static_cast<u32>(npasses) * NUM_COMMAND_BUFFERS;
+
+	// Calculate uniform offsets, and pool sizes, and framebuffer mapping
+	u32 offset = 0;
+	u32 align = static_cast<u32>(m_device_properties.limits.minUniformBufferOffsetAlignment);
+	for (size_t i = 0; i < npasses; i++)
+	{
+		const rashader::Pass& pass = chain.info.passes[i];
+		chain.uniform_offsets()[i].extra = offset;
+		offset += Common::AlignUpPow2(pass.ubo.size, align);
+		if (pass.ubo.stages)
+			sizes[0].descriptorCount += NUM_COMMAND_BUFFERS;
+		for (const rashader::BoundTexture& tex : pass.bindings)
+			if (tex.stages)
+				sizes[1].descriptorCount += NUM_COMMAND_BUFFERS;
+	}
+	chain.ubo_size = offset;
+
+	// Create buffers
+	if (!AllocatePreinitializedGPUBuffer(sizeof(RA_VERTICES), &chain.vertices, &chain.vertices_allocation, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, [](void* buf){
+		memcpy(buf, RA_VERTICES, sizeof(RA_VERTICES));
+	})) return false;
+	Vulkan::SetObjectName(m_device, chain.vertices, "ra:vertices");
+
+	VkBufferCreateInfo bci = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+	bci.size = offset;
+	bci.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	bci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	VmaAllocationCreateInfo aci = {};
+	aci.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+	aci.preferredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	VmaAllocationInfo ai;
+	CHECK(vmaCreateBuffer(m_allocator, &bci, &aci, &chain.ubo, &chain.ubo_allocation, nullptr), "vmaCreateBuffer");
+	Vulkan::SetObjectName(m_device, chain.ubo, "ra:ubo");
+	bci.size = offset * NUM_COMMAND_BUFFERS;
+	bci.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	aci.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+	aci.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+	aci.preferredFlags = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	CHECK(vmaCreateBuffer(m_allocator, &bci, &aci, &chain.upload, &chain.upload_allocation, &ai), "vmaCreateBuffer");
+	chain.upload_ptr = static_cast<u8*>(ai.pMappedData);
+	Vulkan::SetObjectName(m_device, chain.upload, "ra:upload");
+#ifdef PCSX2_DEVBUILD
+	vmaSetAllocationName(m_allocator, chain.vertices_allocation, "ra:vertices");
+	vmaSetAllocationName(m_allocator, chain.ubo_allocation,      "ra:ubo");
+	vmaSetAllocationName(m_allocator, chain.upload_allocation,   "ra:upload");
+#endif
+
+	// Create samplers
+	VkSamplerCreateInfo sci = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
+	sci.maxLod = VK_LOD_CLAMP_NONE;
+	sci.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+	for (u32 linear = 0; linear < 2; linear++)
+	{
+		sci.minFilter = linear ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+		sci.magFilter = linear ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+		sci.mipmapMode = linear ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST;
+		for (u32 imode = 0; imode < std::size(chain.samplers[0]); imode++)
+		{
+			rashader::WrapMode mode = static_cast<rashader::WrapMode>(imode);
+			sci.addressModeU = MapRAShaderWrap(mode);
+			sci.addressModeV = MapRAShaderWrap(mode);
+			sci.addressModeW = MapRAShaderWrap(mode);
+			CHECK(vkCreateSampler(m_device, &sci, nullptr, &chain.samplers[linear][imode]), "vkCreateSampler");
+			Vulkan::SetObjectName(m_device, chain.samplers[linear][imode], "ra:%s%s", linear ? "Ln" : "Pt", RAWrapDesc(mode));
+		}
+	}
+
+	// Create descriptor pool and sets
+	CHECK(vkCreateDescriptorPool(m_device, &pool_create, nullptr, &chain.descriptor_pool), "vkCreateDescriptorPool");
+	Vulkan::SetObjectName(m_device, chain.descriptor_pool, "ra:descpool");
+	VkDescriptorSetAllocateInfo info = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
+	info.descriptorPool = chain.descriptor_pool;
+	info.descriptorSetCount = 1;
+	for (VkDescriptorSet* sets : chain.descriptor_sets)
+	{
+		for (size_t i = 0; i < npasses; i++)
+		{
+			const rashader::Pass& pass = chain.info.passes[i];
+			GSRAPipelineVK* pipe = static_cast<GSRAPipelineVK*>(chain.passes()[i]);
+			info.pSetLayouts = &pipe->set_layout;
+			CHECK(vkAllocateDescriptorSets(m_device, &info, &sets[i]), "vkAllocateDescriptorSets");
+			VkWriteDescriptorSet write = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+			write.dstSet = sets[i];
+			write.descriptorCount = 1;
+			if (pass.ubo.stages)
+			{
+				VkDescriptorBufferInfo info = {chain.ubo, chain.uniform_offsets()[i].extra, pass.ubo.size};
+				write.dstBinding = pass.ubo.binding;
+				write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				write.pBufferInfo = &info;
+				vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
+				write.pBufferInfo = nullptr;
+			}
+			VkDescriptorImageInfo info;
+			write.pImageInfo = &info;
+			write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			// Pre-write user textures, since they don't change
+			for (const rashader::BoundTexture& tex : pass.bindings)
+			{
+				if (!tex.stages || tex.source != rashader::TextureSource::User)
+					continue;
+				info.sampler = chain.samplers[tex.linear][static_cast<u32>(tex.wrap)];
+				info.imageView = static_cast<GSTextureVK*>(chain.GetTexture(rashader::TextureSource::User, tex.index, 0))->GetView();
+				info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				write.dstBinding = tex.binding;
+				vkUpdateDescriptorSets(m_device, 1, &write, 0, nullptr);
+			}
+		}
+	}
+
+	return true;
+#undef CHECK
+}
+
+void GSDeviceVK::DidUpdateRAShaderRT(const GSRAFilterChain& chain_, size_t rt_idx)
+{
+	const GSRAFilterChainVK& chain = static_cast<const GSRAFilterChainVK&>(chain_);
+	size_t npasses = chain.info.passes.size();
+	size_t pass_idx = 0;
+	for (; pass_idx < npasses; pass_idx++)
+	{
+		// Find a pass that uses this framebuffer.
+		// (Doesn't matter which, they're all compatible by Vulkan render pass compatibility rules.)
+		const rashader::ExecutionPlanner::Pass& pass = chain.plan.pass(pass_idx);
+		if (rt_idx >= pass.rt_base && rt_idx <= pass.rt_base + pass.num_history_needed)
+			break;
+	}
+	pxAssert(pass_idx < npasses); // We wouldn't have an RT that isn't used...
+	VkFramebuffer& framebuffer = chain.framebuffers[rt_idx];
+	VkImageView& view = chain.fbviews[rt_idx];
+	if (view)
+		DeferImageViewDestruction(view);
+	if (framebuffer)
+		DeferFramebufferDestruction(framebuffer);
+	GSTextureVK* tex = static_cast<GSTextureVK*>(chain.rts()[rt_idx]);
+	VkFramebufferCreateInfo fci = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
+	fci.renderPass = static_cast<GSRAPipelineVK*>(chain.passes()[pass_idx])->render_pass;
+	fci.attachmentCount = 1;
+	fci.pAttachments = &tex->GetL0View(view);
+	fci.width = tex->GetWidth();
+	fci.height = tex->GetHeight();
+	fci.layers = 1;
+	VkResult res = vkCreateFramebuffer(m_device, &fci, nullptr, &framebuffer);
+	if (res != VK_SUCCESS)
+	{
+		LOG_VULKAN_ERROR(res, "vkCreateFramebuffer failed: ");
+		framebuffer = VK_NULL_HANDLE;
+	}
+	// RTs are always created right before use.
+	tex->TransitionToLayout(GSTextureVK::Layout::ColorAttachment);
+}
+
+void GSDeviceVK::UploadRAUniforms(const GSRAFilterChain& chain_, const u32* ubo, const u32* push)
+{
+	const GSRAFilterChainVK& chain = static_cast<const GSRAFilterChainVK&>(chain_);
+	size_t npasses = chain.info.passes.size();
+	VkMemoryBarrier2 barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER_2};
+	barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+	barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+	barrier.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT;
+	for (size_t i = 0; i < npasses; i++)
+	{
+		if (!((ubo[i / 32] >> (i % 32)) & 1))
+			continue;
+		u32 flags = chain.info.passes[i].ubo.stages;
+		if (flags & 1)
+			barrier.dstStageMask |= VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT;
+		if (flags & 2)
+			barrier.dstStageMask |= VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+	}
+	if (!barrier.dstStageMask)
+		return;
+
+	size_t base = chain.ubo_size * m_current_frame;
+	u8* ptr = chain.upload_ptr;
+	size_t lo = chain.ubo_size;
+	size_t hi = 0;
+	VkBufferCopy* regions = reinterpret_cast<VkBufferCopy*>(alloca(npasses * sizeof(*regions)));
+	u32 nregions = 0;
+	for (size_t i = 0; i < npasses; i++)
+	{
+		if (!((ubo[i / 32] >> (i % 32)) & 1))
+			continue;
+		size_t size = chain.info.passes[i].ubo.size;
+		GSRAFilterChain::UniformMap& offsets = chain.uniform_offsets()[i];
+		lo = std::min<size_t>(lo, offsets.extra);
+		hi = std::max<size_t>(hi, offsets.extra + size);
+		memcpy(ptr + base + offsets.extra, chain.uniform_data + offsets.ubo, size);
+		regions[nregions++] = {base + offsets.extra, offsets.extra, size};
+	}
+	vmaFlushAllocation(m_allocator, chain.upload_allocation, base + lo, hi - lo);
+	vkCmdCopyBuffer(m_current_command_buffer, chain.upload, chain.ubo, nregions, regions);
+	Vulkan::CmdPipelineBarrier2KHR(m_current_command_buffer, barrier);
+}
+
+static void RATransitionToRead(const GSRAFilterChainVK& chain, VkCommandBuffer cmdbuf, size_t begin, size_t end)
+{
+	for (size_t i = begin; i < end; i++)
+	{
+		if (chain.info.passes[i].mipmap_output)
+		{
+			const rashader::ExecutionPlanner::Pass& pass = chain.plan.pass(i);
+			GSTextureVK* tex = static_cast<GSTextureVK*>(chain.rts()[pass.rt_current]);
+			if (tex->GetWidth() <= 1 && tex->GetHeight() <= 1)
+				continue;
+			tex->GenerateMipmap(cmdbuf);
+		}
+	}
+	for (size_t i = begin; i < end; i++)
+	{
+		const rashader::ExecutionPlanner::Pass& pass = chain.plan.pass(i);
+		GSTextureVK* tex = static_cast<GSTextureVK*>(chain.rts()[pass.rt_current]);
+		tex->TransitionToLayout(GSTextureVK::Layout::ShaderReadOnly);
+	}
+}
+
+static void RATransitionToWrite(const GSRAFilterChainVK& chain, size_t begin, size_t end)
+{
+	for (size_t i = begin; i < end; i++)
+	{
+		const rashader::ExecutionPlanner::Pass& pass = chain.plan.pass(i);
+		// TransitionToWrite can run on textures that haven't been created yet, in which case they will be transitioned immediately before use
+		if (GSTextureVK* tex = static_cast<GSTextureVK*>(chain.rts()[pass.rt_current]))
+			tex->TransitionToLayout(GSTextureVK::Layout::ColorAttachment);
+	}
+}
+
+static void RAWriteDescriptorSets(const GSRAFilterChainVK& chain, const rashader::Pass& pass, VkDevice device, VkDescriptorSet set)
+{
+	size_t max_writes = pass.bindings.size();
+	VkWriteDescriptorSet* writes = static_cast<VkWriteDescriptorSet*>(alloca(max_writes * sizeof(*writes)));
+	VkDescriptorImageInfo* iinfo = static_cast<VkDescriptorImageInfo*>(alloca(max_writes * sizeof(*iinfo)));
+	u32 num_writes = 0;
+	for (const rashader::BoundTexture& tex : pass.bindings)
+	{
+		if (tex.source == rashader::TextureSource::User || !tex.stages)
+			continue;
+		GSTextureVK* gstex = static_cast<GSTextureVK*>(chain.GetTexture(tex.source, tex.index, tex.history));
+		pxAssert(gstex->GetLayout() == GSTextureVK::Layout::ShaderReadOnly); // Should have already been transitioned
+		writes[num_writes] = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+		writes[num_writes].dstSet = set;
+		writes[num_writes].dstBinding = tex.binding;
+		writes[num_writes].descriptorCount = 1;
+		writes[num_writes].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		writes[num_writes].pImageInfo = &iinfo[num_writes];
+		iinfo[num_writes].sampler = chain.samplers[tex.linear][static_cast<u32>(tex.wrap)];
+		iinfo[num_writes].imageView = gstex->GetView();
+		iinfo[num_writes].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		num_writes++;
+	}
+	vkUpdateDescriptorSets(device, num_writes, writes, 0, nullptr);
+}
+
+static VkShaderStageFlags MapRAStageFlags(u32 stages)
+{
+	VkShaderStageFlags flags = 0;
+	if (stages & 1)
+		flags |= VK_SHADER_STAGE_VERTEX_BIT;
+	if (stages & 2)
+		flags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+	return flags;
+}
+
+void GSDeviceVK::RunRAShaderPass(const GSRAFilterChain& chain_, size_t pass_idx, GSTexture* target)
+{
+	const GSRAFilterChainVK& chain = static_cast<const GSRAFilterChainVK&>(chain_);
+	const rashader::Pass& pass = chain.info.passes[pass_idx];
+	const rashader::ExecutionPlanner::Pass& passinfo = chain.plan.pass(pass_idx);
+	VkCommandBuffer cmdbuf = m_current_command_buffer;
+
+	EndRenderPass();
+
+	if (pass_idx == 0)
+	{
+		VkDeviceSize offset = 0;
+		vkCmdBindVertexBuffers(cmdbuf, 0, 1, &chain.vertices, &offset);
+		// Transition most recently added input to read on first pass
+		static_cast<GSTextureVK*>(chain.input_history()[chain.current_input])->TransitionToLayout(GSTextureVK::Layout::ShaderReadOnly);
+	}
+
+	// Transition pass outputs
+	if (u32 num_transition = passinfo.num_transition_to_read)
+		RATransitionToRead(chain, cmdbuf, pass_idx - num_transition, pass_idx);
+	if (u32 num_transition = passinfo.num_transition_to_write)
+		RATransitionToWrite(chain, pass_idx, pass_idx + num_transition);
+
+	// Write descriptor sets
+	const VkDescriptorSet& set = chain.descriptor_sets[m_current_frame][pass_idx];
+	RAWriteDescriptorSets(chain, pass, m_device, set);
+
+	static constexpr u32 DIRTY_FLAGS = DIRTY_FLAG_VIEWPORT | DIRTY_FLAG_SCISSOR;
+	GSVector2i size = target->GetSize();
+	GSVector4i scissor = GSVector4i(0, 0, size.x, size.y);
+	GSRAPipelineVK* pipeline = static_cast<GSRAPipelineVK*>(chain.passes()[pass_idx]);
+	size_t npasses = chain.info.passes.size();
+	bool is_final = pass_idx == npasses - 1;
+	pxAssert(static_cast<GSTextureVK*>(target)->GetLayout() == GSTextureVK::Layout::ColorAttachment);
+	m_current_framebuffer = chain.framebuffers[chain.plan.pass(pass_idx).rt_current];
+	if (m_current_framebuffer) // Possible if creation failed, just skip render to avoid crashing
+	{
+		BeginRenderPass(pipeline->render_pass, scissor);
+		vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
+		SetScissor(scissor);
+		SetViewport({0, 0, static_cast<float>(size.x), static_cast<float>(size.y), 0, 1});
+		u32 flags = m_dirty_flags;
+		m_dirty_flags &= ~DIRTY_FLAGS;
+		ApplyBaseState(flags & DIRTY_FLAGS, cmdbuf);
+		VkPipelineLayout layout = pipeline->pipeline_layout;
+		vkCmdBindDescriptorSets(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, layout, 0, 1, &set, 0, nullptr);
+		if (pass.push.stages)
+		{
+			u8* ptr = chain.uniform_data + chain.uniform_offsets()[pass_idx].push;
+			vkCmdPushConstants(cmdbuf, layout, MapRAStageFlags(pass.push.stages), 0, pass.push.size, ptr);
+		}
+		vkCmdDraw(cmdbuf, 4, 1, is_final ? 4 : 0, 0);
+		EndRenderPass();
+	}
+
+	if (is_final)
+	{
+		RATransitionToRead(chain, cmdbuf, npasses - chain.plan.num_final_transition_to_read(), npasses);
+		m_dirty_flags |= DIRTY_FLAG_PIPELINE;
+		m_current_pipeline_layout = PipelineLayout::Undefined;
+		m_current_framebuffer = VK_NULL_HANDLE;
+		m_current_render_target = nullptr;
+		m_current_depth_target = nullptr;
+		SetInitialState(cmdbuf); // Switch back to vertex buffer
+	}
+}
+
+static VkDescriptorSetLayoutBinding GetRABinding(u32 binding, VkDescriptorType type, u32 stages)
+{
+	VkDescriptorSetLayoutBinding res = {};
+	res.binding = binding;
+	res.descriptorType = type;
+	res.descriptorCount = 1;
+	res.stageFlags = MapRAStageFlags(stages);
+	return res;
+}
+
+GSRAPipeline* GSDeviceVK::CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass_idx)
+{
+	VkResult res;
+	VkDescriptorSetLayout set_layout;
+	VkPipelineLayout pipeline_layout;
+	VkRenderPass render_pass;
+	VkShaderModule vs;
+	VkShaderModule fs;
+	VkPipeline pipeline;
+	GSRAPipelineVK* result;
+#define CHECK(x, action, cleanup) do { if ((res = (x)) != VK_SUCCESS) { LOG_VULKAN_ERROR(res, action " failed: "); goto cleanup; } } while (0)
+	const rashader::Pass& pass = chain.passes[pass_idx];
+	VkDescriptorSetLayoutBinding* bindings = static_cast<VkDescriptorSetLayoutBinding*>(alloca(sizeof(*bindings) * (pass.bindings.size() + 1)));
+	VkDescriptorSetLayoutCreateInfo dslci;
+	VkPipelineLayoutCreateInfo plci;
+	VkPushConstantRange pcr;
+	VkAttachmentDescription ad;
+	VkSubpassDescription sd;
+	VkAttachmentReference ar;
+	VkRenderPassCreateInfo rpci;
+	VkShaderModuleCreateInfo smci;
+	Vulkan::GraphicsPipelineBuilder gpb;
+
+	dslci = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
+	dslci.pBindings = bindings;
+	if (pass.ubo.stages)
+		bindings[dslci.bindingCount++] = GetRABinding(pass.ubo.binding, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, pass.ubo.stages);
+	for (const rashader::BoundTexture& tex : pass.bindings)
+		if (tex.stages)
+			bindings[dslci.bindingCount++] = GetRABinding(tex.binding, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, tex.stages);
+	CHECK(vkCreateDescriptorSetLayout(m_device, &dslci, nullptr, &set_layout), "vkCreateDescriptorSetLayout", fail0);
+
+	plci = {VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
+	plci.pSetLayouts = &set_layout;
+	plci.setLayoutCount = 1;
+	if (pass.push.stages)
+	{
+		pcr = {};
+		pcr.size = pass.push.size;
+		pcr.stageFlags = MapRAStageFlags(pass.push.stages);
+		plci.pPushConstantRanges = &pcr;
+		plci.pushConstantRangeCount = 1;
+	}
+	CHECK(vkCreatePipelineLayout(m_device, &plci, nullptr, &pipeline_layout), "vkCreatePipelineLayout", fail1);
+
+	ad = {};
+	ad.format = LookupNativeFormat(MapRAShaderFormat(pass.out_format));
+	ad.samples = VK_SAMPLE_COUNT_1_BIT;
+	ad.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	ad.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	ad.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	ad.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	ar = {};
+	ar.attachment = 0;
+	ar.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	sd = {};
+	sd.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	sd.colorAttachmentCount = 1;
+	sd.pColorAttachments = &ar;
+	rpci = {VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+	rpci.attachmentCount = 1;
+	rpci.pAttachments = &ad;
+	rpci.subpassCount = 1;
+	rpci.pSubpasses = &sd;
+	CHECK(vkCreateRenderPass(m_device, &rpci, nullptr, &render_pass), "vkCreateRenderPass", fail2);
+
+	smci = {VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
+	smci.codeSize = chain.passes[pass_idx].vs_spirv.size() * sizeof(u32);
+	smci.pCode = chain.passes[pass_idx].vs_spirv.data();
+	CHECK(vkCreateShaderModule(m_device, &smci, nullptr, &vs), "vkCreateShaderModule", fail3);
+	smci.codeSize = chain.passes[pass_idx].fs_spirv.size() * sizeof(u32);
+	smci.pCode = chain.passes[pass_idx].fs_spirv.data();
+	CHECK(vkCreateShaderModule(m_device, &smci, nullptr, &fs), "vkCreateShaderModule", fail4);
+
+	SetPipelineProvokingVertex(m_features, gpb);
+	gpb.AddVertexBuffer(0, sizeof(GSVector4));
+	gpb.AddVertexAttribute(0, 0, VK_FORMAT_R32G32_SFLOAT, 0);
+	gpb.AddVertexAttribute(1, 0, VK_FORMAT_R32G32_SFLOAT, 8);
+	gpb.SetPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP);
+	gpb.SetPipelineLayout(pipeline_layout);
+	gpb.SetDynamicViewportAndScissorState();
+	gpb.SetVertexShader(vs);
+	gpb.SetFragmentShader(fs);
+	gpb.SetRenderPass(render_pass, 0);
+	pipeline = gpb.Create(m_device, VK_NULL_HANDLE, false, false);
+	vkDestroyShaderModule(m_device, fs, nullptr);
+	vkDestroyShaderModule(m_device, vs, nullptr);
+	if (!pipeline)
+		goto fail3;
+
+	result = new GSRAPipelineVK();
+	result->set_layout = set_layout;
+	result->render_pass = render_pass;
+	result->pipeline_layout = pipeline_layout;
+	result->pipeline = pipeline;
+	return result;
+
+fail4:
+	vkDestroyShaderModule(m_device, vs, nullptr);
+fail3:
+	vkDestroyRenderPass(m_device, render_pass, nullptr);
+fail2:
+	vkDestroyPipelineLayout(m_device, pipeline_layout, nullptr);
+fail1:
+	vkDestroyDescriptorSetLayout(m_device, set_layout, nullptr);
+fail0:
+	return nullptr;
+#undef CHECK
 }
 
 #ifdef ENABLE_LIBRASHADER

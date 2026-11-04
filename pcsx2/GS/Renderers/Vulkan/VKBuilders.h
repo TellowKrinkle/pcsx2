@@ -152,7 +152,7 @@ namespace Vulkan
 
 		void Clear();
 
-		VkPipeline Create(VkDevice device, VkPipelineCache pipeline_cache = VK_NULL_HANDLE, bool clear = true);
+		VkPipeline Create(VkDevice device, VkPipelineCache pipeline_cache = VK_NULL_HANDLE, bool clear = true, bool time = true);
 
 		void SetShaderStage(VkShaderStageFlagBits stage, VkShaderModule module, const char* entry_point);
 		void SetVertexShader(VkShaderModule module) { SetShaderStage(VK_SHADER_STAGE_VERTEX_BIT, module, "main"); }

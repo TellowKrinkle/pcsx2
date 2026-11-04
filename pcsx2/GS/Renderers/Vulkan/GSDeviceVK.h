@@ -696,6 +696,13 @@ public:
 	void SetScissor(const GSVector4i& scissor);
 	void SetPipeline(VkPipeline pipeline);
 
+	GSRAFilterChain* CreateRAFilterChain() override;
+	void DestroyRAFilterChain(GSRAFilterChain* chain) override;
+	bool FinalizeRAFilterChain(GSRAFilterChain& chain) override;
+	void DidUpdateRAShaderRT(const GSRAFilterChain& chain, size_t rt) override;
+	void UploadRAUniforms(const GSRAFilterChain& chain, const u32* ubo, const u32* push) override;
+	void RunRAShaderPass(const GSRAFilterChain& chain, size_t pass, GSTexture* target) override;
+	GSRAPipeline* CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass) override;
 #ifdef ENABLE_LIBRASHADER
 	bool CreateLibrashaderFilterChain(const std::string& preset_path) override;
 	void DestroyLibrashaderFilterChain() override;
