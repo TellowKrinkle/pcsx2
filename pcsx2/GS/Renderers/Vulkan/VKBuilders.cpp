@@ -450,12 +450,21 @@ void Vulkan::GraphicsPipelineBuilder::Clear()
 }
 
 VkPipeline Vulkan::GraphicsPipelineBuilder::Create(
-	VkDevice device, VkPipelineCache pipeline_cache, bool clear /* = true */)
+	VkDevice device, VkPipelineCache pipeline_cache, bool clear, bool time)
 {
 	const GSShaderCompileIndicator::CompileTimer compile_timer;
 
 	VkPipeline pipeline;
-	VkResult res = vkCreateGraphicsPipelines(device, pipeline_cache, 1, &m_ci, nullptr, &pipeline);
+	VkResult res;
+	if (time)
+	{
+		const GSShaderCompileIndicator::CompileTimer compile_timer;
+		res = vkCreateGraphicsPipelines(device, pipeline_cache, 1, &m_ci, nullptr, &pipeline);
+	}
+	else
+	{
+		res = vkCreateGraphicsPipelines(device, pipeline_cache, 1, &m_ci, nullptr, &pipeline);
+	}
 	if (res != VK_SUCCESS)
 	{
 		LOG_VULKAN_ERROR(res, "vkCreateGraphicsPipelines() failed: ");

@@ -201,7 +201,6 @@ std::unique_ptr<GSTextureVK> GSTextureVK::Create(Usage usage, Format format, int
 
 	if (IsRenderTarget(usage))
 	{
-		pxAssert(levels == 1);
 		ici.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	}
 
@@ -591,8 +590,11 @@ void GSTextureVK::Unmap()
 
 void GSTextureVK::GenerateMipmap()
 {
-	const VkCommandBuffer cmdbuf = GetCommandBufferForUpdate();
+	GenerateMipmap(GetCommandBufferForUpdate());
+}
 
+void GSTextureVK::GenerateMipmap(VkCommandBuffer cmdbuf)
+{
 	if (m_layout == Layout::Undefined)
 		TransitionToLayout(cmdbuf, Layout::BlitSrc);
 
@@ -620,6 +622,31 @@ void GSTextureVK::GenerateMipmap()
 
 		TransitionSubresourcesToLayout(cmdbuf, src_level, 1, Layout::BlitSrc, m_layout);
 		TransitionSubresourcesToLayout(cmdbuf, dst_level, 1, Layout::BlitDst, m_layout);
+	}
+}
+
+const VkImageView& GSTextureVK::GetL0View(VkImageView& storage)
+{
+	if (m_mipmap_levels <= 1)
+	{
+		storage = VK_NULL_HANDLE;
+		return m_view;
+	}
+	else
+	{
+		VkImageViewCreateInfo vci = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
+		vci.image      = m_image;
+		vci.viewType   = VK_IMAGE_VIEW_TYPE_2D;
+		vci.format     = m_vk_format;
+		vci.components = s_identity_swizzle;
+		vci.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		vci.subresourceRange.levelCount = 1;
+		vci.subresourceRange.layerCount = 1;
+		vkCreateImageView(GSDeviceVK::GetInstance()->GetDevice(), &vci, nullptr, &storage);
+#if PCSX2_DEVBUILD
+		Vulkan::SetObjectName(GSDeviceVK::GetInstance()->GetDevice(), storage, "%s:L0", m_debug_name.c_str());
+#endif
+		return storage;
 	}
 }
 

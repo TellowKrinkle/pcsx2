@@ -44,9 +44,9 @@ public:
 
 	void Destroy(bool defer);
 
-	__fi VkImage GetImage() const { return m_image; }
-	__fi VkImageView GetView() const { return m_view; }
-	__fi Layout GetLayout() const { return m_layout; }
+	__fi const VkImage& GetImage() const { return m_image; }
+	__fi const VkImageView& GetView() const { return m_view; }
+	__fi const Layout& GetLayout() const { return m_layout; }
 	bool IsShaderWriteMode() const override { return GetLayout() == Layout::ReadWriteImage; }
 
 	__fi VkFormat GetVkFormat() const { return m_vk_format; }
@@ -59,6 +59,11 @@ public:
 	bool Map(GSMap& m, const GSVector4i* r = NULL, int layer = 0) override;
 	void Unmap() override;
 	void GenerateMipmap() override;
+	void GenerateMipmap(VkCommandBuffer cmdbuf);
+
+	/// Get an image view of the first mipmap level of the texture, possibly writing it to `storage`.
+	/// After calling, if `storage` is not `VK_NULL_HANDLE`, it must be destroyed with `vkDestroyImageView`.
+	const VkImageView& GetL0View(VkImageView& storage);
 
 #ifdef PCSX2_DEVBUILD
 	void SetDebugName(std::string_view name) override;
