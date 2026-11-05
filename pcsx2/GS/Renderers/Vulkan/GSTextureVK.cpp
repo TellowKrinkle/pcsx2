@@ -630,10 +630,12 @@ void GSTextureVK::SetDebugName(std::string_view name)
 	if (name.empty())
 		return;
 
-	Vulkan::SetObjectName(GSDeviceVK::GetInstance()->GetDevice(), m_image, "%.*s", static_cast<int>(name.size()), name.data());
-	Vulkan::SetObjectName(GSDeviceVK::GetInstance()->GetDevice(), m_view, "%.*s", static_cast<int>(name.size()), name.data());
-
 	m_debug_name = name;
+
+	const char* str = m_debug_name.c_str();
+	Vulkan::SetObjectName(GSDeviceVK::GetInstance()->GetDevice(), m_image, "%s", str);
+	Vulkan::SetObjectName(GSDeviceVK::GetInstance()->GetDevice(), m_view, "%s", str);
+	vmaSetAllocationName(GSDeviceVK::GetInstance()->GetAllocator(), m_allocation, str);
 }
 
 #endif
@@ -971,7 +973,9 @@ void GSDownloadTextureVK::SetDebugName(std::string_view name)
 	if (name.empty())
 		return;
 
-	Vulkan::SetObjectName(GSDeviceVK::GetInstance()->GetDevice(), m_buffer, "%.*s", static_cast<int>(name.size()), name.data());
+	std::string str(name);
+	Vulkan::SetObjectName(GSDeviceVK::GetInstance()->GetDevice(), m_buffer, "%s", str.c_str());
+	vmaSetAllocationName(GSDeviceVK::GetInstance()->GetAllocator(), m_allocation, str.c_str());
 }
 
 #endif
