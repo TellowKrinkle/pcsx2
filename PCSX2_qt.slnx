@@ -376,6 +376,26 @@
       <Build Solution="Release Clang AVX2|ARM64" Project="false" />
       <Build Solution="Release|ARM64" Project="false" />
     </Project>
+    <Project Path="3rdparty/spirv-cross/spirv-cross.vcxproj" Id="d5e9deea-2732-4851-8b04-9b77593ff2a5">
+      <BuildType Solution="Debug AVX2|ARM64" Project="Debug Clang" />
+      <BuildType Solution="Debug Clang AVX2|ARM64" Project="Debug Clang" />
+      <BuildType Solution="Debug|ARM64" Project="Debug Clang" />
+      <BuildType Solution="Devel AVX2|ARM64" Project="Devel Clang" />
+      <BuildType Solution="Devel Clang AVX2|ARM64" Project="Devel Clang" />
+      <BuildType Solution="Devel|ARM64" Project="Devel Clang" />
+      <BuildType Solution="Release AVX2|ARM64" Project="Release Clang" />
+      <BuildType Solution="Release Clang AVX2|ARM64" Project="Release Clang" />
+      <BuildType Solution="Release|ARM64" Project="Release Clang" />
+      <Build Solution="Debug AVX2|ARM64" Project="false" />
+      <Build Solution="Debug Clang AVX2|ARM64" Project="false" />
+      <Build Solution="Debug|ARM64" Project="false" />
+      <Build Solution="Devel AVX2|ARM64" Project="false" />
+      <Build Solution="Devel Clang AVX2|ARM64" Project="false" />
+      <Build Solution="Devel|ARM64" Project="false" />
+      <Build Solution="Release AVX2|ARM64" Project="false" />
+      <Build Solution="Release Clang AVX2|ARM64" Project="false" />
+      <Build Solution="Release|ARM64" Project="false" />
+    </Project>
     <Project Path="3rdparty/vixl/vixl.vcxproj" Id="8906836e-f06e-46e8-b11a-74e5e8c7b8fb">
       <BuildType Solution="Debug AVX2|ARM64" Project="Debug Clang" />
       <BuildType Solution="Debug Clang AVX2|ARM64" Project="Debug Clang" />
