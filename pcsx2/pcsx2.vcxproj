@@ -64,6 +64,7 @@
       <PrecompiledHeaderFile>PrecompiledHeader.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>PrecompiledHeader.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <PreprocessorDefinitions>C4_NO_DEBUG_BREAK;ST_NO_EXCEPTION_HANDLING;D3D12MA_USING_DIRECTX_HEADERS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="Exists('$(DepsBinDir)librashader_capi.dll')">ENABLE_LIBRASHADER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Platform)'!='ARM64'">ENABLE_RAINTEGRATION;ENABLE_OPENGL;ENABLE_VULKAN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Platform)'=='x64'">XBYAK_NO_EXCEPTION;ZYCORE_STATIC_BUILD;ZYDIS_STATIC_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -1093,6 +1094,9 @@
     </ProjectReference>
     <ProjectReference Include="..\3rdparty\rashader-lite\rashader-lite.vcxproj">
       <Project>{a2f1aa77-5255-4d46-8ef6-ab598c1f3546}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\3rdparty\spirv-cross\spirv-cross.vcxproj">
+      <Project>{9c78b85c-7de0-42c2-ba70-5c381819b54f}</Project>
     </ProjectReference>
     <ProjectReference Include="..\common\common.vcxproj">
       <Project>{4639972e-424e-4e13-8b07-ca403c481346}</Project>
