@@ -15,6 +15,11 @@
 #include <string_view>
 #include <vector>
 
+namespace rashader
+{
+	struct Pass;
+}
+
 namespace D3D
 {
 	// create a dxgi factory
@@ -86,4 +91,6 @@ namespace D3D
 		const std::string_view code, const D3D_SHADER_MACRO* macros = nullptr, const char* entry_point = "main");
 	wil::com_ptr_nothrow<ID3DBlob> CompileShaderDXIL(ShaderType type, ShaderModel shader_model, bool debug,
 		const std::string_view code, const D3D_SHADER_MACRO* macros = nullptr, const char* entry_point = "main");
+
+	wil::com_ptr_nothrow<ID3DBlob> CompileRAShaderSPIRV(const std::vector<u32>& spirv, const rashader::Pass& pass, bool debug, ShaderModel sm, ShaderType type);
 }; // namespace D3D
