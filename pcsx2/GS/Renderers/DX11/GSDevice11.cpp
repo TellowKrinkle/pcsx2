@@ -4,6 +4,7 @@
 #include "GS.h"
 #include "GS/GSGL.h"
 #include "GSDevice11.h"
+#include "GS/Renderers/Common/GSRAShader.h"
 #include "GS/Renderers/DX11/D3D.h"
 #include "GS/GSExtra.h"
 #include "GS/GSPerfMon.h"
@@ -1501,11 +1502,8 @@ GSTexture* GSDevice11::CreateSurface(GSTexture::Usage usage, int width, int heig
 
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
-	if (GSTexture::IsTexture(usage))
-	{
-		desc.BindFlags |= (levels > 1 && !GSTexture::IsCompressedFormat(format)) ? D3D11_BIND_RENDER_TARGET : 0;
-		desc.MiscFlags |= (levels > 1 && !GSTexture::IsCompressedFormat(format)) ? D3D11_RESOURCE_MISC_GENERATE_MIPS : 0;
-	}
+	desc.BindFlags |= (levels > 1 && !GSTexture::IsCompressedFormat(format)) ? D3D11_BIND_RENDER_TARGET : 0;
+	desc.MiscFlags |= (levels > 1 && !GSTexture::IsCompressedFormat(format)) ? D3D11_RESOURCE_MISC_GENERATE_MIPS : 0;
 
 	if (GSTexture::IsRenderTarget(usage))
 	{
@@ -3438,6 +3436,284 @@ void GSDevice11::SetRenderHWShaderResources(const GSHWDrawConfig& config, GSText
 	}
 	if (primid_texture)
 		PSSetShaderResource(TEXTURE_PRIMID, primid_texture);
+}
+
+struct GSRAPipeline11 final : public GSRAPipeline
+{
+	wil::com_ptr_nothrow<ID3D11InputLayout> input_layout;
+	wil::com_ptr_nothrow<ID3D11VertexShader> vs;
+	wil::com_ptr_nothrow<ID3D11PixelShader> ps;
+};
+
+GSRAPipeline* GSDevice11::CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass_idx)
+{
+#define CHECK(x, type) do { if (FAILED(x)) { Console.ErrorFmt("Failed to create " type " for rashader pass {}", pass_idx); return nullptr; } } while (0)
+	const rashader::Pass& pass = chain.passes[pass_idx];
+	static constexpr D3D11_INPUT_ELEMENT_DESC input_elems[] = {
+		{"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 8, D3D11_INPUT_PER_VERTEX_DATA, 0},
+	};
+	D3D::ShaderModel sm = m_shader_cache.GetShaderModel();
+	bool debug = GSConfig.UseDebugDevice;
+	wil::com_ptr_nothrow<ID3DBlob> vs_blob = D3D::CompileRAShaderSPIRV(pass.vs_spirv, pass, debug, sm, D3D::ShaderType::Vertex);
+	wil::com_ptr_nothrow<ID3DBlob> ps_blob = D3D::CompileRAShaderSPIRV(pass.fs_spirv, pass, debug, sm, D3D::ShaderType::Pixel);
+	if (!vs_blob || !ps_blob)
+		return nullptr;
+	wil::com_ptr_nothrow<ID3D11InputLayout> input_layout;
+	wil::com_ptr_nothrow<ID3D11VertexShader> vs;
+	wil::com_ptr_nothrow<ID3D11PixelShader> ps;
+	CHECK(m_dev->CreateInputLayout(input_elems, std::size(input_elems), vs_blob->GetBufferPointer(), vs_blob->GetBufferSize(), input_layout.put()), "input layout");
+	CHECK(m_dev->CreateVertexShader(vs_blob->GetBufferPointer(), vs_blob->GetBufferSize(), nullptr, vs.put()), "vertex shader");
+	CHECK(m_dev->CreatePixelShader(ps_blob->GetBufferPointer(), ps_blob->GetBufferSize(), nullptr, ps.put()), "pixel shader");
+
+#ifdef PCSX2_DEVBUILD
+	std::string name = pass.name.empty() ? std::to_string(pass_idx) : pass.name;
+	SetD3DDebugObjectName(input_layout.get(), TinyString::from_format("ra:{}:layout", name));
+	SetD3DDebugObjectName(vs.get(), TinyString::from_format("ra:{}:vs", name));
+	SetD3DDebugObjectName(ps.get(), TinyString::from_format("ra:{}:ps", name));
+#endif
+
+	GSRAPipeline11* pipe = new GSRAPipeline11();
+	pipe->input_layout = std::move(input_layout);
+	pipe->vs = std::move(vs);
+	pipe->ps = std::move(ps);
+	return pipe;
+#undef CHECK
+}
+
+static constexpr GSVector4 RA_VERTICES[] = {
+	GSVector4::cxpr(-1.f,  1.f, 0.f, 0.f),
+	GSVector4::cxpr( 1.f,  1.f, 1.f, 0.f),
+	GSVector4::cxpr(-1.f, -1.f, 0.f, 1.f),
+	GSVector4::cxpr( 1.f, -1.f, 1.f, 1.f),
+	GSVector4::cxpr( 0.f,  1.f, 0.f, 0.f),
+	GSVector4::cxpr( 1.f,  1.f, 1.f, 0.f),
+	GSVector4::cxpr( 0.f,  0.f, 0.f, 1.f),
+	GSVector4::cxpr( 1.f,  0.f, 1.f, 1.f),
+};
+
+static D3D11_TEXTURE_ADDRESS_MODE MapRAShaderWrap(rashader::WrapMode mode)
+{
+	switch (mode)
+	{
+		case rashader::WrapMode::ClampToEdge:    return D3D11_TEXTURE_ADDRESS_CLAMP;
+		case rashader::WrapMode::ClampToBorder:  return D3D11_TEXTURE_ADDRESS_BORDER;
+		case rashader::WrapMode::Repeat:         return D3D11_TEXTURE_ADDRESS_WRAP;
+		case rashader::WrapMode::MirroredRepeat: return D3D11_TEXTURE_ADDRESS_MIRROR;
+	}
+	pxAssert(0);
+	return D3D11_TEXTURE_ADDRESS_BORDER;
+}
+
+struct GSRAFilterChain11 final : public GSRAFilterChain
+{
+	ID3D11Buffer** ubos = nullptr;
+	ID3D11Buffer** push = nullptr;
+	wil::com_ptr_nothrow<ID3D11Buffer> vertices;
+	wil::com_ptr_nothrow<ID3D11SamplerState> samplers[2][static_cast<u32>(rashader::WrapMode::Last) + 1];
+
+	static void DestroyTexture(GSTexture* tex) { delete static_cast<GSTexture11*>(tex); }
+	static void DestroyPipeline(GSRAPipeline* pipe) { delete static_cast<GSRAPipeline11*>(pipe); }
+
+	~GSRAFilterChain11()
+	{
+		Destroy(DestroyPipeline, DestroyTexture);
+		if (ubos)
+		{
+			size_t npasses = info.passes.size();
+			for (ID3D11Buffer* buf : std::span(ubos, npasses))
+				if (buf)
+					buf->Release();
+			for (ID3D11Buffer* buf : std::span(push, npasses))
+				if (buf)
+					buf->Release();
+			free(ubos);
+		}
+	}
+};
+
+GSRAFilterChain* GSDevice11::CreateRAFilterChain()
+{
+	return new GSRAFilterChain11;
+}
+
+void GSDevice11::DestroyRAFilterChain(GSRAFilterChain* chain)
+{
+	delete static_cast<GSRAFilterChain11*>(chain);
+}
+
+bool GSDevice11::FinalizeRAFilterChain(GSRAFilterChain& chain_)
+{
+#define CHECK(x, type) do { if (FAILED(x)) { Console.Error("Failed to create " type); return false; } } while (0)
+	GSRAFilterChain11& chain = static_cast<GSRAFilterChain11&>(chain_);
+	size_t npasses = chain.info.passes.size();
+	size_t alloc_size = 0;
+	alloc_size += sizeof(ID3D11Buffer*) * 2 * npasses;
+	void* ptr = calloc(1, alloc_size);
+	void* alloc = ptr;
+	chain.ubos = static_cast<ID3D11Buffer**>(alloc);
+	alloc = chain.ubos + npasses;
+	chain.push = static_cast<ID3D11Buffer**>(alloc);
+	alloc = chain.push + npasses;
+	pxAssert(alloc == static_cast<u8*>(ptr) + alloc_size);
+
+	D3D11_SUBRESOURCE_DATA vertex_data = {RA_VERTICES};
+	D3D11_BUFFER_DESC buffer_desc = {};
+	buffer_desc.ByteWidth = sizeof(RA_VERTICES);
+	buffer_desc.Usage = D3D11_USAGE_IMMUTABLE;
+	buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	CHECK(m_dev->CreateBuffer(&buffer_desc, &vertex_data, chain.vertices.put()), "RAShader vertex buffer");
+	SetD3DDebugObjectName(chain.vertices.get(), "ra:vertices");
+
+	buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+	buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	for (size_t i = 0; i < npasses; i++)
+	{
+		const rashader::Pass& pass = chain.info.passes[i];
+		if (pass.ubo.stages)
+		{
+			buffer_desc.ByteWidth = Common::AlignUpPow2(pass.ubo.size, 16);
+			CHECK(m_dev->CreateBuffer(&buffer_desc, nullptr, &chain.ubos[i]), "RAShader UBO buffer");
+#ifdef PCSX2_DEVBUILD
+			SetD3DDebugObjectName(chain.ubos[i], TinyString::from_format("ra:ubo{}", i));
+#endif
+		}
+		if (pass.push.stages)
+		{
+			buffer_desc.ByteWidth = Common::AlignUpPow2(pass.push.size, 16);
+			CHECK(m_dev->CreateBuffer(&buffer_desc, nullptr, &chain.push[i]), "RAShader push buffer");
+#ifdef PCSX2_DEVBUILD
+			SetD3DDebugObjectName(chain.push[i], TinyString::from_format("ra:push{}", i));
+#endif
+		}
+	}
+
+	D3D11_SAMPLER_DESC sdesc = {};
+	sdesc.MaxLOD = FLT_MAX;
+	for (u32 linear = 0; linear < 2; linear++)
+	{
+		sdesc.Filter = linear ? D3D11_FILTER_MIN_MAG_MIP_LINEAR : D3D11_FILTER_MIN_MAG_MIP_POINT;
+		for (u32 imode = 0; imode < std::size(chain.samplers[0]); imode++)
+		{
+			rashader::WrapMode mode = static_cast<rashader::WrapMode>(imode);
+			sdesc.AddressU = MapRAShaderWrap(mode);
+			sdesc.AddressV = MapRAShaderWrap(mode);
+			sdesc.AddressW = MapRAShaderWrap(mode);
+			m_dev->CreateSamplerState(&sdesc, chain.samplers[linear][imode].put());
+#ifdef PCSX2_DEVBUILD
+			SetD3DDebugObjectName(chain.samplers[linear][imode].get(), TinyString::from_format("ra:{}{}", linear ? "Ln" : "Pt", RAWrapDesc(mode)));
+#endif
+		}
+	}
+
+#undef CHECK
+	return true;
+}
+
+void GSDevice11::UploadRAUniforms(const GSRAFilterChain& chain_, const u32* ubo, const u32* push)
+{
+	const GSRAFilterChain11& chain = static_cast<const GSRAFilterChain11&>(chain_);
+	size_t npasses = chain.info.passes.size();
+	const u8* base = chain.uniform_data;
+	for (size_t i = 0; i < npasses; i++)
+	{
+		u32 bit = 1u << (i % 32);
+		const GSRAFilterChain::UniformMap& map = chain.uniform_offsets()[i];
+		if (ubo[i / 32] & bit)
+			m_ctx->UpdateSubresource(chain.ubos[i], 0, nullptr, base + map.ubo, 0, 0);
+		if (push[i / 32] & bit)
+			m_ctx->UpdateSubresource(chain.push[i], 0, nullptr, base + map.push, 0, 0);
+	}
+}
+
+static void GenMipmaps(const GSRAFilterChain11& chain, ID3D11DeviceContext1* ctx, size_t begin, size_t end)
+{
+	for (size_t i = begin; i < end; i++)
+	{
+		if (chain.info.passes[i].mipmap_output)
+		{
+			const rashader::ExecutionPlanner::Pass& pass = chain.plan.pass(i);
+			GSTexture11* tex = static_cast<GSTexture11*>(chain.rts()[pass.rt_current]);
+			if (tex->GetWidth() <= 1 && tex->GetHeight() <= 1)
+				continue;
+			ctx->GenerateMips(*tex);
+		}
+	}
+}
+
+void GSDevice11::RunRAShaderPass(const GSRAFilterChain& chain_, size_t pass_idx, GSTexture* target)
+{
+	const GSRAFilterChain11& chain = static_cast<const GSRAFilterChain11&>(chain_);
+	GSRAPipeline11* pipe = static_cast<GSRAPipeline11*>(chain.passes()[pass_idx]);
+	const rashader::Pass& pass = chain.info.passes[pass_idx];
+	const rashader::ExecutionPlanner::Pass& passinfo = chain.plan.pass(pass_idx);
+	ID3D11DeviceContext1* ctx = m_ctx.get();
+	if (pass_idx == 0)
+	{
+		static constexpr u32 STRIDE = sizeof(GSVector4);
+		static constexpr u32 OFFSET = 0;
+		ctx->IASetVertexBuffers(0, 1, chain.vertices.addressof(), &STRIDE, &OFFSET);
+		OMSetBlendState(m_convert.bs[D3D11_COLOR_WRITE_ENABLE_ALL].get(), 0);
+		OMSetDepthStencilState(m_convert.dss.get(), 0);
+		OMSetRenderTargets(nullptr, nullptr, nullptr);
+
+		m_state.layout = nullptr;
+		m_state.vs = nullptr;
+		m_state.vs_cb = nullptr;
+		m_state.vs_pc = nullptr;
+		m_state.ps = nullptr;
+		m_state.ps_cb = nullptr;
+		m_state.vb = nullptr;
+		memset(&m_state.ps_current_srv, 0, sizeof(m_state.ps_current_srv));
+		memset(&m_state.ps_current_ss,  0, sizeof(m_state.ps_current_ss));
+	}
+
+	if (u32 num_transition = passinfo.num_transition_to_read)
+		GenMipmaps(chain, ctx, pass_idx - num_transition, pass_idx);
+
+	g_perfmon.Put(GSPerfMon::RenderPasses, 1);
+	ctx->IASetInputLayout(pipe->input_layout.get());
+	ctx->VSSetShader(pipe->vs.get(), nullptr, 0);
+	ctx->PSSetShader(pipe->ps.get(), nullptr, 0);
+	ID3D11RenderTargetView* rtv = *static_cast<GSTexture11*>(target);
+	ctx->OMSetRenderTargets(1, &rtv, nullptr);
+	GSVector2i size = target->GetSize();
+	SetViewport(size);
+	SetScissor(GSVector4i::loadh(size));
+
+	if (pass.ubo.stages & rashader::STAGE_FLAG_VS)
+		ctx->VSSetConstantBuffers(0, 1, &chain.ubos[pass_idx]);
+	if (pass.push.stages & rashader::STAGE_FLAG_VS)
+		ctx->VSSetConstantBuffers(1, 1, &chain.push[pass_idx]);
+	if (pass.ubo.stages & rashader::STAGE_FLAG_FS)
+		ctx->PSSetConstantBuffers(0, 1, &chain.ubos[pass_idx]);
+	if (pass.push.stages & rashader::STAGE_FLAG_FS)
+		ctx->PSSetConstantBuffers(1, 1, &chain.push[pass_idx]);
+
+	size_t ntex = pass.bindings.size();
+	for (size_t i = 0; i < ntex; i++)
+	{
+		const rashader::BoundTexture& tex = pass.bindings[i];
+		ID3D11ShaderResourceView* srv = *static_cast<GSTexture11*>(chain.GetTexture(tex.source, tex.index, tex.history));
+		ID3D11SamplerState*const* samp = chain.samplers[tex.linear][static_cast<u32>(tex.wrap)].addressof();
+		if (tex.stages & rashader::STAGE_FLAG_VS)
+		{
+			ctx->VSSetShaderResources(static_cast<UINT>(i), 1, &srv);
+			ctx->VSSetSamplers(static_cast<UINT>(i), 1, samp);
+		}
+		if (tex.stages & rashader::STAGE_FLAG_FS)
+		{
+			ctx->PSSetShaderResources(static_cast<UINT>(i), 1, &srv);
+			ctx->PSSetSamplers(static_cast<UINT>(i), 1, samp);
+		}
+	}
+
+	size_t npasses = chain.info.passes.size();
+	bool is_final = pass_idx == npasses - 1;
+	m_ctx->Draw(4, is_final ? 4 : 0);
+
+	if (is_final)
+		GenMipmaps(chain, ctx, npasses - chain.plan.num_final_transition_to_read(), npasses);
 }
 
 #ifdef ENABLE_LIBRASHADER

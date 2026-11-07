@@ -25,7 +25,11 @@
 #include <dxcapi.h>
 #include <fstream>
 
-#include "fmt/format.h"
+#include <fmt/format.h>
+#include <rashader-lite.h>
+
+#define SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+#include <spirv_hlsl.hpp>
 
 static u32 s_next_bad_shader_id = 1;
 
@@ -706,4 +710,45 @@ wil::com_ptr_nothrow<ID3DBlob> D3D::CompileShader(D3D::ShaderType type, D3D::Sha
 		return CompileShaderDXBC(type, shader_model, debug, code, macros, entry_point);
 	else
 		return CompileShaderDXIL(type, shader_model, debug, code, macros, entry_point);
+}
+
+static spirv_cross::HLSLResourceBinding MakeResourceBinding(spirv_cross::ExecutionModel stage, u32 set, u32 idx, u32 buffer, u32 texture)
+{
+	spirv_cross::HLSLResourceBinding binding;
+	binding.stage = stage;
+	binding.desc_set = set;
+	binding.binding = idx;
+	binding.cbv.register_binding = buffer;
+	binding.srv.register_binding = texture;
+	binding.sampler.register_binding = texture;
+	return binding;
+}
+
+wil::com_ptr_nothrow<ID3DBlob> D3D::CompileRAShaderSPIRV(const std::vector<u32>& spirv, const rashader::Pass& pass, bool debug, ShaderModel sm, ShaderType type)
+{
+	static constexpr u32 PUSH_SET = spirv_cross::ResourceBindingPushConstantDescriptorSet;
+	static constexpr u32 PUSH_BIND = spirv_cross::ResourceBindingPushConstantBinding;
+	u32 stage_flag = type == ShaderType::Vertex ? rashader::STAGE_FLAG_VS : rashader::STAGE_FLAG_FS;
+	spv::ExecutionModel stage = type == ShaderType::Vertex ? spv::ExecutionModelVertex : spv::ExecutionModelFragment;
+
+	spirv_cross::CompilerHLSL compiler(spirv);
+	spirv_cross::CompilerHLSL::Options options;
+	u32 sm_u32 = static_cast<u32>(sm);
+	options.shader_model = (sm_u32 >> 4) * 10 + (sm_u32 & 0xf);
+	compiler.set_hlsl_options(options);
+	compiler.add_vertex_attribute_remap({0, "POSITION"});
+	compiler.add_vertex_attribute_remap({1, "TEXCOORD"});
+	if (pass.ubo.stages & stage_flag)
+		compiler.add_hlsl_resource_binding(MakeResourceBinding(stage, 0, pass.ubo.binding, 0, 0));
+	if (pass.push.stages & stage_flag)
+		compiler.add_hlsl_resource_binding(MakeResourceBinding(stage, PUSH_SET, PUSH_BIND, 1, 0));
+	size_t nbindings = pass.bindings.size();
+	for (size_t i = 0; i < nbindings; i++)
+	{
+		const rashader::BoundTexture& tex = pass.bindings[i];
+		if (tex.stages & stage_flag)
+			compiler.add_hlsl_resource_binding(MakeResourceBinding(stage, 0, tex.binding, 0, static_cast<u32>(i)));
+	}
+
+	return CompileShader(type, sm, debug, compiler.compile());
 }

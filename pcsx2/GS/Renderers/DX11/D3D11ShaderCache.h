@@ -17,6 +17,7 @@ public:
 	~D3D11ShaderCache();
 
 	bool UsingDebugShaders() const { return m_debug; }
+	D3D::ShaderModel GetShaderModel() const { return m_shader_model; }
 
 	bool Open(D3D_FEATURE_LEVEL feature_level, bool debug);
 	void Close();

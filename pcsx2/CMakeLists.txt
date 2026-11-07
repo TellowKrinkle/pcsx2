@@ -1188,6 +1188,7 @@ if(WIN32)
 		WIL::WIL
 		WinPixEventRuntime::WinPixEventRuntime
 		D3D12MemAlloc
+		spirv-cross-hlsl
 		setupapi.lib
 		ws2_32.lib
 		shlwapi.lib
