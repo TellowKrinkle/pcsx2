@@ -77,22 +77,19 @@ void FullscreenUI::GetStandardSelectionFooterText(SmallStringBase& dest, bool ba
 	{
 		const bool circleOK = ImGui::GetIO().ConfigNavSwapGamepadButtons;
 		const auto glyphs = GetGamepadGlyphs();
-		ImGuiFullscreen::CreateFooterTextString(
-			dest,
-			std::array{
-				std::make_pair(glyphs.dpad_ud, FSUI_VSTR("Change Selection")),
-				std::make_pair(glyphs.confirm(circleOK), FSUI_VSTR("Select")),
-				std::make_pair(glyphs.cancel(circleOK), back_instead_of_cancel ? FSUI_VSTR("Back") : FSUI_VSTR("Cancel")),
-			});
+		ImGuiFullscreen::CreateFooterTextString(dest, std::array{
+			std::make_pair(glyphs.dpad_ud, FSUI_VSTR("Change Selection")),
+			std::make_pair(glyphs.confirm(circleOK), FSUI_VSTR("Select")),
+			std::make_pair(glyphs.cancel(circleOK), back_instead_of_cancel ? FSUI_VSTR("Back") : FSUI_VSTR("Cancel")),
+		});
 	}
 	else
 	{
-		ImGuiFullscreen::CreateFooterTextString(
-			dest, std::array{
-					  std::make_pair(ICON_PF_ARROW_UP ICON_PF_ARROW_DOWN, FSUI_VSTR("Change Selection")),
-					  std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Select")),
-					  std::make_pair(ICON_PF_ESC, back_instead_of_cancel ? FSUI_VSTR("Back") : FSUI_VSTR("Cancel")),
-				  });
+		ImGuiFullscreen::CreateFooterTextString(dest, std::array{
+			std::make_pair(ICON_PF_ARROW_UP ICON_PF_ARROW_DOWN, FSUI_VSTR("Change Selection")),
+			std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Select")),
+			std::make_pair(ICON_PF_ESC, back_instead_of_cancel ? FSUI_VSTR("Back") : FSUI_VSTR("Cancel")),
+		});
 	}
 }
 
@@ -115,24 +112,21 @@ void ImGuiFullscreen::GetFileSelectorHelpText(SmallStringBase& dest)
 		const bool circleOK = ImGui::GetIO().ConfigNavSwapGamepadButtons;
 		const bool swapNorthWest = ImGuiManager::IsGamepadNorthWestSwapped();
 		const auto glyphs = GetGamepadGlyphs();
-		ImGuiFullscreen::CreateFooterTextString(
-			dest, std::array{
-					  std::make_pair(glyphs.dpad_ud, FSUI_VSTR("Change Selection")),
-					  std::make_pair(swapNorthWest ? glyphs.west : glyphs.north, FSUI_VSTR("Parent Directory")),
-					  std::make_pair(glyphs.confirm(circleOK), FSUI_VSTR("Select")),
-					  std::make_pair(glyphs.cancel(circleOK), FSUI_VSTR("Cancel")),
-				  });
+		CreateFooterTextString(dest, std::array{
+			std::make_pair(glyphs.dpad_ud, FSUI_VSTR("Change Selection")),
+			std::make_pair(swapNorthWest ? glyphs.west : glyphs.north, FSUI_VSTR("Parent Directory")),
+			std::make_pair(glyphs.confirm(circleOK), FSUI_VSTR("Select")),
+			std::make_pair(glyphs.cancel(circleOK), FSUI_VSTR("Cancel")),
+		});
 	}
 	else
 	{
-		ImGuiFullscreen::CreateFooterTextString(
-			dest,
-			std::array{
-				std::make_pair(ICON_PF_ARROW_UP ICON_PF_ARROW_DOWN, FSUI_VSTR("Change Selection")),
-				std::make_pair(ICON_PF_BACKSPACE, FSUI_VSTR("Parent Directory")),
-				std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Select")),
-				std::make_pair(ICON_PF_ESC, FSUI_VSTR("Cancel")),
-			});
+		CreateFooterTextString(dest, std::array{
+			std::make_pair(ICON_PF_ARROW_UP ICON_PF_ARROW_DOWN, FSUI_VSTR("Change Selection")),
+			std::make_pair(ICON_PF_BACKSPACE, FSUI_VSTR("Parent Directory")),
+			std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Select")),
+			std::make_pair(ICON_PF_ESC, FSUI_VSTR("Cancel")),
+		});
 	}
 }
 
@@ -143,18 +137,18 @@ void ImGuiFullscreen::GetInputDialogHelpText(SmallStringBase& dest)
 		const bool circleOK = ImGui::GetIO().ConfigNavSwapGamepadButtons;
 		const auto glyphs = GetGamepadGlyphs();
 		CreateFooterTextString(dest, std::array{
-										 std::make_pair(ICON_PF_KEYBOARD, FSUI_VSTR("Enter Value")),
-										 std::make_pair(glyphs.confirm(circleOK), FSUI_VSTR("Select")),
-										 std::make_pair(glyphs.cancel(circleOK), FSUI_VSTR("Cancel")),
-									 });
+			std::make_pair(ICON_PF_KEYBOARD, FSUI_VSTR("Enter Value")),
+			std::make_pair(glyphs.confirm(circleOK), FSUI_VSTR("Select")),
+			std::make_pair(glyphs.cancel(circleOK), FSUI_VSTR("Cancel")),
+		});
 	}
 	else
 	{
 		CreateFooterTextString(dest, std::array{
-										 std::make_pair(ICON_PF_KEYBOARD, FSUI_VSTR("Enter Value")),
-										 std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Select")),
-										 std::make_pair(ICON_PF_ESC, FSUI_VSTR("Cancel")),
-									 });
+			std::make_pair(ICON_PF_KEYBOARD, FSUI_VSTR("Enter Value")),
+			std::make_pair(ICON_PF_ENTER, FSUI_VSTR("Select")),
+			std::make_pair(ICON_PF_ESC, FSUI_VSTR("Cancel")),
+		});
 	}
 }
 
@@ -386,12 +380,12 @@ float FullscreenUI::GetBackgroundBlurScale()
 {
 	const bool blur = s_initialized && VMManager::HasValidVM() &&
 	                  (s_current_main_window == MainWindowType::PauseMenu ||
-						  s_current_main_window == MainWindowType::Settings ||
-						  s_current_main_window == MainWindowType::Achievements ||
-						  s_current_main_window == MainWindowType::Leaderboards ||
-						  s_save_state_selector_open ||
-						  ImGuiFullscreen::IsFileSelectorOpen() ||
-						  ImGuiFullscreen::IsMessageBoxDialogOpen());
+	                   s_current_main_window == MainWindowType::Settings ||
+	                   s_current_main_window == MainWindowType::Achievements ||
+	                   s_current_main_window == MainWindowType::Leaderboards ||
+	                   s_save_state_selector_open ||
+	                   ImGuiFullscreen::IsFileSelectorOpen() ||
+	                   ImGuiFullscreen::IsMessageBoxDialogOpen());
 
 	// Keep the blur size consistent with the menus.
 	return blur ? (0.5f / ImGuiFullscreen::g_layout_scale) : 0.0f;
@@ -400,8 +394,8 @@ float FullscreenUI::GetBackgroundBlurScale()
 bool FullscreenUI::AreAnyDialogsOpen()
 {
 	return (s_save_state_selector_open || s_about_window_open || s_cover_downloader_open ||
-			s_achievements_login_open || s_input_binding_type != InputBindingInfo::Type::Unknown ||
-			ImGuiFullscreen::IsChoiceDialogOpen() || ImGuiFullscreen::IsFileSelectorOpen());
+	        s_achievements_login_open || s_input_binding_type != InputBindingInfo::Type::Unknown ||
+	        ImGuiFullscreen::IsChoiceDialogOpen() || ImGuiFullscreen::IsFileSelectorOpen());
 }
 
 void FullscreenUI::CheckForConfigChanges(const Pcsx2Config& old_config)
