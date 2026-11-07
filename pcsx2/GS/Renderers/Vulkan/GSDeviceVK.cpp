@@ -1993,19 +1993,16 @@ void GSDeviceVK::SubmitSpinCommand(u32 index, u32 cycles)
 		m_spin_buffer_initialized = true;
 		vkCmdFillBuffer(resources.command_buffer, m_spin_buffer, 0, VK_WHOLE_SIZE, 0);
 		VkBufferMemoryBarrier2 barrier = {VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2};
-		barrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+		barrier.srcStageMask = VK_PIPELINE_STAGE_2_CLEAR_BIT;
 		barrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-		barrier.srcQueueFamilyIndex = m_spin_queue_family_index;
-		barrier.dstQueueFamilyIndex = m_spin_queue_family_index;
+		barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 		barrier.buffer = m_spin_buffer;
 		barrier.offset = 0;
 		barrier.size = VK_WHOLE_SIZE;
-		VkDependencyInfo dependency = {VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
-		dependency.bufferMemoryBarrierCount = 1;
-		dependency.pBufferMemoryBarriers = &barrier;
-		vkCmdPipelineBarrier2KHR(resources.command_buffer, &dependency);
+		Vulkan::CmdPipelineBarrier2KHR(resources.command_buffer, barrier);
 	}
 
 	if (m_spin_queue_is_graphics_queue)
@@ -2013,10 +2010,7 @@ void GSDeviceVK::SubmitSpinCommand(u32 index, u32 cycles)
 		VkMemoryBarrier2 barrier = {VK_STRUCTURE_TYPE_MEMORY_BARRIER_2};
 		barrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 		barrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-		VkDependencyInfo dependency = {VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
-		dependency.memoryBarrierCount = 1;
-		dependency.pMemoryBarriers = &barrier;
-		vkCmdPipelineBarrier2KHR(resources.command_buffer, &dependency);
+		Vulkan::CmdPipelineBarrier2KHR(resources.command_buffer, barrier);
 	}
 
 	const u32 timestamp_base = (index + NUM_COMMAND_BUFFERS) * 2;

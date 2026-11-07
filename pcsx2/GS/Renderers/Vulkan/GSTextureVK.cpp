@@ -746,12 +746,7 @@ void GSTextureVK::TransitionSubresourcesToLayout(
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.image = m_image;
 	barrier.subresourceRange = {aspect, static_cast<u32>(start_level), static_cast<u32>(num_levels), 0u, 1u};
-
-	VkDependencyInfo dependency = {VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
-	dependency.imageMemoryBarrierCount = 1;
-	dependency.pImageMemoryBarriers = &barrier;
-
-	vkCmdPipelineBarrier2KHR(command_buffer, &dependency);
+	Vulkan::CmdPipelineBarrier2KHR(command_buffer, barrier);
 
 	// Count as a UAV barrier if we transition to/from UAV.
 	if (IsRenderTargetOrDepthStencil() &&
@@ -908,12 +903,7 @@ void GSDownloadTextureVK::CopyFromTexture(
 	buffer_info.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	buffer_info.buffer = m_buffer;
 	buffer_info.size = copy_size;
-
-	VkDependencyInfo barrier_info = {VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
-	barrier_info.bufferMemoryBarrierCount = 1;
-	barrier_info.pBufferMemoryBarriers = &buffer_info;
-
-	vkCmdPipelineBarrier2KHR(cmdbuf, &barrier_info);
+	Vulkan::CmdPipelineBarrier2KHR(cmdbuf, buffer_info);
 
 	if (old_layout != GSTextureVK::Layout::CopySrc && old_layout != GSTextureVK::Layout::Undefined)
 		vkTex->TransitionSubresourcesToLayout(cmdbuf, src_level, 1, GSTextureVK::Layout::CopySrc, old_layout);

@@ -441,4 +441,31 @@ namespace Vulkan
 		va_end(ap);
 #endif
 	}
+
+	static inline void CmdPipelineBarrier2KHR(VkCommandBuffer cmdbuf, const VkMemoryBarrier2& barrier, VkDependencyFlags flags = 0)
+	{
+		VkDependencyInfo info = {VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+		info.dependencyFlags = flags;
+		info.memoryBarrierCount = 1;
+		info.pMemoryBarriers = &barrier;
+		vkCmdPipelineBarrier2KHR(cmdbuf, &info);
+	}
+
+	static inline void CmdPipelineBarrier2KHR(VkCommandBuffer cmdbuf, const VkBufferMemoryBarrier2& barrier, VkDependencyFlags flags = 0)
+	{
+		VkDependencyInfo info = {VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+		info.dependencyFlags = flags;
+		info.bufferMemoryBarrierCount = 1;
+		info.pBufferMemoryBarriers = &barrier;
+		vkCmdPipelineBarrier2KHR(cmdbuf, &info);
+	}
+
+	static inline void CmdPipelineBarrier2KHR(VkCommandBuffer cmdbuf, const VkImageMemoryBarrier2& barrier, VkDependencyFlags flags = 0)
+	{
+		VkDependencyInfo info = {VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+		info.dependencyFlags = flags;
+		info.imageMemoryBarrierCount = 1;
+		info.pImageMemoryBarriers = &barrier;
+		vkCmdPipelineBarrier2KHR(cmdbuf, &info);
+	}
 } // namespace Vulkan
