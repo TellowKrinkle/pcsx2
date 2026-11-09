@@ -614,7 +614,7 @@ if(USE_OPENGL)
 		GS/Renderers/OpenGL/GSDeviceOGL.h
 		GS/Renderers/OpenGL/GSTextureOGL.h
 	)
-	target_link_libraries(PCSX2_FLAGS INTERFACE glad)
+	target_link_libraries(PCSX2_FLAGS INTERFACE glad spirv-cross-glsl)
 
 	if(WIN32)
 		list(APPEND pcsx2GSSources GS/Renderers/OpenGL/GLContextWGL.cpp)

@@ -1,8 +1,10 @@
 // SPDX-FileCopyrightText: 2002-2026 PCSX2 Dev Team
 // SPDX-License-Identifier: GPL-3.0+
 
-#include "GS/Renderers/OpenGL/GLContext.h"
 #include "GS/Renderers/OpenGL/GSDeviceOGL.h"
+
+#include "GS/Renderers/Common/GSRAShader.h"
+#include "GS/Renderers/OpenGL/GLContext.h"
 #include "GS/Renderers/OpenGL/GLState.h"
 #include "GS/GSState.h"
 #include "GS/GSGL.h"
@@ -17,6 +19,9 @@
 
 #include "imgui.h"
 #include "IconsFontAwesome.h"
+
+#define SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
+#include <spirv_glsl.hpp>
 
 #include <cinttypes>
 #include <fstream>
@@ -34,6 +39,14 @@ static constexpr u32 VERTEX_UNIFORM_BUFFER_SIZE = 8 * 1024 * 1024;
 static constexpr u32 FRAGMENT_UNIFORM_BUFFER_SIZE = 8 * 1024 * 1024;
 static constexpr u32 VERTEX_PUSH_CONSTANT_BUFFER_SIZE = 1024 * 1024;
 static constexpr u32 TEXTURE_UPLOAD_BUFFER_SIZE = 128 * 1024 * 1024;
+
+static inline void SetObjectLabel(GLenum identifier, GLuint name, std::string_view label)
+{
+	if (glObjectLabel)
+		glObjectLabel(identifier, name, static_cast<GLsizei>(label.size()), label.data());
+}
+
+static PFNGLNAMEDBUFFERDATAPROC glUniformBufferData;
 
 namespace ReplaceGL
 {
@@ -129,6 +142,7 @@ namespace Emulate_DSA_EXT
 		glGetTextureImage = GetTexureImage;
 		glTextureParameteri = TextureParameteri;
 		glGenerateTextureMipmap = GenerateTextureMipmap;
+		glNamedBufferData = glNamedBufferDataEXT;
 		glCreateSamplers = CreateSamplers;
 	}
 } // namespace Emulate_DSA_EXT
@@ -191,6 +205,12 @@ namespace Emulate_DSA
 	{
 		BindTextureUnit(7, texture);
 		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+
+	static void GLAPIENTRY UniformBufferData(GLuint buffer, GLsizeiptr size, const void* data, GLenum usage)
+	{
+		glBindBuffer(GL_UNIFORM_BUFFER, buffer);
+		glBufferData(GL_UNIFORM_BUFFER, size, data, usage);
 	}
 
 	// Misc entry point
@@ -887,6 +907,10 @@ bool GSDeviceOGL::CheckFeatures()
 		else
 			Emulate_DSA::Init();
 	}
+	if (glNamedBufferData)
+		glUniformBufferData = glNamedBufferData;
+	else
+		glUniformBufferData = Emulate_DSA::UniformBufferData;
 
 	// Don't use PBOs when we don't have ARB_buffer_storage, orphaning buffers probably ends up worse than just
 	// using the normal texture update routines and letting the driver take care of it.
@@ -3665,6 +3689,343 @@ void GSDeviceOGL::InsertDebugMessage(DebugMessageCategory category, const char* 
 	if (!buf.empty())
 		glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, type, id, severity, buf.size(), buf.c_str());
 #endif
+}
+
+struct GSRAPipelineOGL final : public GSRAPipeline
+{
+	GLProgram program;
+};
+
+static void RemapBindings(spirv_cross::CompilerGLSL& compiler, const rashader::Pass& pass)
+{
+	size_t ntex = pass.bindings.size();
+	std::vector<std::pair<spirv_cross::ID, u32>> remaps;
+	const spirv_cross::ParsedIR& ir = compiler.get_ir();
+
+	ir.for_each_typed_id<spirv_cross::SPIRVariable>([&](spirv_cross::ID id, const spirv_cross::SPIRVariable& var) {
+		switch (var.storage)
+		{
+			case spv::StorageClassPushConstant:
+				remaps.emplace_back(id, 1);
+				// Just reach in and change it.  This makes the SPIR-V kind of broken, but it's good enough to convince SPIRV-Cross to generate the right thing...
+				const_cast<spv::StorageClass&>(var.storage) = spv::StorageClassUniform;
+				const_cast<spv::StorageClass&>(ir.get<spirv_cross::SPIRType>(var.basetype).storage) = spv::StorageClassUniform;
+				break;
+			case spv::StorageClassUniform:
+				if (ir.has_decoration(id, spv::DecorationBinding) && ir.get_decoration(id, spv::DecorationBinding) == pass.ubo.binding)
+					remaps.emplace_back(id, 0);
+				break;
+			case spv::StorageClassUniformConstant:
+				if (ir.has_decoration(id, spv::DecorationBinding))
+				{
+					const u32 binding = ir.get_decoration(id, spv::DecorationBinding);
+					for (size_t i = 0; i < ntex; i++)
+					{
+						if (pass.bindings[i].binding != binding)
+							continue;
+						remaps.emplace_back(id, static_cast<u32>(i));
+						break;
+					}
+				}
+				break;
+		}
+	});
+
+	for (const std::pair<spirv_cross::ID, u32>& remap : remaps)
+		compiler.set_decoration(remap.first, spv::DecorationBinding, remap.second);
+}
+
+static std::string CompileSPIRV(const std::vector<u32>& spirv, const rashader::Pass& pass)
+{
+	static constexpr u32 PUSH_SET = spirv_cross::ResourceBindingPushConstantDescriptorSet;
+	static constexpr u32 PUSH_BIND = spirv_cross::ResourceBindingPushConstantBinding;
+	spirv_cross::CompilerGLSL compiler(spirv);
+	spirv_cross::CompilerGLSL::Options options;
+	if (GLAD_GL_VERSION_4_5)
+		options.version = 450;
+	else if (GLAD_GL_VERSION_4_4)
+		options.version = 440;
+	else if (GLAD_GL_VERSION_4_3)
+		options.version = 430;
+	else
+		options.version = 330;
+	compiler.set_common_options(options);
+	RemapBindings(compiler, pass);
+	return compiler.compile();
+}
+
+GSRAPipeline* GSDeviceOGL::CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass_idx)
+{
+	const rashader::Pass& pass = chain.passes[pass_idx];
+	std::string vs = CompileSPIRV(pass.vs_spirv, pass);
+	std::string fs = CompileSPIRV(pass.fs_spirv, pass);
+	std::unique_ptr<GSRAPipelineOGL> ptr = std::make_unique<GSRAPipelineOGL>();
+	if (!ptr->program.Compile(vs, fs))
+		return nullptr;
+	if (!ptr->program.Link())
+		return nullptr;
+	if (pass.name.empty())
+		ptr->program.SetFormattedName("ra:pass%zd", pass_idx);
+	else
+		ptr->program.SetFormattedName("ra:%s", pass.name.c_str());
+	return ptr.release();
+}
+
+static constexpr GSVector4 RA_VERTICES[] = {
+	GSVector4::cxpr(-1.f, -1.f, 0.f, 0.f),
+	GSVector4::cxpr( 1.f, -1.f, 1.f, 0.f),
+	GSVector4::cxpr(-1.f,  1.f, 0.f, 1.f),
+	GSVector4::cxpr( 1.f,  1.f, 1.f, 1.f),
+	GSVector4::cxpr( 0.f,  0.f, 0.f, 0.f),
+	GSVector4::cxpr( 1.f,  0.f, 1.f, 0.f),
+	GSVector4::cxpr( 0.f,  1.f, 0.f, 1.f),
+	GSVector4::cxpr( 1.f,  1.f, 1.f, 1.f),
+};
+
+static GLenum MapRAShaderWrap(rashader::WrapMode mode)
+{
+	switch (mode)
+	{
+		case rashader::WrapMode::ClampToEdge:    return GL_CLAMP_TO_EDGE;
+		case rashader::WrapMode::ClampToBorder:  return GL_CLAMP_TO_BORDER;
+		case rashader::WrapMode::Repeat:         return GL_REPEAT;
+		case rashader::WrapMode::MirroredRepeat: return GL_MIRRORED_REPEAT;
+	}
+	pxAssert(0);
+	return GL_CLAMP_TO_BORDER;
+}
+
+struct GSRAFilterChainOGL : public GSRAFilterChain
+{
+	GLuint vao = 0;
+	GLuint vertices = 0;
+	GLuint push = 0;
+	u32 push_size = 0;
+	GLuint* ubos = nullptr;
+	GLuint* fbos = nullptr;
+	GLuint samplers[2][static_cast<u32>(rashader::WrapMode::Last) + 1] = {};
+
+	static void DestroyTexture(GSTexture* tex) { delete static_cast<GSTextureOGL*>(tex); }
+	static void DestroyPipeline(GSRAPipeline* pipe) { delete static_cast<GSRAPipelineOGL*>(pipe); }
+
+	~GSRAFilterChainOGL()
+	{
+		Destroy(DestroyPipeline, DestroyTexture);
+		glDeleteVertexArrays(1, &vao);
+		glDeleteBuffers(1, &vertices);
+		glDeleteBuffers(1, &push);
+		glDeleteSamplers(sizeof(samplers) / sizeof(GLuint), &samplers[0][0]);
+		if (ubos)
+		{
+			size_t npasses = info.passes.size();
+			glDeleteBuffers(npasses, ubos);
+			glDeleteFramebuffers(plan.num_rts(), fbos);
+			free(ubos);
+		}
+	}
+};
+
+GSRAFilterChain* GSDeviceOGL::CreateRAFilterChain()
+{
+	return new GSRAFilterChainOGL;
+}
+
+void GSDeviceOGL::DestroyRAFilterChain(GSRAFilterChain* chain)
+{
+	delete static_cast<GSRAFilterChainOGL*>(chain);
+}
+
+bool GSDeviceOGL::FinalizeRAFilterChain(GSRAFilterChain& chain_)
+{
+	GL_PUSH("RAShader Filter Chain");
+	GSRAFilterChainOGL& chain = static_cast<GSRAFilterChainOGL&>(chain_);
+	size_t npasses = chain.info.passes.size();
+	size_t nrts = chain.plan.num_rts();
+	size_t alloc_size = 0;
+	alloc_size += sizeof(GLuint) * npasses;
+	alloc_size += sizeof(GLuint) * nrts;
+	void* ptr = calloc(1, alloc_size);
+	void* alloc = ptr;
+	chain.ubos = static_cast<GLuint*>(alloc);
+	alloc = chain.ubos + npasses;
+	chain.fbos = static_cast<GLuint*>(alloc);
+	alloc = chain.fbos + nrts;
+	pxAssert(alloc == static_cast<u8*>(ptr) + alloc_size);
+	
+	// We have our own preferred uniform layout
+	u32 uniform_offset = 0;
+	u32 align = m_uniform_buffer_alignment;
+	for (size_t i = 0; i < npasses; i++)
+	{
+		const rashader::Pass& pass = chain.info.passes[i];
+		GSRAFilterChain::UniformMap& map = chain.uniform_offsets()[i];
+		pxAssert(!!pass.ubo .stages == !!pass.ubo .size);
+		pxAssert(!!pass.push.stages == !!pass.push.size);
+		GSRAFilterChain::AddUniform(uniform_offset, map.push, Common::AlignUpPow2(pass.push.size, align));
+		if (map.flags_ubo & GSRAFilterChain::UniformFlags::AlwaysDirty)
+		{
+			GSRAFilterChain::AddUniform(uniform_offset, map.ubo, Common::AlignUpPow2(pass.ubo.size, align));
+		}
+		else if (pass.ubo.stages)
+		{
+			glGenBuffers(1, &chain.ubos[i]);
+			glBindBuffer(GL_UNIFORM_BUFFER, chain.ubos[i]);
+#ifdef PCSX2_DEVBUILD
+			SetObjectLabel(GL_BUFFER, chain.ubos[i], TinyString::from_format("ra:ubo{}", i));
+#endif
+		}
+	}
+	chain.push_size = uniform_offset;
+	for (size_t i = 0; i < npasses; i++)
+	{
+		const rashader::Pass& pass = chain.info.passes[i];
+		GSRAFilterChain::UniformMap& map = chain.uniform_offsets()[i];
+		if (!(map.flags_ubo & GSRAFilterChain::UniformFlags::AlwaysDirty))
+			GSRAFilterChain::AddUniform(uniform_offset, map.ubo, Common::AlignUpPow2(pass.ubo.size, 16));
+	}
+	free(chain.uniform_data);
+	chain.uniform_data = static_cast<u8*>(calloc(1, uniform_offset));
+
+	glGenSamplers(sizeof(chain.samplers) / sizeof(GLuint), &chain.samplers[0][0]);
+	for (u32 linear = 0; linear < 2; linear++)
+	{
+		for (u32 imode = 0; imode < std::size(chain.samplers[0]); imode++)
+		{
+			rashader::WrapMode mode = static_cast<rashader::WrapMode>(imode);
+			GLuint sampler = chain.samplers[linear][imode];
+			glSamplerParameteri(sampler, GL_TEXTURE_MAG_FILTER, linear ? GL_LINEAR : GL_NEAREST);
+			glSamplerParameteri(sampler, GL_TEXTURE_MIN_FILTER, linear ? GL_LINEAR_MIPMAP_LINEAR : GL_NEAREST_MIPMAP_NEAREST);
+			glSamplerParameteri(sampler, GL_TEXTURE_WRAP_S, MapRAShaderWrap(mode));
+			glSamplerParameteri(sampler, GL_TEXTURE_WRAP_T, MapRAShaderWrap(mode));
+			glSamplerParameteri(sampler, GL_TEXTURE_WRAP_R, MapRAShaderWrap(mode));
+#ifdef PCSX2_DEVBUILD
+			SetObjectLabel(GL_SAMPLER, sampler, TinyString::from_format("ra:{}{}", linear ? "Ln" : "Pt", RAWrapDesc(mode)));
+#endif
+		}
+	}
+
+	glGenBuffers(1, &chain.push);
+	glBindBuffer(GL_UNIFORM_BUFFER, chain.push);
+	glGenFramebuffers(nrts, chain.fbos);
+	for (size_t i = 0; i < nrts; i++)
+		OMSetFBO(chain.fbos[i]);
+	glGenVertexArrays(1, &chain.vao);
+	IASetVAO(chain.vao);
+	glGenBuffers(1, &chain.vertices);
+	glBindBuffer(GL_ARRAY_BUFFER, chain.vertices);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(RA_VERTICES), RA_VERTICES, GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(GSVector4), reinterpret_cast<void*>(0));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GSVector4), reinterpret_cast<void*>(8));
+#ifdef PCSX2_DEVBUILD
+	SetObjectLabel(GL_BUFFER, chain.vertices, "ra:vertices");
+	SetObjectLabel(GL_BUFFER, chain.push, "ra:push");
+	SetObjectLabel(GL_VERTEX_ARRAY, chain.vao, "ra:vao");
+	for (size_t i = 0; i < nrts; i++)
+		SetObjectLabel(GL_FRAMEBUFFER, chain.fbos[i], TinyString::from_format("ra:fbo{}", i));
+#endif
+	return true;
+}
+
+void GSDeviceOGL::DidUpdateRAShaderRT(const GSRAFilterChain& chain_, size_t rt_idx)
+{
+	const GSRAFilterChainOGL& chain = static_cast<const GSRAFilterChainOGL&>(chain_);
+	OMSetFBO(chain.fbos[rt_idx]);
+	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+		static_cast<GSTextureOGL*>(chain.rts()[rt_idx])->GetID(), 0);
+}
+
+void GSDeviceOGL::UploadRAUniforms(const GSRAFilterChain& chain_, const u32* ubo, const u32* push)
+{
+	const GSRAFilterChainOGL& chain = static_cast<const GSRAFilterChainOGL&>(chain_);
+	size_t npasses = chain.info.passes.size();
+	u8* base = chain.uniform_data;
+	for (size_t i = 0; i < npasses; i++)
+	{
+		const rashader::Pass& pass = chain.info.passes[i];
+		const GSRAFilterChain::UniformMap& map = chain.uniform_offsets()[i];
+		bool in_push = map.flags_ubo & GSRAFilterChain::UniformFlags::AlwaysDirty;
+		bool is_static = map.flags_ubo == GSRAFilterChain::UniformFlags::None;
+		pxAssert(map.ubo < chain.push_size == in_push);
+		if (in_push)
+			continue;
+		if ((ubo[i / 32] >> (i % 32)) & 1)
+			glUniformBufferData(chain.ubos[i], pass.ubo.size, base + map.ubo, is_static ? GL_STATIC_DRAW : GL_STREAM_DRAW);
+	}
+	glUniformBufferData(chain.push, chain.push_size, base, GL_STREAM_DRAW);
+}
+
+static void GenMipmaps(const GSRAFilterChainOGL& chain, size_t begin, size_t end)
+{
+	for (size_t i = begin; i < end; i++)
+	{
+		if (chain.info.passes[i].mipmap_output)
+		{
+			const rashader::ExecutionPlanner::Pass& pass = chain.plan.pass(i);
+			GSTextureOGL* tex = static_cast<GSTextureOGL*>(chain.rts()[pass.rt_current]);
+			if (tex->GetWidth() <= 1 && tex->GetHeight() <= 1)
+				continue;
+			glGenerateTextureMipmap(tex->GetID());
+		}
+	}
+}
+
+void GSDeviceOGL::RunRAShaderPass(const GSRAFilterChain& chain_, size_t pass_idx, GSTexture* target)
+{
+	GL_PUSH("RAShader Pass %d", pass_idx);
+
+	const GSRAFilterChainOGL& chain = static_cast<const GSRAFilterChainOGL&>(chain_);
+	const rashader::Pass& pass = chain.info.passes[pass_idx];
+	const rashader::ExecutionPlanner::Pass& passinfo = chain.plan.pass(pass_idx);
+	if (u32 num_transition = passinfo.num_transition_to_read)
+		GenMipmaps(chain, pass_idx - num_transition, pass_idx);
+
+	if (pass_idx == 0)
+	{
+		IASetVAO(chain.vao);
+		OMSetBlendState(false);
+		OMSetDepthStencilState(m_convert.dss);
+		GLState::ps_ss = 0;
+		memset(&GLState::tex_unit, 0, sizeof(GLState::tex_unit));
+		glEnable(GL_FRAMEBUFFER_SRGB);
+	}
+
+	g_perfmon.Put(GSPerfMon::RenderPasses, 1);
+	OMSetFBO(chain.fbos[passinfo.rt_current]);
+	static_cast<GSRAPipelineOGL*>(chain.passes()[pass_idx])->program.Bind();
+	GSVector2i size = target->GetSize();
+	SetViewport(size);
+	SetScissor(GSVector4i::loadh(size));
+	
+	const GSRAFilterChain::UniformMap& map = chain.uniform_offsets()[pass_idx];
+	if (pass.ubo.stages)
+	{
+		if (map.flags_ubo & GSRAFilterChain::UniformFlags::AlwaysDirty)
+			glBindBufferRange(GL_UNIFORM_BUFFER, 0, chain.push, map.ubo, pass.ubo.size);
+		else
+			glBindBufferRange(GL_UNIFORM_BUFFER, 0, chain.ubos[pass_idx], 0, pass.ubo.size);
+	}
+	if (pass.push.stages)
+		glBindBufferRange(GL_UNIFORM_BUFFER, 1, chain.push, map.push, pass.push.size);
+	size_t ntex = pass.bindings.size();
+	for (size_t i = 0; i < ntex; i++)
+	{
+		const rashader::BoundTexture& tex = pass.bindings[i];
+		glBindTextureUnit(i, static_cast<GSTextureOGL*>(chain.GetTexture(tex.source, tex.index, tex.history))->GetID());
+		glBindSampler(i, chain.samplers[tex.linear][static_cast<u32>(tex.wrap)]);
+	}
+
+	size_t npasses = chain.info.passes.size();
+	bool is_final = pass_idx == npasses - 1;
+	glDrawArrays(GL_TRIANGLE_STRIP, is_final ? 4 : 0, 4);
+
+	if (is_final)
+	{
+		GenMipmaps(chain, npasses - chain.plan.num_final_transition_to_read(), npasses);
+		glBindSampler(1, m_palette_ss);
+		glDisable(GL_FRAMEBUFFER_SRGB);
+	}
 }
 
 #ifdef ENABLE_LIBRASHADER
