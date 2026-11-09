@@ -89,7 +89,7 @@ GSTextureOGL::GSTextureOGL(Usage usage, int width, int height, int levels, Forma
 	m_usage = usage;
 	m_format = format;
 	m_texture_id = 0;
-	m_mipmap_levels = 1;
+	m_mipmap_levels = levels;
 
 	if (m_format == Format::DepthStencil)
 	{
@@ -117,10 +117,6 @@ GSTextureOGL::GSTextureOGL(Usage usage, int width, int height, int levels, Forma
 		m_int_shift  = info.shift;
 		pxAssert(info.gl_format != 0);
 	}
-
-	// Only 32 bits input texture will be supported for mipmap
-	if (IsTexture())
-		m_mipmap_levels = levels;
 
 	// Create a gl object (texture isn't allocated here)
 	glCreateTextures(GL_TEXTURE_2D, 1, &m_texture_id);

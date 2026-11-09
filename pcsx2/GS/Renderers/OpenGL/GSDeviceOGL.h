@@ -306,6 +306,13 @@ private:
 	bool CreateCASPrograms();
 	bool DoCAS(GSTexture* sTex, GSTexture* dTex, bool sharpen_only, const std::array<u32, NUM_CAS_CONSTANTS>& constants) override;
 
+	GSRAPipeline* CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass) override;
+	GSRAFilterChain* CreateRAFilterChain() override;
+	void DestroyRAFilterChain(GSRAFilterChain* chain) override;
+	bool FinalizeRAFilterChain(GSRAFilterChain& chain) override;
+	void DidUpdateRAShaderRT(const GSRAFilterChain& chain_, size_t rt_idx) override;
+	void UploadRAUniforms(const GSRAFilterChain& chain, const u32* ubo, const u32* push) override;
+	void RunRAShaderPass(const GSRAFilterChain& chain, size_t pass, GSTexture* target) override;
 #ifdef ENABLE_LIBRASHADER
 	bool CreateLibrashaderFilterChain(const std::string& preset_path) override;
 	void DestroyLibrashaderFilterChain() override;
