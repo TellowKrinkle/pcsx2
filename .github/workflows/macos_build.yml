@@ -106,8 +106,6 @@ jobs:
 
       - name: Build Dependencies
         if: steps.cache-deps.outputs.cache-hit != 'true'
-        env:
-          BUILD_LIBRASHADER: 1
         run: |
           .github/workflows/scripts/macos/build-dependencies${{ case(inputs.arch == 'x86-64', '', '-universal') }}.sh "$HOME/deps"
 

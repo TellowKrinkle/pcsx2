@@ -4,8 +4,7 @@
   "runtime-version": "6.11",
   "sdk": "org.kde.Sdk",
   "sdk-extensions": [
-    "org.freedesktop.Sdk.Extension.llvm22",
-    "org.freedesktop.Sdk.Extension.rust-stable"
+    "org.freedesktop.Sdk.Extension.llvm22"
   ],
   "add-extensions": {
     "org.freedesktop.Platform.ffmpeg-full": {
@@ -37,7 +36,6 @@
     "modules/26-libpng.json",
     "modules/27-qtapng.json",
     "modules/28-rapidyaml.json",
-    "modules/29-librashader.json",
     {
       "name": "pcsx2",
       "buildsystem": "cmake-ninja",

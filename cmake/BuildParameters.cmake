@@ -44,8 +44,6 @@ if(APPLE)
 	option(SKIP_POSTPROCESS_BUNDLE "Skip postprocessing bundle for redistributability" OFF)
 endif()
 
-option(USE_LIBRASHADER "Enable librashader dependency discovery" ON)
-
 #-------------------------------------------------------------------------------
 # Compiler extra
 #-------------------------------------------------------------------------------
