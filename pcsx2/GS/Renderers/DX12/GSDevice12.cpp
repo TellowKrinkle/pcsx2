@@ -1,12 +1,14 @@
 // SPDX-FileCopyrightText: 2002-2026 PCSX2 Dev Team
 // SPDX-License-Identifier: GPL-3.0+
 
+#include "GS/Renderers/DX12/GSDevice12.h"
+
 #include "GS/GS.h"
 #include "GS/GSGL.h"
 #include "GS/GSPerfMon.h"
 #include "GS/GSUtil.h"
+#include "GS/Renderers/Common/GSRAShader.h"
 #include "GS/Renderers/DX11/D3D.h"
-#include "GS/Renderers/DX12/GSDevice12.h"
 #include "GS/Renderers/DX12/D3D12Builders.h"
 #include "GS/Renderers/DX12/D3D12ShaderCache.h"
 #include "Host.h"
@@ -21,8 +23,9 @@
 #include "common/FileSystem.h"
 #include "common/Path.h"
 
-#include "D3D12MemAlloc.h"
-#include "imgui.h"
+#include <D3D12MemAlloc.h>
+#include <imgui.h>
+#include <rashader-lite.h>
 
 #include <sstream>
 #include <limits>
@@ -653,7 +656,7 @@ void GSDevice12::InvalidateSamplerGroups()
 		res.sampler_allocator.InvalidateCache();
 }
 
-void GSDevice12::DeferObjectDestruction(ID3D12DeviceChild* resource)
+void GSDevice12::DeferObjectDestruction(IUnknown* resource)
 {
 	if (!resource)
 		return;
@@ -3924,6 +3927,19 @@ void GSDevice12::RenderTextureMipmap(
 	}
 
 	// *now* we don't have to worry about running out of anything.
+	DrawMipmap(texture, src_level, dst_level, dst_width, dst_height,
+		GetConvertPipeline(ShaderConvert::COPY), m_utility_texture_gpu, rtv_handle.cpu_handle);
+
+	// Must destroy after current cmdlist.
+	DeferDescriptorDestruction(m_descriptor_heap_manager, &srv_handle);
+	DeferDescriptorDestruction(m_rtv_heap_manager, &rtv_handle);
+}
+
+void GSDevice12::DrawMipmap(GSTexture12* texture, u32 src_level, u32 dst_level, u32 dst_width, u32 dst_height,
+	ID3D12PipelineState* pipe, const D3D12DescriptorHandle& src, const D3D12_CPU_DESCRIPTOR_HANDLE& dst)
+{
+	m_utility_texture_gpu = src;
+
 	const D3D12CommandList& cmdlist = GetCommandList();
 	if (texture->GetResourceState() != GSTexture12::ResourceState::PixelShaderResource)
 		texture->TransitionSubresourceToState(
@@ -3935,11 +3951,12 @@ void GSDevice12::RenderTextureMipmap(
 	// We set the state directly here.
 	constexpr u32 MODIFIED_STATE = DIRTY_FLAG_VIEWPORT | DIRTY_FLAG_SCISSOR | DIRTY_FLAG_RENDER_TARGET;
 	m_dirty_flags &= ~MODIFIED_STATE;
+	m_dirty_flags |= DIRTY_FLAG_TEXTURES_DESCRIPTOR_TABLE;
 
 	// Using a render pass is probably a bit overkill.
 	const D3D12_DISCARD_REGION discard_region = {0u, nullptr, dst_level, 1u};
 	cmdlist.list4->DiscardResource(texture->GetResource(), &discard_region);
-	cmdlist.list4->OMSetRenderTargets(1, &rtv_handle.cpu_handle, FALSE, nullptr);
+	cmdlist.list4->OMSetRenderTargets(1, &dst, FALSE, nullptr);
 
 	const D3D12_VIEWPORT vp = {0.0f, 0.0f, static_cast<float>(dst_width), static_cast<float>(dst_height), 0.0f, 1.0f};
 	cmdlist.list4->RSSetViewports(1, &vp);
@@ -3948,7 +3965,7 @@ void GSDevice12::RenderTextureMipmap(
 	cmdlist.list4->RSSetScissorRects(1, &scissor);
 
 	SetUtilityRootSignature();
-	SetPipeline(GetConvertPipeline(ShaderConvert::COPY));
+	SetPipeline(pipe);
 	DrawStretchRect(GSVector4(0.0f, 0.0f, 1.0f, 1.0f),
 		GSVector4(0.0f, 0.0f, static_cast<float>(dst_width), static_cast<float>(dst_height)),
 		GSVector2i(dst_width, dst_height));
@@ -3959,10 +3976,6 @@ void GSDevice12::RenderTextureMipmap(
 	if (texture->GetResourceState() != GSTexture12::ResourceState::RenderTarget)
 		texture->TransitionSubresourceToState(
 			cmdlist, dst_level, GSTexture12::ResourceState::RenderTarget, texture->GetResourceState());
-
-	// Must destroy after current cmdlist.
-	DeferDescriptorDestruction(m_descriptor_heap_manager, &srv_handle);
-	DeferDescriptorDestruction(m_rtv_heap_manager, &rtv_handle);
 
 	// Restore for next normal draw.
 	m_dirty_flags |= MODIFIED_STATE;
@@ -4929,6 +4942,707 @@ void GSDevice12::UploadHWDrawVerticesAndIndices(GSHWDrawConfig& config)
 	{
 		IASetIndexBuffer(config.indices, config.nindices);
 	}
+}
+
+struct GSRAPipeline12 final : public GSRAPipeline
+{
+	wil::com_ptr_nothrow<ID3D12RootSignature> rootsig;
+	wil::com_ptr_nothrow<ID3D12PipelineState> pipeline;
+};
+
+static D3D12_SHADER_VISIBILITY MapRAStageFlags(u32 stages)
+{
+	if (stages == rashader::STAGE_FLAG_VS)
+		return D3D12_SHADER_VISIBILITY_VERTEX;
+	if (stages == rashader::STAGE_FLAG_FS)
+		return D3D12_SHADER_VISIBILITY_PIXEL;
+	return D3D12_SHADER_VISIBILITY_ALL;
+}
+
+static wil::com_ptr_nothrow<ID3D12RootSignature> CreateRARootSignature(GSDevice12* dev, const rashader::Pass& pass)
+{
+	size_t ntex = pass.bindings.size();
+	size_t ntable = ntex ? ntex + 1 : 0;
+	size_t nparam = ntable;
+	if (pass.ubo.stages)
+		nparam += 1;
+	if (pass.push.stages)
+		nparam += 1;
+
+	void* ptr = alloca(ntable * sizeof(D3D12_DESCRIPTOR_RANGE) + nparam * sizeof(D3D12_ROOT_PARAMETER));
+	D3D12_ROOT_PARAMETER* params = static_cast<D3D12_ROOT_PARAMETER*>(ptr);
+	ptr = params + nparam;
+	D3D12_DESCRIPTOR_RANGE* ranges = static_cast<D3D12_DESCRIPTOR_RANGE*>(ptr);
+	ptr = ranges + ntable;
+
+	D3D12_ROOT_SIGNATURE_DESC desc = {};
+	desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+	desc.pParameters = params;
+	if (pass.ubo.stages)
+	{
+		D3D12_ROOT_PARAMETER& param = params[desc.NumParameters++];
+		param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		param.ShaderVisibility = MapRAStageFlags(pass.ubo.stages);
+		param.Descriptor = {0, 0};
+	}
+	if (ntex)
+	{
+		u32 stages = 0;
+		for (const rashader::BoundTexture& tex : pass.bindings)
+			stages |= tex.stages;
+		D3D12_ROOT_PARAMETER* base = &params[desc.NumParameters];
+		desc.NumParameters += ntex + 1;
+		// Textures are together, but samplers are separate due to limited space on sampler heaps
+		base[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		base[0].ShaderVisibility = MapRAStageFlags(stages);
+		base[0].DescriptorTable = {1, &ranges[0]};
+		ranges[0] = {D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(ntex), 0};
+		for (UINT i = 0; i < ntex; i++)
+		{
+			base[i + 1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+			base[i + 1].ShaderVisibility = MapRAStageFlags(pass.bindings[i].stages);
+			base[i + 1].DescriptorTable = {1, &ranges[i + 1]};
+			ranges[i + 1] = {D3D12_DESCRIPTOR_RANGE_TYPE_SAMPLER, 1, i};
+		}
+	}
+	if (pass.push.stages)
+	{
+		D3D12_ROOT_PARAMETER& param = params[desc.NumParameters++];
+		param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+		param.Constants = {1, 0, (pass.push.size + 3) / 4};
+		param.ShaderVisibility = MapRAStageFlags(pass.push.stages);
+	}
+	pxAssert(desc.NumParameters == nparam);
+	return dev->CreateRootSignature(&desc);
+}
+
+GSRAPipeline* GSDevice12::CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass_idx)
+{
+	const rashader::Pass& pass = chain.passes[pass_idx];
+	ComPtr<ID3D12RootSignature> rootsig = CreateRARootSignature(this, pass);
+	if (!rootsig)
+		return nullptr;
+
+	D3D::ShaderModel sm = m_shader_cache.GetShaderModel();
+	bool debug = GSConfig.UseDebugDevice;
+	ComPtr<ID3DBlob> vs = D3D::CompileRAShaderSPIRV(pass.vs_spirv, pass, debug, sm, D3D::ShaderType::Vertex);
+	ComPtr<ID3DBlob> ps = D3D::CompileRAShaderSPIRV(pass.fs_spirv, pass, debug, sm, D3D::ShaderType::Pixel);
+	if (!vs || !ps)
+		return nullptr;
+
+	DXGI_FORMAT fmt;
+	LookupNativeFormat(MapRAShaderFormat(pass.out_format), nullptr, nullptr, &fmt, nullptr, nullptr);
+
+	D3D12::GraphicsPipelineBuilder gpb;
+	gpb.SetRootSignature(rootsig.get());
+	gpb.SetVertexShader(vs.get());
+	gpb.SetPixelShader(ps.get());
+	gpb.AddVertexAttribute("POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0);
+	gpb.AddVertexAttribute("TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 8);
+	gpb.SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+	gpb.SetNoCullRasterizationState();
+	gpb.SetNoDepthTestState();
+	gpb.SetNoStencilState();
+	gpb.SetNoBlendingState();
+	gpb.SetRenderTarget(0, fmt);
+
+	ComPtr<ID3D12PipelineState> pipe = gpb.Create(m_device.get(), false);
+	if (!pipe)
+		return nullptr;
+
+#ifdef PCSX2_DEVBUILD
+	std::string name = pass.name.empty() ? std::to_string(pass_idx) : pass.name;
+	D3D12::SetObjectName(rootsig.get(), TinyString::from_format("ra:{}:sig", name));
+	D3D12::SetObjectName(pipe.get(), TinyString::from_format("ra:{}", name));
+#endif
+
+	GSRAPipeline12* res = new GSRAPipeline12;
+	res->rootsig = std::move(rootsig);
+	res->pipeline = std::move(pipe);
+	return res;
+}
+
+static constexpr GSVector4 RA_VERTICES[] = {
+	GSVector4::cxpr(-1.f,  1.f, 0.f, 0.f),
+	GSVector4::cxpr( 1.f,  1.f, 1.f, 0.f),
+	GSVector4::cxpr(-1.f, -1.f, 0.f, 1.f),
+	GSVector4::cxpr( 1.f, -1.f, 1.f, 1.f),
+	GSVector4::cxpr( 0.f,  1.f, 0.f, 0.f),
+	GSVector4::cxpr( 1.f,  1.f, 1.f, 0.f),
+	GSVector4::cxpr( 0.f,  0.f, 0.f, 1.f),
+	GSVector4::cxpr( 1.f,  0.f, 1.f, 1.f),
+};
+
+static D3D12_TEXTURE_ADDRESS_MODE MapRAShaderWrap(rashader::WrapMode mode)
+{
+	switch (mode)
+	{
+		case rashader::WrapMode::ClampToEdge:    return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		case rashader::WrapMode::ClampToBorder:  return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+		case rashader::WrapMode::Repeat:         return D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+		case rashader::WrapMode::MirroredRepeat: return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
+	}
+	pxAssert(0);
+	return D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+}
+
+class GSRAFilterChain12 final : public GSRAFilterChain, public IUnknown
+{
+	std::atomic<u32> refcount{1};
+	~GSRAFilterChain12() = default;
+
+public:
+	struct alignas(D3D12DescriptorHandle) MipmapInfo
+	{
+		u32 base;
+		u32 count;
+	};
+	static constexpr u32 NUM_SAMPLERS = 2 * (static_cast<u32>(rashader::WrapMode::Last) + 1);
+	u32 total_textures = 0;
+	u32 ubo_size = 0;
+	mutable u32 current_texture = 0;
+	void* upload_ptr = nullptr;
+	D3D12_GPU_VIRTUAL_ADDRESS ubo_addr = 0;
+	D3D12_GPU_VIRTUAL_ADDRESS vertices_addr = 0;
+	wil::com_ptr_nothrow<ID3D12Resource> upload;
+	wil::com_ptr_nothrow<ID3D12Resource> ubo;
+	wil::com_ptr_nothrow<ID3D12Resource> vertices;
+	MipmapInfo* mipmap = nullptr;
+	D3D12_CPU_DESCRIPTOR_HANDLE* mipmap_srv_handles = nullptr;
+	D3D12DescriptorHandle* mipmap_srvs = nullptr;
+	D3D12DescriptorHandle* mipmap_rtvs = nullptr;
+	mutable D3D12DescriptorHandle heap_textures;
+	mutable D3D12DescriptorHandle heap_samplers[NUM_SAMPLERS] = {};
+	D3D12DescriptorHandle samplers[NUM_SAMPLERS] = {};
+	wil::com_ptr_nothrow<ID3D12PipelineState> mipgen_pipe[static_cast<u32>(rashader::TextureFormat::Last) + 1];
+
+	static void DestroyTexture(GSTexture* tex_)
+	{
+		GSTexture12* tex = static_cast<GSTexture12*>(tex_);
+		tex->Destroy(false);
+		delete tex;
+	}
+
+	static void DestroyPipeline(GSRAPipeline* pipe)
+	{
+		delete static_cast<GSRAPipeline12*>(pipe);
+	}
+
+	HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override
+	{
+		if (IsEqualIID(riid, IID_IUnknown))
+		{
+			AddRef();
+			*ppvObject = static_cast<IUnknown*>(this);
+			return S_OK;
+		}
+		return E_NOINTERFACE;
+	}
+
+	ULONG STDMETHODCALLTYPE AddRef(void) override
+	{
+		return refcount.fetch_add(1, std::memory_order_relaxed) + 1;
+	}
+
+	ULONG STDMETHODCALLTYPE Release(void) override
+	{
+		u32 rc = refcount.fetch_sub(1, std::memory_order_acq_rel);
+		if (rc != 1)
+			return rc - 1;
+
+		GSDevice12* device = GSDevice12::GetInstance();
+		GSRAFilterChain::Destroy(DestroyPipeline, DestroyTexture);
+		for (D3D12DescriptorHandle& sampler : samplers)
+			if (sampler)
+				device->GetSamplerHeapManager().Free(&sampler);
+		if (mipmap)
+		{
+			size_t nrt = plan.num_rts();
+			for (size_t i = 0; i < nrt; i++)
+			{
+				size_t count = mipmap[i].count;
+				D3D12DescriptorHandle* srvs = mipmap_srvs + mipmap[i].base;
+				D3D12DescriptorHandle* rtvs = mipmap_rtvs + mipmap[i].base;
+				for (size_t i = 0; i < count; i++)
+				{
+					device->GetDescriptorHeapManager().Free(&srvs[i]);
+					device->GetRTVHeapManager().Free(&rtvs[i]);
+				}
+			}
+			free(mipmap);
+		}
+		delete this;
+		return 0;
+	}
+};
+
+GSRAFilterChain* GSDevice12::CreateRAFilterChain()
+{
+	return new GSRAFilterChain12;
+}
+
+void GSDevice12::DestroyRAFilterChain(GSRAFilterChain* chain_)
+{
+	GSRAFilterChain12* chain = static_cast<GSRAFilterChain12*>(chain_);
+	DeferObjectDestruction(chain);
+	chain->Release();
+}
+
+bool GSDevice12::FinalizeRAFilterChain(GSRAFilterChain& chain_)
+{
+	HRESULT hr;
+#define CHECK(x, action) do { if (FAILED((hr = (x)))) { Console.Error("Failed to " action ": %08x", hr); return false; } } while (0)
+	GSRAFilterChain12& chain = static_cast<GSRAFilterChain12&>(chain_);
+	size_t npasses = chain.info.passes.size();
+
+	if (chain.dummy_tex)
+		static_cast<GSTexture12*>(chain.dummy_tex)->TransitionToState(GSTexture12::ResourceState::PixelShaderResource);
+	for (GSTexture* tex : chain.textures())
+		if (tex)
+			static_cast<GSTexture12*>(tex)->TransitionToState(GSTexture12::ResourceState::PixelShaderResource);
+
+	u32 total_textures = 0;
+	u32 ubo_size = 0;
+	u32 offset = 0;
+	bool sampler_needed[GSRAFilterChain12::NUM_SAMPLERS] = {};
+	bool mipgen_needed[static_cast<u32>(rashader::TextureFormat::Last) + 1] = {};
+	bool any_mipgen_needed = false;
+	for (size_t i = 0; i < npasses; i++)
+	{
+		const rashader::Pass& pass = chain.info.passes[i];
+		if (pass.mipmap_output)
+			any_mipgen_needed = mipgen_needed[static_cast<u32>(pass.out_format)] = true;
+		total_textures += pass.bindings.size();
+		for (const rashader::BoundTexture& tex : pass.bindings)
+			sampler_needed[tex.linear + static_cast<u32>(tex.wrap) * 2] = true;
+		size_t size = pass.ubo.size;
+		ubo_size += Common::AlignUpPow2(size, 16);
+		GSRAFilterChain::AddUniform(offset, chain.uniform_offsets()[i].extra, Common::AlignUpPow2(size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT));
+	}
+	chain.ubo_size = ubo_size;
+	chain.total_textures = total_textures;
+
+	// Allocate buffers
+	static const D3D12_HEAP_PROPERTIES heap_default = {D3D12_HEAP_TYPE_DEFAULT};
+	static const D3D12_HEAP_PROPERTIES heap_upload  = {D3D12_HEAP_TYPE_UPLOAD};
+	ID3D12Device* dev = m_device.get();
+	D3D12_RESOURCE_DESC rdesc = {D3D12_RESOURCE_DIMENSION_BUFFER, 0, 1, 1, 1, 1};
+	rdesc.SampleDesc.Count = 1;
+	rdesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	rdesc.Flags = D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+	if (GetAllocator()->IsTightAlignmentSupported())
+	{
+		wil::com_ptr_nothrow<ID3D12Heap> heap;
+		const D3D12_HEAP_DESC hdesc = {offset + 256, heap_default, 0, D3D12_HEAP_FLAG_ALLOW_ONLY_BUFFERS};
+		CHECK(dev->CreateHeap(&hdesc, IID_PPV_ARGS(heap.put())), "create rashader heap");
+		rdesc.Flags |= D3D12_RESOURCE_FLAG_USE_TIGHT_ALIGNMENT;
+		rdesc.Alignment = 256;
+		rdesc.Width = sizeof(RA_VERTICES);
+		CHECK(dev->CreatePlacedResource(heap.get(), 0, &rdesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(chain.vertices.put())), "create rashader vertex buffer");
+		rdesc.Width = offset;
+		if (offset)
+			CHECK(dev->CreatePlacedResource(heap.get(), 256, &rdesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(chain.ubo.put())), "create rashader ubo buffer");
+		rdesc.Alignment = 4096;
+	}
+	else
+	{
+		// Not much point in a heap if it doesn't improve alignment...
+		rdesc.Width = sizeof(RA_VERTICES);
+		CHECK(dev->CreateCommittedResource(&heap_default, D3D12_HEAP_FLAG_NONE, &rdesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(chain.vertices.put())), "create rashader vertex buffer");
+		rdesc.Width = offset;
+		if (offset)
+			CHECK(dev->CreateCommittedResource(&heap_default, D3D12_HEAP_FLAG_NONE, &rdesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(chain.ubo.put())), "create rashader ubo buffer");
+	}
+	D3D12::SetObjectName(chain.vertices.get(), "ra:vertices");
+	chain.vertices_addr = chain.vertices->GetGPUVirtualAddress();
+	if (ubo_size)
+	{
+		chain.ubo_addr = chain.ubo->GetGPUVirtualAddress();
+		rdesc.Width = ubo_size * NUM_COMMAND_LISTS;
+		CHECK(dev->CreateCommittedResource(&heap_upload, D3D12_HEAP_FLAG_NONE, &rdesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(chain.upload.put())), "create rashader upload buffer");
+		D3D12::SetObjectName(chain.ubo.get(), "ra:ubo");
+		D3D12::SetObjectName(chain.upload.get(), "ra:upload");
+		CHECK(chain.upload->Map(0, nullptr, &chain.upload_ptr), "map rashader upload buffer");
+	}
+
+	{
+		// Upload vertices to vertex buffer
+		ComPtr<ID3D12Resource> tmp_buf;
+		rdesc.Width = sizeof(RA_VERTICES);
+		CHECK(dev->CreateCommittedResource(&heap_upload, D3D12_HEAP_FLAG_NONE, &rdesc, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(tmp_buf.put())), "create rashader temp buffer");
+		void* ptr;
+		CHECK(tmp_buf->Map(0, nullptr, &ptr), "map rashader temp buffer");
+		memcpy(ptr, RA_VERTICES, sizeof(RA_VERTICES));
+		static constexpr D3D12_RANGE range = {0, sizeof(RA_VERTICES)};
+		tmp_buf->Unmap(0, &range);
+		GetInitCommandList().list4->CopyBufferRegion(chain.vertices.get(), 0, tmp_buf.get(), 0, sizeof(RA_VERTICES));
+		DeferObjectDestruction(tmp_buf.get());
+	}
+
+	D3D12_SAMPLER_DESC sdesc = {};
+	sdesc.MaxLOD = FLT_MAX;
+	for (size_t i = 0; i < std::size(chain.samplers); i++)
+	{
+		if (!sampler_needed[i])
+			continue;
+		if (!GetSamplerHeapManager().Allocate(&chain.samplers[i]))
+		{
+			Console.Error("Not enough samplers for rashader");
+			return false;
+		}
+		rashader::WrapMode mode = static_cast<rashader::WrapMode>(i >> 1);
+		sdesc.Filter = i & 1 ? D3D12_FILTER_MIN_MAG_MIP_LINEAR : D3D12_FILTER_MIN_MAG_MIP_POINT;
+		sdesc.AddressU = MapRAShaderWrap(mode);
+		sdesc.AddressV = MapRAShaderWrap(mode);
+		sdesc.AddressW = MapRAShaderWrap(mode);
+		dev->CreateSampler(&sdesc, chain.samplers[i]);
+	}
+
+	// Make pipelines for mipmap generation
+	if (any_mipgen_needed)
+	{
+		D3D12::GraphicsPipelineBuilder gpb;
+		gpb.SetRootSignature(m_utility_root_signature.get());
+		AddUtilityVertexAttributes(gpb);
+		gpb.SetNoCullRasterizationState();
+		gpb.SetNoDepthTestState();
+		gpb.SetNoStencilState();
+		gpb.SetNoBlendingState();
+		gpb.SetVertexShader(m_convert_vs.get());
+
+		for (u32 i = 0; i <= static_cast<u32>(rashader::TextureFormat::Last); i++)
+		{
+			if (!mipgen_needed[i])
+				continue;
+			GSTexture::Format format = MapRAShaderFormat(static_cast<rashader::TextureFormat>(i));
+			DXGI_FORMAT dxgi_format;
+			LookupNativeFormat(format, nullptr, nullptr, &dxgi_format, nullptr, nullptr);
+			gpb.SetRenderTarget(0, dxgi_format);
+
+			ShaderMacro sm;
+			sm.AddMacro("PIXEL_SHADER", 1);
+			sm.AddMacro("__ps_copy__", 1);
+
+			ComPtr<ID3DBlob> ps(m_shader_cache.GetPixelShader(m_convert_source, sm.GetPtr(), "ps_copy"));
+			if (!ps)
+				return false;
+
+			gpb.SetPixelShader(ps.get());
+
+			ComPtr<ID3D12PipelineState> pipe = gpb.Create(m_device.get(), m_shader_cache, false);
+
+			if (!pipe)
+				return false;
+
+#ifdef PCSX2_DEVBUILD
+			D3D12::SetObjectName(pipe.get(), TinyString::from_format("ra:MipGen:{}", GSTexture::GetFormatName(format)));
+#endif
+
+			chain.mipgen_pipe[i] = std::move(pipe);
+		}
+	}
+
+	// Calculate space needed for storing mipmap info
+	size_t nrts = chain.plan.num_rts();
+	u32 num_mipmap_descriptors = 0;
+	size_t mipinfo_size = sizeof(GSRAFilterChain12::MipmapInfo) * nrts;
+	GSRAFilterChain12::MipmapInfo* mipinfo = static_cast<GSRAFilterChain12::MipmapInfo*>(alloca(mipinfo_size));
+	memset(mipinfo, 0, mipinfo_size);
+	for (size_t i = 0; i < nrts; i++)
+	{
+		const rashader::ExecutionPlanner::RT& rt = chain.plan.rt(i);
+		if (!rt.mipmapped)
+		{
+			mipinfo[i].base = UINT32_MAX;
+			continue;
+		}
+		u32 nmips;
+		if (rt.scale_type_x == rashader::ScaleType::Absolute && rt.scale_type_y == rashader::ScaleType::Absolute)
+			nmips = Common::BitScanReverse32(std::max<u32>(rt.scale_x, rt.scale_y) | 1);
+		else
+			nmips = Common::BitScanReverse32(m_max_texture_size);
+		mipinfo[i].base = num_mipmap_descriptors;
+		num_mipmap_descriptors += nmips;
+	}
+	// Allocate mipmap info
+	if (num_mipmap_descriptors)
+	{
+		size_t per_desc = 2 * sizeof(D3D12DescriptorHandle) + sizeof(D3D12_CPU_DESCRIPTOR_HANDLE);
+		size_t total = mipinfo_size + per_desc * num_mipmap_descriptors;
+		void* ptr = malloc(total);
+		chain.mipmap = static_cast<GSRAFilterChain12::MipmapInfo*>(ptr);
+		ptr = chain.mipmap + nrts;
+		chain.mipmap_srv_handles = static_cast<D3D12_CPU_DESCRIPTOR_HANDLE*>(ptr);
+		ptr = chain.mipmap_srv_handles + num_mipmap_descriptors;
+		chain.mipmap_rtvs = static_cast<D3D12DescriptorHandle*>(ptr);
+		ptr = chain.mipmap_rtvs + num_mipmap_descriptors;
+		chain.mipmap_srvs = static_cast<D3D12DescriptorHandle*>(ptr);
+		ptr = chain.mipmap_srvs + num_mipmap_descriptors;
+		assert(ptr == reinterpret_cast<u8*>(chain.mipmap) + total);
+		memcpy(chain.mipmap, mipinfo, mipinfo_size);
+	}
+#undef CHECK
+	return true;
+}
+
+void GSDevice12::DidUpdateRAShaderRT(const GSRAFilterChain& chain_, size_t rt_idx)
+{
+	const GSRAFilterChain12& chain = static_cast<const GSRAFilterChain12&>(chain_);
+	GSTexture12* texture = static_cast<GSTexture12*>(chain.rts()[rt_idx]);
+	texture->TransitionToState(GSTexture12::ResourceState::RenderTarget);
+	if (!chain.plan.rt(rt_idx).mipmapped)
+		return;
+	// Allocate SRVs and RTVs for mipmap generation
+	GSRAFilterChain12::MipmapInfo& mips = chain.mipmap[rt_idx];
+	D3D12DescriptorHandle* srvs = chain.mipmap_srvs + mips.base;
+	D3D12DescriptorHandle* rtvs = chain.mipmap_rtvs + mips.base;
+	D3D12_CPU_DESCRIPTOR_HANDLE* srv_handles = chain.mipmap_srv_handles + mips.base;
+	if (mips.count)
+	{
+		for (u32 i = 0; i < mips.count; i++)
+		{
+			DeferDescriptorDestruction(GetDescriptorHeapManager(), &srvs[i]);
+			DeferDescriptorDestruction(GetRTVHeapManager(), &rtvs[i]);
+		}
+	}
+	GSVector2i size = texture->GetSize();
+	D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc = {texture->GetDXGIFormat(), D3D12_SRV_DIMENSION_TEXTURE2D};
+	D3D12_RENDER_TARGET_VIEW_DESC   rtv_desc = {texture->GetDXGIFormat(), D3D12_RTV_DIMENSION_TEXTURE2D};
+	srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srv_desc.Texture2D.MipLevels = 1;
+	u32 nmips = Common::BitScanReverse32(std::max(size.x, size.y) | 1);
+	ID3D12Resource* resource = texture->GetResource();
+	ID3D12Device* dev = m_device.get();
+	for (u32 i = 0; i < nmips; i++)
+	{
+		srv_desc.Texture2D.MostDetailedMip = i;
+		rtv_desc.Texture2D.MipSlice = i + 1;
+		if (!GetDescriptorHeapManager().Allocate(&srvs[i]))
+			return;
+		if (!GetRTVHeapManager().Allocate(&rtvs[i]))
+		{
+			GetDescriptorHeapManager().Free(&srvs[i]);
+			return;
+		}
+		dev->CreateShaderResourceView(resource, &srv_desc, srvs[i]);
+		dev->CreateRenderTargetView(resource, &rtv_desc, rtvs[i]);
+		srv_handles[i] = srvs[i].cpu_handle;
+		mips.count = i + 1;
+	}
+}
+
+void GSDevice12::UploadRAUniforms(const GSRAFilterChain& chain_, const u32* ubo, const u32* push)
+{
+	EndRenderPass();
+	const GSRAFilterChain12& chain = static_cast<const GSRAFilterChain12&>(chain_);
+	size_t npasses = chain.info.passes.size();
+	size_t base = chain.ubo_size * m_current_command_list;
+	ID3D12Resource* src = chain.upload.get();
+	ID3D12Resource* dst = chain.ubo.get();
+	u8* ptr = static_cast<u8*>(chain.upload_ptr);
+
+	// Note: If we ever switch init to a copy queue, we'll need to both upload to a second temp buffer on init and then copy to the UBO buffer on the main queue
+	ID3D12GraphicsCommandList4* cmdlist = GetInitCommandList().list4.get();
+	for (size_t i = 0; i < npasses; i++)
+	{
+		if (!((ubo[i / 32] >> (i % 32)) & 1))
+			continue;
+		size_t size = Common::AlignUpPow2(chain.info.passes[i].ubo.size, 16);
+		GSRAFilterChain::UniformMap& offsets = chain.uniform_offsets()[i];
+		memcpy(ptr + base + offsets.ubo, chain.uniform_data + offsets.ubo, size);
+		cmdlist->CopyBufferRegion(dst, offsets.extra, src, base + offsets.ubo, size);
+	}
+	// No transition needed, since we don't read until outside the init command buffer
+}
+
+static void RATransitionToRead(const GSRAFilterChain12& chain, GSDevice12* dev, size_t begin, size_t end)
+{
+	for (size_t i = begin; i < end; i++)
+	{
+		if (chain.info.passes[i].mipmap_output)
+		{
+			ID3D12PipelineState* pipe = chain.mipgen_pipe[static_cast<u32>(chain.info.passes[i].out_format)].get();
+			ID3D12Device* d3d = dev->GetDevice();
+			u32 srvsize = dev->GetDescriptorAllocator().GetDescriptorIncrementSize();
+			const rashader::ExecutionPlanner::Pass& pass = chain.plan.pass(i);
+			GSTexture12* tex = static_cast<GSTexture12*>(chain.rts()[pass.rt_current]);
+			u32 width  = tex->GetWidth();
+			u32 height = tex->GetHeight();
+			const GSRAFilterChain12::MipmapInfo mipinfo = chain.mipmap[pass.rt_current];
+			const D3D12_CPU_DESCRIPTOR_HANDLE* srv_handles = chain.mipmap_srv_handles + mipinfo.base;
+			const D3D12DescriptorHandle* srvs = chain.mipmap_srvs + mipinfo.base;
+			const D3D12DescriptorHandle* rtvs = chain.mipmap_rtvs + mipinfo.base;
+			D3D12DescriptorHandle heap;
+			heap.cpu_handle.ptr = chain.heap_textures.cpu_handle.ptr + chain.current_texture * srvsize;
+			heap.gpu_handle.ptr = chain.heap_textures.gpu_handle.ptr + chain.current_texture * srvsize;
+			heap.index          = chain.heap_samplers->index         + chain.current_texture;
+			chain.current_texture += mipinfo.count;
+			d3d->CopyDescriptors(1, &heap.cpu_handle, &mipinfo.count, mipinfo.count, srv_handles, nullptr, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			for (u32 i = 0; i < mipinfo.count; i++)
+			{
+				width  = width  > 1 ? width  >> 1 : 1;
+				height = height > 1 ? height >> 1 : 1;
+				dev->DrawMipmap(tex, i, i + 1, width, height, pipe, heap, rtvs[i].cpu_handle);
+				heap.cpu_handle.ptr += srvsize;
+				heap.gpu_handle.ptr += srvsize;
+				heap.index++;
+			}
+		}
+	}
+	for (size_t i = begin; i < end; i++)
+	{
+		const rashader::ExecutionPlanner::Pass& pass = chain.plan.pass(i);
+		GSTexture12* tex = static_cast<GSTexture12*>(chain.rts()[pass.rt_current]);
+		tex->TransitionToState(GSTexture12::ResourceState::PixelShaderResource);
+	}
+}
+
+static void RATransitionToWrite(const GSRAFilterChain12& chain, size_t begin, size_t end)
+{
+	for (size_t i = begin; i < end; i++)
+	{
+		const rashader::ExecutionPlanner::Pass& pass = chain.plan.pass(i);
+		// TransitionToWrite can run on textures that haven't been created yet, in which case they will be transitioned immediately before use
+		if (GSTexture12* tex = static_cast<GSTexture12*>(chain.rts()[pass.rt_current]))
+			tex->TransitionToState(GSTexture12::ResourceState::RenderTarget);
+	}
+}
+
+static bool TryAllocateRADescriptorTables(GSDevice12* dev, const GSRAFilterChain12& chain, u32 nmipmap, D3D12DescriptorHandle* mip_sampler_gpu, const D3D12DescriptorHandle& mip_sampler_cpu)
+{
+	if (!dev->GetDescriptorAllocator().Allocate(chain.total_textures + nmipmap, &chain.heap_textures))
+		return false;
+	for (size_t i = 0; i < std::size(chain.samplers); i++)
+		if (chain.samplers[i])
+			if (!dev->GetSamplerAllocator().LookupSingle(&chain.heap_samplers[i], chain.samplers[i]))
+				return false;
+	if (nmipmap && !dev->GetSamplerAllocator().LookupSingle(mip_sampler_gpu, mip_sampler_cpu))
+		return false;
+	return true;
+}
+
+static bool AllocateRADescriptorTables(GSDevice12* dev, const GSRAFilterChain12& chain, D3D12DescriptorHandle* mip_sampler_gpu, const D3D12DescriptorHandle& mip_sampler_cpu)
+{
+	size_t npasses = chain.info.passes.size();
+	u32 nmipmap = 0;
+	for (size_t i = 0; i < npasses; i++)
+	{
+		if (!chain.info.passes[i].mipmap_output)
+			continue;
+		const rashader::ExecutionPlanner::RT& rt = chain.plan.rt(chain.plan.pass(i).rt_current);
+		GSVector2i size = chain.RTSize(rt);
+		nmipmap += Common::BitScanReverse32(std::max(size.x, size.y) | 1);
+	}
+	if (!TryAllocateRADescriptorTables(dev, chain, nmipmap, mip_sampler_gpu, mip_sampler_cpu))
+	{
+		dev->ExecuteCommandListAndRestartRenderPass(false, "Ran out of space when allocating RAShader descriptors");
+		if (!TryAllocateRADescriptorTables(dev, chain, nmipmap, mip_sampler_gpu, mip_sampler_cpu))
+			return false;
+	}
+	chain.current_texture = 0;
+	return true;
+}
+
+static void WriteRADescriptors(GSDevice12* dev, const GSRAFilterChain12& chain, size_t pass_idx)
+{
+	const rashader::Pass& pass = chain.info.passes[pass_idx];
+	UINT ntex = static_cast<UINT>(pass.bindings.size());
+	if (!ntex)
+		return;
+	D3D12_CPU_DESCRIPTOR_HANDLE dst_handle = chain.heap_textures.cpu_handle;
+	dst_handle.ptr += chain.current_texture * dev->GetDescriptorAllocator().GetDescriptorIncrementSize();
+	D3D12_CPU_DESCRIPTOR_HANDLE* src_handles = static_cast<D3D12_CPU_DESCRIPTOR_HANDLE*>(alloca(ntex * sizeof(D3D12_CPU_DESCRIPTOR_HANDLE)));
+	D3D12_CPU_DESCRIPTOR_HANDLE* write = src_handles;
+	for (const rashader::BoundTexture& tex : pass.bindings)
+	{
+		GSTexture12* gstex = static_cast<GSTexture12*>(chain.GetTexture(tex.source, tex.index, tex.history));
+		assert(gstex->GetResourceState() == GSTexture12::ResourceState::PixelShaderResource);
+		*write++ = gstex->GetSRVDescriptor().cpu_handle;
+	}
+	pxAssert(write == src_handles + ntex);
+	dev->GetDevice()->CopyDescriptors(1, &dst_handle, &ntex, ntex, src_handles, nullptr, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+}
+
+void GSDevice12::RunRAShaderPass(const GSRAFilterChain& chain_, size_t pass_idx, GSTexture* target)
+{
+	const GSRAFilterChain12& chain = static_cast<const GSRAFilterChain12&>(chain_);
+	const rashader::Pass& pass = chain.info.passes[pass_idx];
+	const rashader::ExecutionPlanner::Pass& passinfo = chain.plan.pass(pass_idx);
+
+	EndRenderPass();
+
+	if (pass_idx == 0)
+	{
+		if (!AllocateRADescriptorTables(this, chain, &m_utility_sampler_gpu, m_linear_sampler_cpu))
+			chain.current_texture = UINT32_MAX;
+	}
+	if (chain.current_texture == UINT32_MAX)
+		return;
+
+	GL_PUSH("RAShader Pass %d", pass_idx);
+
+	// Transition pass inputs and outputs
+	if (u32 num_transition = passinfo.num_transition_to_read)
+		RATransitionToRead(chain, this, pass_idx - num_transition, pass_idx);
+	if (u32 num_transition = passinfo.num_transition_to_write)
+		RATransitionToWrite(chain, pass_idx, pass_idx + num_transition);
+
+	WriteRADescriptors(this, chain, pass_idx);
+
+	// Bind render target
+	g_perfmon.Put(GSPerfMon::RenderPasses, 1);
+	GSRAPipeline12* pipe = static_cast<GSRAPipeline12*>(chain.passes()[pass_idx]);
+	GSTexture12* texture = static_cast<GSTexture12*>(target);
+	ID3D12GraphicsCommandList4* cmdlist = GetCommandList().list4.get();
+	const D3D12_DISCARD_REGION discard_region = {0u, nullptr, 0, 1u};
+	cmdlist->DiscardResource(texture->GetResource(), &discard_region);
+	cmdlist->OMSetRenderTargets(1, &texture->GetWriteDescriptor().cpu_handle, FALSE, nullptr);
+
+	// Bind pipeline
+	cmdlist->SetGraphicsRootSignature(pipe->rootsig.get());
+	cmdlist->SetPipelineState(pipe->pipeline.get());
+
+	// Bind root params
+	const GSRAFilterChain::UniformMap& map = chain.uniform_offsets()[pass_idx];
+	u32 root_idx = 0;
+	if (pass.ubo.stages)
+		cmdlist->SetGraphicsRootConstantBufferView(root_idx++, chain.ubo_addr + map.extra);
+	if (size_t ntex = pass.bindings.size())
+	{
+		D3D12_GPU_DESCRIPTOR_HANDLE tex = chain.heap_textures.gpu_handle;
+		tex.ptr += chain.current_texture * GetDescriptorAllocator().GetDescriptorIncrementSize();
+		chain.current_texture += ntex;
+		cmdlist->SetGraphicsRootDescriptorTable(root_idx++, tex);
+		for (const rashader::BoundTexture& tex : pass.bindings)
+		{
+			u32 idx = tex.linear + static_cast<u32>(tex.wrap) * 2;
+			cmdlist->SetGraphicsRootDescriptorTable(root_idx++, chain.heap_samplers[idx].gpu_handle);
+		}
+	}
+	if (pass.push.stages)
+		cmdlist->SetGraphicsRoot32BitConstants(root_idx++, (pass.push.size + 3) / 4, chain.uniform_data + map.push, 0);
+
+	GSVector2i size = target->GetSize();
+	D3D12_VIEWPORT viewport = {};
+	viewport.Width = size.x;
+	viewport.Height = size.y;
+	viewport.MaxDepth = 1;
+	SetScissor(GSVector4i::loadh(size));
+	SetViewport(viewport);
+	SetVertexBuffer(chain.vertices_addr, sizeof(RA_VERTICES), sizeof(GSVector4i));
+	SetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	constexpr u32 DIRTY_FLAGS = DIRTY_FLAG_VERTEX_BUFFER | DIRTY_FLAG_SCISSOR | DIRTY_FLAG_VIEWPORT | DIRTY_FLAG_PRIMITIVE_TOPOLOGY;
+	u32 flags = m_dirty_flags;
+	m_dirty_flags &= ~DIRTY_FLAGS;
+	m_dirty_flags |= DIRTY_FLAG_RENDER_TARGET;
+	m_current_root_signature = RootSignature::Undefined;
+	ApplyBaseState(flags & DIRTY_FLAGS, cmdlist);
+
+	size_t npasses = chain.info.passes.size();
+	bool is_final = pass_idx == npasses - 1;
+	cmdlist->DrawInstanced(4, 1, is_final ? 4 : 0, 0);
+	if (is_final)
+		RATransitionToRead(chain, this, npasses - chain.plan.num_final_transition_to_read(), npasses);
 }
 
 #ifdef ENABLE_LIBRASHADER

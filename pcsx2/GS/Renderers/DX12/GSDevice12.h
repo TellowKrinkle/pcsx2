@@ -178,7 +178,7 @@ public:
 	void WaitForGPUIdle();
 
 	/// Defers destruction of a D3D resource (associates it with the current list).
-	void DeferObjectDestruction(ID3D12DeviceChild* resource);
+	void DeferObjectDestruction(IUnknown* resource);
 
 	/// Defers destruction of a D3D resource (associates it with the current list).
 	void DeferResourceDestruction(D3D12MA::Allocation* allocation, ID3D12Resource* resource);
@@ -206,7 +206,7 @@ private:
 		std::array<D3D12CommandList, 2> command_lists;
 		D3D12DescriptorAllocator descriptor_allocator;
 		D3D12GroupedSamplerAllocator<SAMPLER_GROUP_SIZE> sampler_allocator;
-		std::vector<std::pair<D3D12MA::Allocation*, ID3D12DeviceChild*>> pending_resources;
+		std::vector<std::pair<D3D12MA::Allocation*, IUnknown*>> pending_resources;
 		std::vector<std::pair<D3D12DescriptorHeapManager&, u32>> pending_descriptors;
 		u64 ready_fence_value = 0;
 		bool init_command_list_used = false;
@@ -631,6 +631,10 @@ public:
 	// and the current level has been transitioned to RT.
 	void RenderTextureMipmap(GSTexture12* texture, u32 dst_level, u32 dst_width, u32 dst_height, u32 src_level,
 		u32 src_width, u32 src_height);
+	// RenderTextureMipmap, but assumes you've already allocated SRVs and RTVs
+	void DrawMipmap(GSTexture12* texture, u32 src_level, u32 dst_level, u32 dst_width, u32 dst_height,
+		ID3D12PipelineState* pipe, const D3D12DescriptorHandle& src, const D3D12_CPU_DESCRIPTOR_HANDLE& dst);
+
 
 	// Ends a render pass if we're currently in one.
 	// When Bind() is next called, the pass will be restarted.
@@ -650,6 +654,13 @@ public:
 	void SetScissor(const GSVector4i& scissor);
 	void SetPipeline(const ID3D12PipelineState* pipeline);
 
+	GSRAPipeline* CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass) override;
+	GSRAFilterChain* CreateRAFilterChain() override;
+	void DestroyRAFilterChain(GSRAFilterChain* chain) override;
+	bool FinalizeRAFilterChain(GSRAFilterChain& chain) override;
+	void DidUpdateRAShaderRT(const GSRAFilterChain& chain_, size_t rt_idx) override;
+	void UploadRAUniforms(const GSRAFilterChain& chain, const u32* ubo, const u32* push) override;
+	void RunRAShaderPass(const GSRAFilterChain& chain, size_t pass, GSTexture* target) override;
 #ifdef ENABLE_LIBRASHADER
 	bool CreateLibrashaderFilterChain(const std::string& preset_path) override;
 	void DestroyLibrashaderFilterChain() override;

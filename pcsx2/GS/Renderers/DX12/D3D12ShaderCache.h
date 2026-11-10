@@ -34,6 +34,7 @@ public:
 	~D3D12ShaderCache();
 
 	__fi bool UsingDebugShaders() const { return m_debug; }
+	D3D::ShaderModel GetShaderModel() const { return m_shader_model; }
 
 	bool Open(D3D::ShaderModel shader_model, bool debug);
 	void Close();
