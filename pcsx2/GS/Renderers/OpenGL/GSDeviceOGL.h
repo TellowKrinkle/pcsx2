@@ -152,11 +152,6 @@ private:
 
 	std::unique_ptr<GLContext> m_gl_context;
 
-#ifdef ENABLE_LIBRASHADER
-	void* m_librashader_chain = nullptr;
-	static const void* LibrashaderGLLoader(const char* name);
-#endif
-
 	struct
 	{
 		bool buggy_pbo              : 1; ///< Avoid PBOs and just use glTextureSubImage2D with immediate data
@@ -313,12 +308,6 @@ private:
 	void DidUpdateRAShaderRT(const GSRAFilterChain& chain_, size_t rt_idx) override;
 	void UploadRAUniforms(const GSRAFilterChain& chain, const u32* ubo, const u32* push) override;
 	void RunRAShaderPass(const GSRAFilterChain& chain, size_t pass, GSTexture* target) override;
-#ifdef ENABLE_LIBRASHADER
-	bool CreateLibrashaderFilterChain(const std::string& preset_path) override;
-	void DestroyLibrashaderFilterChain() override;
-	bool DoLibrashader(GSTexture* sTex, GSTexture* dTex) override;
-	void ApplyLibrashaderChainParams(const std::vector<std::pair<std::string, float>>& params) override;
-#endif
 
 	bool CreateImGuiProgram();
 	void RenderImGui();

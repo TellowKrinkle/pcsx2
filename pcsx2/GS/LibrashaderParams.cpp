@@ -536,27 +536,3 @@ bool ClearLibrashaderGameOverrides(const std::string& preset_path, const Librash
 	Error err;
 	return params_si.Save(&err);
 }
-
-#ifdef ENABLE_LIBRASHADER
-#include <librashader/librashader.h>
-std::string GetLibrashaderError(libra_error_t err)
-{
-	if (!err)
-		return {};
-
-	char* error_message = nullptr;
-	const LIBRA_ERRNO error_code = libra_error_errno(err);
-	std::string result;
-	if (libra_error_write(err, &error_message) == 0 && error_message)
-	{
-		result = fmt::format("{} (errno={})", error_message, static_cast<int>(error_code));
-		libra_error_free_string(&error_message);
-	}
-	else
-	{
-		result = fmt::format("unknown error (errno={})", static_cast<int>(error_code));
-	}
-	libra_error_free(&err);
-	return result;
-}
-#endif

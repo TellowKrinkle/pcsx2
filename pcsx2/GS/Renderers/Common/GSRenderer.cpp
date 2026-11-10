@@ -249,11 +249,6 @@ bool GSRenderer::Merge(int field)
 	if (GSConfig.FXAA)
 		g_gs_device->FXAA();
 
-#ifdef ENABLE_LIBRASHADER
-	if (GSConfig.LibrashaderEnabled)
-		g_gs_device->Librashader();
-#endif
-
 	g_gs_device->PrepareRAShader();
 
 	// Sharpens biinear at lower resolutions, almost nearest but with more uniform pixels.

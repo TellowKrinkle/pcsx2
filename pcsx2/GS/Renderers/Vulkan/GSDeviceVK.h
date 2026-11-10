@@ -703,12 +703,6 @@ public:
 	void DidUpdateRAShaderRT(const GSRAFilterChain& chain, size_t rt) override;
 	void UploadRAUniforms(const GSRAFilterChain& chain, const u32* ubo, const u32* push) override;
 	void RunRAShaderPass(const GSRAFilterChain& chain, size_t pass, GSTexture* target) override;
-#ifdef ENABLE_LIBRASHADER
-	bool CreateLibrashaderFilterChain(const std::string& preset_path) override;
-	void DestroyLibrashaderFilterChain() override;
-	bool DoLibrashader(GSTexture* sTex, GSTexture* dTex) override;
-	void ApplyLibrashaderChainParams(const std::vector<std::pair<std::string, float>>& params) override;
-#endif
 
 private:
 	enum DIRTY_FLAG : u32
@@ -798,8 +792,4 @@ private:
 
 	// current pipeline selector - we save this in the struct to avoid re-zeroing it every draw
 	PipelineSelector m_pipeline_selector = {};
-
-#ifdef ENABLE_LIBRASHADER
-	void* m_librashader_chain = nullptr;
-#endif
 };
