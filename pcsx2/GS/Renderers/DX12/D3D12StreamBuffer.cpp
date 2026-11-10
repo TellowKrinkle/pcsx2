@@ -65,7 +65,7 @@ bool D3D12StreamBuffer::Create(u32 size, bool gpu_backed_buffer)
 				D3D12_BARRIER_LAYOUT_UNDEFINED, nullptr, 0, nullptr, allocation.put(), IID_PPV_ARGS(buffer.put()));
 		else
 			hr = GSDevice12::GetInstance()->GetAllocator()->CreateResource(&allocationDesc, &resource_desc.desc,
-				D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, allocation.put(), IID_PPV_ARGS(buffer.put()));
+				D3D12_RESOURCE_STATE_COMMON, nullptr, allocation.put(), IID_PPV_ARGS(buffer.put()));
 		pxAssertMsg(SUCCEEDED(hr), "Allocate buffer");
 		if (FAILED(hr))
 			return false;
