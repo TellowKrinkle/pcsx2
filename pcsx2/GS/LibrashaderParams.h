@@ -118,9 +118,3 @@ std::unordered_map<std::string, float> LoadLibrashaderSavedParams(
 	const std::string& preset_path, std::string_view game_serial, u32 game_crc);
 bool HasLibrashaderGameOverrides(const std::string& preset_path, const LibrashaderParamsContext& context);
 bool ClearLibrashaderGameOverrides(const std::string& preset_path, const LibrashaderParamsContext& context);
-
-#ifdef ENABLE_LIBRASHADER
-struct _libra_error;
-typedef struct _libra_error* libra_error_t;
-std::string GetLibrashaderError(libra_error_t err);
-#endif

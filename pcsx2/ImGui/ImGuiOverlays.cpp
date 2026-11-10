@@ -800,61 +800,8 @@ __ri void ImGuiManager::DrawShaderCompileIndicator(float scale, float margin, fl
 	static double s_indicator_fade_in_start = 0.0;
 	const double imgui_time = ImGui::GetTime();
 
-#ifdef ENABLE_LIBRASHADER
-	static u64 s_last_librashader_request_id = 0;
-	static GSDevice::LibrashaderCompileState s_last_librashader_state = GSDevice::LibrashaderCompileState::Idle;
-	static u64 s_librashader_state_change_time = 0;
-	static std::string s_librashader_preset_name;
-	static u32 s_librashader_compile_time_ms = 0;
-
-	bool show_librashader = false;
-	float librashader_alpha = 0.0f;
-	const bool has_librashader = g_gs_device && GSConfig.LibrashaderEnabled;
-	const auto librashader_status =
-		has_librashader ? g_gs_device->GetLibrashaderCompileStatus() : GSDevice::LibrashaderCompileStatus{};
-
-	if (has_librashader)
-	{
-		if (librashader_status.request_id != s_last_librashader_request_id || librashader_status.state != s_last_librashader_state)
-		{
-			s_last_librashader_request_id = librashader_status.request_id;
-			s_last_librashader_state = librashader_status.state;
-			s_librashader_state_change_time = Common::Timer::GetCurrentValue();
-			s_librashader_preset_name = librashader_status.preset_name;
-
-			if (librashader_status.state == GSDevice::LibrashaderCompileState::Ready && librashader_status.started_ticks != 0)
-			{
-				const u64 duration_ticks = GetCPUTicks() - librashader_status.started_ticks;
-				const u64 frequency = GetTickFrequency();
-				s_librashader_compile_time_ms = (frequency != 0) ? static_cast<u32>((duration_ticks * 1000) / frequency) : 0;
-			}
-		}
-
-		if (librashader_status.state == GSDevice::LibrashaderCompileState::Compiling)
-		{
-			show_librashader = true;
-			librashader_alpha = 1.0f;
-		}
-		else if ((librashader_status.state == GSDevice::LibrashaderCompileState::Ready ||
-					 librashader_status.state == GSDevice::LibrashaderCompileState::Failed) &&
-				 s_last_librashader_request_id != 0)
-		{
-			const u64 elapsed = Common::Timer::GetCurrentValue() - s_librashader_state_change_time;
-			const u64 hold = GSShaderCompileIndicator::GetRecentCompileHold();
-			if (elapsed < hold)
-			{
-				show_librashader = true;
-				librashader_alpha = 1.0f - (static_cast<float>(elapsed) / static_cast<float>(hold));
-			}
-		}
-	}
-#endif
-
 	const bool show_standard = GSShaderCompileIndicator::IsVisible();
 	bool show_any = show_standard;
-#ifdef ENABLE_LIBRASHADER
-	show_any |= show_librashader;
-#endif
 
 	if (!GSConfig.OsdShowGPUShadersStats || !show_any)
 	{
@@ -917,33 +864,6 @@ __ri void ImGuiManager::DrawShaderCompileIndicator(float scale, float margin, fl
 		}
 	};
 
-#ifdef ENABLE_LIBRASHADER
-	if (show_librashader)
-	{
-		static constexpr const char* LIBRASHADER_COMPILING =
-			TRANSLATE_NOOP("ImGuiOverlays", "Compiling shader preset '{0}'...");
-		static constexpr const char* LIBRASHADER_COMPILED =
-			TRANSLATE_NOOP("ImGuiOverlays", "Compiled shader preset '{0}' in {1}ms");
-		static constexpr const char* LIBRASHADER_FAILED =
-			TRANSLATE_NOOP("ImGuiOverlays", "Failed to compile shader preset '{0}'");
-
-		std::string label;
-		if (librashader_status.state == GSDevice::LibrashaderCompileState::Compiling)
-			label = fmt::format(TRANSLATE_FS("ImGuiOverlays", LIBRASHADER_COMPILING), s_librashader_preset_name);
-		else if (librashader_status.state == GSDevice::LibrashaderCompileState::Ready)
-			label = fmt::format(TRANSLATE_FS("ImGuiOverlays", LIBRASHADER_COMPILED), s_librashader_preset_name, s_librashader_compile_time_ms);
-		else if (librashader_status.state == GSDevice::LibrashaderCompileState::Failed)
-			label = fmt::format(TRANSLATE_FS("ImGuiOverlays", LIBRASHADER_FAILED), s_librashader_preset_name);
-
-		const bool spinning = librashader_status.state == GSDevice::LibrashaderCompileState::Compiling;
-		const float alpha = std::clamp(fade_in_alpha * librashader_alpha, 0.0f, 1.0f);
-		draw_indicator(label, alpha, spinning, baseline_y);
-	}
-#endif
-
-#ifdef ENABLE_LIBRASHADER
-	if (show_standard)
-#endif
 	{
 		const float fade_out_alpha = GSShaderCompileIndicator::GetFadeAlpha();
 		const float alpha = std::clamp(fade_in_alpha * fade_out_alpha, 0.0f, 1.0f);
@@ -960,13 +880,6 @@ __ri void ImGuiManager::DrawShaderCompileIndicator(float scale, float margin, fl
 		                              fmt::format(TRANSLATE_FS("ImGuiOverlays", COMPILED_MANY), count, time_ms);
 
 		float current_baseline_y = baseline_y;
-#ifdef ENABLE_LIBRASHADER
-		if (show_librashader)
-		{
-			const float stack_spacing = std::ceil(4.0f * scale);
-			current_baseline_y -= radius * 2.0f + spacing + stack_spacing;
-		}
-#endif
 		draw_indicator(label, alpha, true, current_baseline_y);
 	}
 }

@@ -60,7 +60,6 @@
           "-DCMAKE_MODULE_LINKER_FLAGS_INIT=-fuse-ld=lld",
           "-DCMAKE_SHARED_LINKER_FLAGS_INIT=-fuse-ld=lld",
           "-DUSE_LINKED_FFMPEG=ON",
-          "-DUSE_LIBRASHADER=ON",
           "-DDISABLE_ADVANCE_SIMD=TRUE"
         ]
       },
