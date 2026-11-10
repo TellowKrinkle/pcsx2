@@ -216,7 +216,6 @@ std::unique_ptr<GSTexture12> GSTexture12::Create(Usage usage, Format format, int
 	if (IsRenderTarget(usage))
 	{
 		// RT's tend to be larger, so we'll keep them committed for speed.
-		pxAssert(levels == 1);
 		desc.desc1.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
 		optimized_clear_value.Format = rtv_format;
 		state = ResourceState::RenderTarget;
