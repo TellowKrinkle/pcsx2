@@ -3696,6 +3696,189 @@ struct GSRAPipelineOGL final : public GSRAPipeline
 	GLProgram program;
 };
 
+/// Base OpenGL shader compilation
+struct GSRAFilterChainLoaderOGL : public GSRAFilterChainLoader
+{
+	struct GLShaders
+	{
+		std::string vs;
+		std::string fs;
+	};
+	std::vector<GLShaders> shaders;
+	std::vector<u8> status;
+	GSRAFilterChainLoaderOGL(GSDevice* dev): GSRAFilterChainLoader(dev)
+	{
+		m_gsdevice_assisted_compile = true;
+	}
+	void InitStructures()
+	{
+		size_t npasses = GetCurrent()->info.passes.size();
+		shaders.resize(npasses);
+		status.clear();
+		status.resize(npasses);
+	}
+	void MarkAsFailed()
+	{
+		m_failed = true;
+		m_stats.state = State::Complete;
+	}
+	void UpdatePassName(size_t idx)
+	{
+		const rashader::Pass& pass = GetCurrent()->info.passes[idx];
+		GSRAPipelineOGL* ptr = static_cast<GSRAPipelineOGL*>(GetCurrent()->passes()[idx]);
+		if (pass.name.empty())
+			ptr->program.SetFormattedName("ra:pass%zd", idx);
+		else
+			ptr->program.SetFormattedName("ra:%s", pass.name.c_str());
+	}
+	void CheckCompilationStatus()
+	{
+		GSRAPipeline** pipelines = GetCurrent()->passes().data();
+		size_t npasses = GetCurrent()->info.passes.size();
+		for (size_t i = 0; i < npasses; i++)
+		{
+			GSRAPipelineOGL* pipeline = static_cast<GSRAPipelineOGL*>(pipelines[i]);
+			if (!pipeline)
+				continue;
+			if (status[i] == 0)
+			{
+				status[i] = 1;
+				pipeline->program.BeginCompile(shaders[i].vs, shaders[i].fs);
+				m_stats.shaders_compiled += 2;
+				if (m_stats.shaders_compiled == m_stats.total_shaders)
+				{
+					// All shader compiles started, now do the rest
+					for (size_t j = 0; j < npasses; j++)
+						if (!static_cast<GSRAPipelineOGL*>(pipelines[j])->program.FinishCompile(shaders[j].vs, shaders[j].fs))
+							return MarkAsFailed();
+					for (size_t j = 0; j < npasses; j++)
+						static_cast<GSRAPipelineOGL*>(pipelines[j])->program.BeginLink();
+					for (size_t j = 0; j < npasses; j++)
+					{
+						if (!static_cast<GSRAPipelineOGL*>(pipelines[j])->program.FinishLink())
+							return MarkAsFailed();
+						UpdatePassName(j);
+					}
+					m_stats.pipelines_compiled = m_stats.total_pipelines;
+					CheckMainCompletion();
+				}
+			}
+		}
+	}
+	bool CheckDone(GSDevice* dev) override
+	{
+		{
+			std::lock_guard<std::mutex> guard(m_mtx);
+			switch (m_stats.state)
+			{
+				case State::DataLoaded:
+					InitStructures();
+					break;
+				case State::MainCompile:
+					CheckCompilationStatus();
+					break;
+			}
+		}
+		return GSRAFilterChainLoader::CheckDone(dev);
+	}
+	void SetShaders(const GSRAFilterChain& chain, std::string vs, std::string fs, size_t pass_idx)
+	{
+		std::lock_guard<std::mutex> lock(m_mtx);
+		if (&chain != GetCurrent())
+			return;
+		GLShaders& write = shaders[pass_idx];
+		write.vs = std::move(vs);
+		write.fs = std::move(fs);
+	}
+};
+
+/// OpenGL pipeline compilation using [ARB|KHR]_parallel_shader_compile
+struct GSRAFilterChainLoaderOGLEXT final : public GSRAFilterChainLoaderOGL
+{
+	using GSRAFilterChainLoaderOGL::GSRAFilterChainLoaderOGL;
+	void CheckCompilationStatusEXT()
+	{
+		GSRAPipeline** pipelines = GetCurrent()->passes().data();
+		size_t npasses = GetCurrent()->info.passes.size();
+		for (size_t i = 0; i < npasses; i++)
+		{
+			GSRAPipelineOGL* pipeline = static_cast<GSRAPipelineOGL*>(pipelines[i]);
+			if (!pipeline)
+				continue;
+			const GLShaders& shaders = this->shaders[i];
+			u8* status = &this->status[i];
+			switch (*status)
+			{
+				case 0:
+					*status = 1;
+					pipeline->program.BeginCompile(shaders.vs, shaders.fs);
+					break;
+				case 1:
+				case 2:
+				case 3:
+					if (*status != 2 && pipeline->program.CheckVSCompileStatus())
+						m_stats.shaders_compiled++, *status += 1;
+					if (*status != 3 && pipeline->program.CheckFSCompileStatus())
+						m_stats.shaders_compiled++, *status += 2;
+					if (*status == 4)
+					{
+						if (!pipeline->program.FinishCompile(shaders.vs, shaders.fs))
+							return MarkAsFailed();
+						pipeline->program.BeginLink();
+					}
+					break;
+				case 4:
+					if (pipeline->program.CheckLinkStatus())
+					{
+						m_stats.pipelines_compiled++;
+						*status = 5;
+						if (!pipeline->program.FinishLink())
+							return MarkAsFailed();
+					}
+					break;
+				case 5:
+					break;
+				default:
+					pxAssert(0);
+					break;
+			}
+		}
+		CheckMainCompletion();
+	}
+
+	bool CheckDone(GSDevice* dev) override
+	{
+		{
+			std::lock_guard<std::mutex> guard(m_mtx);
+			switch (m_stats.state)
+			{
+				case State::DataLoaded:
+					InitStructures();
+					break;
+				case State::MainCompile:
+					CheckCompilationStatusEXT();
+					break;
+			}
+		}
+		return GSRAFilterChainLoader::CheckDone(dev);
+	}
+};
+
+GSRAFilterChainLoader* GSDeviceOGL::CreateRAFilterChainLoader()
+{
+	if (GLAD_GL_KHR_parallel_shader_compile)
+	{
+		glMaxShaderCompilerThreadsKHR(static_cast<GLuint>(GSRAFilterChainLoader::GetNumCompileThreads()));
+		return new GSRAFilterChainLoaderOGLEXT(this);
+	}
+	if (GLAD_GL_ARB_parallel_shader_compile)
+	{
+		glMaxShaderCompilerThreadsARB(static_cast<GLuint>(GSRAFilterChainLoader::GetNumCompileThreads()));
+		return new GSRAFilterChainLoaderOGLEXT(this);
+	}
+	return new GSRAFilterChainLoaderOGL(this);
+}
+
 static void RemapBindings(spirv_cross::CompilerGLSL& compiler, const rashader::Pass& pass)
 {
 	size_t ntex = pass.bindings.size();
@@ -3756,21 +3939,24 @@ static std::string CompileSPIRV(const std::vector<u32>& spirv, const rashader::P
 	return compiler.compile();
 }
 
-GSRAPipeline* GSDeviceOGL::CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass_idx)
+struct GSRAPipelineCompilerOGL : public GSRAPipelineCompiler
 {
-	const rashader::Pass& pass = chain.passes[pass_idx];
-	std::string vs = CompileSPIRV(pass.vs_spirv, pass);
-	std::string fs = CompileSPIRV(pass.fs_spirv, pass);
-	std::unique_ptr<GSRAPipelineOGL> ptr = std::make_unique<GSRAPipelineOGL>();
-	if (!ptr->program.Compile(vs, fs))
-		return nullptr;
-	if (!ptr->program.Link())
-		return nullptr;
-	if (pass.name.empty())
-		ptr->program.SetFormattedName("ra:pass%zd", pass_idx);
-	else
-		ptr->program.SetFormattedName("ra:%s", pass.name.c_str());
-	return ptr.release();
+	GSRAPipeline* Compile(GSRAFilterChainLoader::CompileFeedback& feedback, const GSRAFilterChain& chain, size_t pass_idx) override
+	{
+		rashader::Pass pass = chain.info.passes[pass_idx];
+		feedback.EndWaitDestroy();
+		std::string vs = CompileSPIRV(pass.vs_spirv, pass);
+		std::string fs = CompileSPIRV(pass.fs_spirv, pass);
+		static_cast<GSRAFilterChainLoaderOGL&>(feedback.Loader()).SetShaders(chain, std::move(vs), std::move(fs), pass_idx);
+		if (!feedback.BeginWaitDestroy())
+			return nullptr;
+		return new GSRAPipelineOGL;
+	}
+};
+
+GSRAPipelineCompiler* GSDeviceOGL::CreateRAPipelineCompiler()
+{
+	return new GSRAPipelineCompilerOGL;
 }
 
 static constexpr GSVector4 RA_VERTICES[] = {

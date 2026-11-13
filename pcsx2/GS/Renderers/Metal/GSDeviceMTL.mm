@@ -1376,11 +1376,12 @@ bool GSDeviceMTL::Create(GSVSyncMode vsync_mode, bool allow_present_throttle)
 
 void GSDeviceMTL::Destroy()
 { @autoreleasepool {
+	GSDevice::Destroy();
+
 	FlushEncoders();
 	std::lock_guard<std::mutex> guard(m_backref->first);
 	m_backref->second = nullptr;
 
-	GSDevice::Destroy();
 	GSDeviceMTL::DestroySurface();
 	m_queue = nullptr;
 	m_dev.Reset();
@@ -2875,14 +2876,15 @@ static spirv_cross::MSLResourceBinding MakeResourceBinding(spirv_cross::Executio
 	return binding;
 }
 
-static MRCOwned<id<MTLFunction>> CompileSPIRV(const GSMTLDevice& dev, const std::vector<u32>& spirv, const rashader::Pass& pass, size_t pass_idx, spirv_cross::ExecutionModel stage)
+static MRCOwned<id<MTLFunction>> CompileSPIRV(id<MTLDevice> dev, GSMTLDevice::MetalVersion version,
+                                              const std::vector<u32>& spirv, const rashader::Pass& pass, size_t pass_idx, spirv_cross::ExecutionModel stage)
 {
 	u32 stage_flag = stage == spv::ExecutionModelVertex ? rashader::STAGE_FLAG_VS : rashader::STAGE_FLAG_FS;
 	spirv_cross::CompilerMSL compiler(spirv);
 	{
 		// Set options
 		spirv_cross::CompilerMSL::Options options;
-		switch (dev.features.shader_version)
+		switch (version)
 		{
 			case GSMTLDevice::MetalVersion::Metal20: options.set_msl_version(2, 0); break;
 			case GSMTLDevice::MetalVersion::Metal21: options.set_msl_version(2, 1); break;
@@ -2912,9 +2914,9 @@ static MRCOwned<id<MTLFunction>> CompileSPIRV(const GSMTLDevice& dev, const std:
 	std::string msl = compiler.compile();
 	msl.insert(0, "#pragma clang diagnostic ignored \"-Wunused-variable\"\n"); // Holy warning spam
 	NSError* err = nil;
-	auto lib = MRCTransfer([dev.dev newLibraryWithSource:[NSString stringWithUTF8String:msl.c_str()]
-	                                             options:options
-	                                               error:&err]);
+	auto lib = MRCTransfer([dev newLibraryWithSource:[NSString stringWithUTF8String:msl.c_str()]
+	                                         options:options
+	                                           error:&err]);
 	if (!lib)
 	{
 		DumpBadShader(msl, [[err localizedDescription] UTF8String]);
@@ -2925,13 +2927,27 @@ static MRCOwned<id<MTLFunction>> CompileSPIRV(const GSMTLDevice& dev, const std:
 	return MRCTransfer([lib newFunctionWithName:@"main0"]);
 }
 
-GSRAPipeline* GSDeviceMTL::CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass_idx)
+struct GSRAPipelineCompilerMTL final : public GSRAPipelineCompiler
+{
+	MRCOwned<id<MTLDevice>> dev;
+	GSMTLDevice::MetalVersion version;
+	GSRAPipelineCompilerMTL(GSDeviceMTL* dev_): dev(dev_->m_dev.dev), version(dev_->m_dev.features.shader_version) {}
+
+	GSRAPipeline* Compile(GSRAFilterChainLoader::CompileFeedback& feedback, const GSRAFilterChain& chain, size_t pass_idx) override;
+};
+
+GSRAPipeline* GSRAPipelineCompilerMTL::Compile(GSRAFilterChainLoader::CompileFeedback& feedback, const GSRAFilterChain& chain, size_t pass_idx)
 { @autoreleasepool {
-	const rashader::Pass& pass = chain.passes[pass_idx];
-	auto vs = CompileSPIRV(m_dev, pass.vs_spirv, pass, pass_idx, spv::ExecutionModelVertex);
-	auto fs = CompileSPIRV(m_dev, pass.fs_spirv, pass, pass_idx, spv::ExecutionModelFragment);
-	if (!vs || !fs)
+	rashader::Pass pass = chain.info.passes[pass_idx];
+	feedback.EndWaitDestroy();
+
+	auto vs = CompileSPIRV(dev, version, pass.vs_spirv, pass, pass_idx, spv::ExecutionModelVertex);
+	if (!vs || !feedback.IncShaders(chain))
 		return nullptr;
+	auto fs = CompileSPIRV(dev, version, pass.fs_spirv, pass, pass_idx, spv::ExecutionModelFragment);
+	if (!fs || !feedback.IncShaders(chain))
+		return nullptr;
+
 	GSTexture::Format gsfmt = MapRAShaderFormat(pass.out_format);
 	auto pdesc = MRCTransfer([MTLRenderPipelineDescriptor new]);
 	if (!pass.name.empty())
@@ -2940,22 +2956,35 @@ GSRAPipeline* GSDeviceMTL::CompileRAShaderPipeline(const rashader::FilterChain& 
 		[pdesc setLabel:[NSString stringWithFormat:@"ra:pass%zd", pass_idx]];
 
 	MTLVertexDescriptor* vert = [pdesc vertexDescriptor];
-	[[[vert layouts] objectAtIndexedSubscript:2] setStride:sizeof(ConvertShaderVertex)];
-	applyAttribute(vert, 0, MTLVertexFormatFloat2, offsetof(ConvertShaderVertex, pos),    2);
-	applyAttribute(vert, 1, MTLVertexFormatFloat2, offsetof(ConvertShaderVertex, texpos), 2);
+	[[[vert layouts] objectAtIndexedSubscript:2] setStride:sizeof(GSDeviceMTL::ConvertShaderVertex)];
+	applyAttribute(vert, 0, MTLVertexFormatFloat2, offsetof(GSDeviceMTL::ConvertShaderVertex, pos),    2);
+	applyAttribute(vert, 1, MTLVertexFormatFloat2, offsetof(GSDeviceMTL::ConvertShaderVertex, texpos), 2);
 
 	[pdesc setVertexFunction:vs];
 	[pdesc setFragmentFunction:fs];
 	[[[pdesc colorAttachments] objectAtIndexedSubscript:0] setPixelFormat:ConvertPixelFormat(gsfmt)];
 	NSError* err = nil;
-	auto pipe = MRCTransfer([m_dev.dev newRenderPipelineStateWithDescriptor:pdesc error:&err]);
+	auto pipe = MRCTransfer([dev newRenderPipelineStateWithDescriptor:pdesc error:&err]);
 	if (!pipe)
 	{
 		Console.ErrorFmt("Failed to compile pipeline for rashader pass {}: {}", pass_idx, [[err localizedDescription] UTF8String]);
 		return nullptr;
 	}
+	if (!feedback.BeginWaitDestroy())
+		return nullptr;
+
 	return new GSRAPipelineMTL(std::move(pipe));
 }}
+
+GSRAPipelineCompiler* GSDeviceMTL::CreateRAPipelineCompiler()
+{
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
+	if ([m_dev.dev respondsToSelector:@selector(setShouldMaximizeConcurrentCompilation:)])
+		[m_dev.dev setShouldMaximizeConcurrentCompilation:YES];
+#pragma clang diagnostic pop
+	return new GSRAPipelineCompilerMTL(this);
+}
 
 static constexpr GSDeviceMTL::ConvertShaderVertex RA_VERTICES[] = {
 	{{-1,  1}, {0, 0}},

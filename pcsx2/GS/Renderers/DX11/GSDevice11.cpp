@@ -3445,33 +3445,46 @@ struct GSRAPipeline11 final : public GSRAPipeline
 	wil::com_ptr_nothrow<ID3D11PixelShader> ps;
 };
 
-GSRAPipeline* GSDevice11::CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass_idx)
+struct GSRAPipelineCompiler11 : public GSRAPipelineCompiler
+{
+	wil::com_ptr_nothrow<ID3D11Device> dev;
+	D3D::ShaderModel sm;
+	GSRAPipelineCompiler11(ID3D11Device* dev_, D3D::ShaderModel sm_): dev(dev_), sm(sm_) {}
+	GSRAPipeline* Compile(GSRAFilterChainLoader::CompileFeedback& feedback, const GSRAFilterChain& chain, size_t pass_idx) override;
+};
+
+GSRAPipeline* GSRAPipelineCompiler11::Compile(GSRAFilterChainLoader::CompileFeedback& feedback, const GSRAFilterChain& chain, size_t pass_idx)
 {
 #define CHECK(x, type) do { if (FAILED(x)) { Console.ErrorFmt("Failed to create " type " for rashader pass {}", pass_idx); return nullptr; } } while (0)
-	const rashader::Pass& pass = chain.passes[pass_idx];
+	rashader::Pass pass = chain.info.passes[pass_idx];
+	feedback.EndWaitDestroy();
 	static constexpr D3D11_INPUT_ELEMENT_DESC input_elems[] = {
 		{"POSITION", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
 		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 8, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
-	D3D::ShaderModel sm = m_shader_cache.GetShaderModel();
 	bool debug = GSConfig.UseDebugDevice;
 	wil::com_ptr_nothrow<ID3DBlob> vs_blob = D3D::CompileRAShaderSPIRV(pass.vs_spirv, pass, debug, sm, D3D::ShaderType::Vertex);
+	if (!vs_blob || !feedback.IncShaders(chain))
+		return nullptr;
 	wil::com_ptr_nothrow<ID3DBlob> ps_blob = D3D::CompileRAShaderSPIRV(pass.fs_spirv, pass, debug, sm, D3D::ShaderType::Pixel);
-	if (!vs_blob || !ps_blob)
+	if (!ps_blob || !feedback.IncShaders(chain))
 		return nullptr;
 	wil::com_ptr_nothrow<ID3D11InputLayout> input_layout;
 	wil::com_ptr_nothrow<ID3D11VertexShader> vs;
 	wil::com_ptr_nothrow<ID3D11PixelShader> ps;
-	CHECK(m_dev->CreateInputLayout(input_elems, std::size(input_elems), vs_blob->GetBufferPointer(), vs_blob->GetBufferSize(), input_layout.put()), "input layout");
-	CHECK(m_dev->CreateVertexShader(vs_blob->GetBufferPointer(), vs_blob->GetBufferSize(), nullptr, vs.put()), "vertex shader");
-	CHECK(m_dev->CreatePixelShader(ps_blob->GetBufferPointer(), ps_blob->GetBufferSize(), nullptr, ps.put()), "pixel shader");
+	CHECK(dev->CreateInputLayout(input_elems, std::size(input_elems), vs_blob->GetBufferPointer(), vs_blob->GetBufferSize(), input_layout.put()), "input layout");
+	CHECK(dev->CreateVertexShader(vs_blob->GetBufferPointer(), vs_blob->GetBufferSize(), nullptr, vs.put()), "vertex shader");
+	CHECK(dev->CreatePixelShader(ps_blob->GetBufferPointer(), ps_blob->GetBufferSize(), nullptr, ps.put()), "pixel shader");
 
 #ifdef PCSX2_DEVBUILD
 	std::string name = pass.name.empty() ? std::to_string(pass_idx) : pass.name;
-	SetD3DDebugObjectName(input_layout.get(), TinyString::from_format("ra:{}:layout", name));
-	SetD3DDebugObjectName(vs.get(), TinyString::from_format("ra:{}:vs", name));
-	SetD3DDebugObjectName(ps.get(), TinyString::from_format("ra:{}:ps", name));
+	GSDevice11::SetD3DDebugObjectName(input_layout.get(), TinyString::from_format("ra:{}:layout", name));
+	GSDevice11::SetD3DDebugObjectName(vs.get(), TinyString::from_format("ra:{}:vs", name));
+	GSDevice11::SetD3DDebugObjectName(ps.get(), TinyString::from_format("ra:{}:ps", name));
 #endif
+
+	if (!feedback.BeginWaitDestroy())
+		return nullptr;
 
 	GSRAPipeline11* pipe = new GSRAPipeline11();
 	pipe->input_layout = std::move(input_layout);
@@ -3479,6 +3492,11 @@ GSRAPipeline* GSDevice11::CompileRAShaderPipeline(const rashader::FilterChain& c
 	pipe->ps = std::move(ps);
 	return pipe;
 #undef CHECK
+}
+
+GSRAPipelineCompiler* GSDevice11::CreateRAPipelineCompiler()
+{
+	return new GSRAPipelineCompiler11(m_dev.get(), m_shader_cache.GetShaderModel());
 }
 
 static constexpr GSVector4 RA_VERTICES[] = {

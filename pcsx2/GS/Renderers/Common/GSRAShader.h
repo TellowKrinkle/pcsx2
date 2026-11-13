@@ -10,7 +10,13 @@
 
 #include <rashader-lite.h>
 
+#include <atomic>
+#include <condition_variable>
+#include <memory>
+#include <mutex>
 #include <span>
+#include <thread>
+#include <vector>
 
 struct GSRAPipeline
 {
@@ -81,6 +87,8 @@ public:
 
 	/// Initializes structures based on fully-initialized `info` and `plan`
 	void Init();
+	/// Call after initializing backends and before use
+	void FinalizeUniformBuffers();
 	/// Removes constant and unused buffer parameters from passes for faster updates
 	void CleanConstantBufferParams();
 	/// Get the a texture for the given parameters.  Replaces null values with `dummy_tex`.
@@ -101,3 +109,138 @@ MARK_ENUM_AS_FLAGS(GSRAFilterChain::UniformFlags);
 
 GSTexture::Format MapRAShaderFormat(rashader::TextureFormat format);
 const char* RAWrapDesc(rashader::WrapMode mode);
+
+struct GSRAPipelineCompiler;
+
+/// Load RAFilterChains in the background
+class GSRAFilterChainLoader
+{
+public:
+	enum class State
+	{
+		InitialLoad,  ///< Loading and parsing slangp
+		SPIRVCompile, ///< Compiling slang glsl to SPIR-V
+		DataLoaded,   ///< SPIR-V has been parsed, awaiting GS thread check / resource initialize
+		MainCompile,  ///< Compiling pipelines and loading textures
+		Complete,     ///< Done
+		Shutdown,     ///< Loader has been destroyed
+	};
+	struct Stats
+	{
+		State state;
+		u32 textures_loaded;
+		u32 shaders_compiled;
+		u32 pipelines_compiled;
+		u32 compiles_started;
+		u32 total_textures;
+		u32 total_shaders;
+		u32 total_pipelines;
+	};
+	class CompileFeedback
+	{
+		friend class GSRAFilterChainLoader;
+		GSRAFilterChainLoader* loader;
+		bool wait_destroy = false;
+		CompileFeedback(CompileFeedback&&) = delete;
+		CompileFeedback(GSRAFilterChainLoader* l);
+		~CompileFeedback() { EndWaitDestroy(); }
+	public:
+		GSRAFilterChainLoader& Loader() { return *loader; }
+		bool BeginWaitDestroy();
+		void EndWaitDestroy();
+		/// Increment the shaders compiled stat and return whether the compile should continue
+		bool IncShaders(const GSRAFilterChain& current);
+	};
+	class SwapCheck;
+
+	static size_t GetNumCompileThreads();
+	GSRAFilterChainLoader(GSDevice* dev);
+
+protected:
+	virtual ~GSRAFilterChainLoader();
+
+private:
+	static void CompileThreadMain(GSRAFilterChainLoader* self, std::unique_ptr<GSRAPipelineCompiler> compiler);
+	static void TextureLoadThreadMain(GSRAFilterChainLoader* self);
+
+	std::atomic<u32> m_refcnt{1};
+	std::atomic<u32> m_wait_destroy{0};
+	u8 m_current_upload_buffer_idx = 0;
+	u8 m_threads_on_current = 0;
+	u8 m_total_threads = 0;
+public:
+	/// If true, this filter chain loader has additional work done to it by GSDevice, and therefore will manage updating compile statistics on its own in CheckDone.
+	bool m_gsdevice_assisted_compile = false;
+	/// If true, this filter chain has a separate counter for its shader compiles
+	bool m_separate_shader_compile = true;
+protected:
+	bool m_has_non_fatal_errors = false;
+	bool m_needs_dummy = false;
+	bool m_failed = false;
+	/// State of compilation
+	Stats m_stats = {};
+	std::mutex m_mtx;
+	std::condition_variable m_cv;
+private:
+	std::vector<std::thread> m_threads;
+	GSRAFilterChain* m_current = nullptr;
+
+	struct TextureInfo {
+		u32 index;
+		GSVector2i size;
+		GSTexture::Format format;
+		u16 nmips;
+		u16 first_row;
+		u16 num_rows;
+		u16 mip_level;
+		u32 pitch;
+		u32 data_offset;
+	};
+	void* m_current_upload_buffer;
+	std::vector<TextureInfo> m_texture_uploads;
+	std::vector<TextureInfo> m_texture_uploads_gs_thread;
+	std::vector<GSRAFilterChain*> m_discarded_filter_chains;
+	GSUploadBuffer* m_upload_buffers[GSUploadBuffer::DELAY_UNTIL_REUSE];
+
+protected:
+	void CheckMainCompletion();
+
+private:
+	bool ParseSlangP(GSRAFilterChain* chain);
+	bool ParseSPIRV(GSRAFilterChain* chain);
+	void UploadTextures(GSRAFilterChain* chain, GSDevice* dev);
+	void BeginWaitDestroyLocked();
+
+public:
+	/// Release the loader (must be empty)
+	void Release();
+	/// Check if the loader can be released
+	bool IsEmpty() const { return m_current && m_discarded_filter_chains.empty(); }
+	/// Get the currently loading filter chain
+	GSRAFilterChain* GetCurrent() const { return m_current; }
+	/// Check on things (call once per frame)
+	virtual bool CheckDone(GSDevice* dev);
+	/// Retrieve the current filter chain and destroy the instance.  Gives ownership of the filter chain back to the caller.
+	GSRAFilterChain* Finish(GSDevice* dev, bool wait = true);
+	/// Check if the filter chain was loaded successfully
+	bool WasSuccessful() const { return !m_failed; }
+	/// Cancel work on the current filter chain and start work on a new one
+	void BeginLoad(GSRAFilterChain* chain);
+	/// Get status on how the load is going
+	Stats GetStats();
+	/// Prevent the global GSDevice and any filter chains from being destroyed until a call to `EndWaitDestroy`
+	/// If it returns false, the global GSDevice has already been destroyed and you must not attempt to access it or any filter chains on this loader.
+	bool BeginWaitDestroy();
+	/// Release the assertion started by `BeginWaitDestroy`
+	void EndWaitDestroy();
+};
+
+struct GSRAPipelineCompiler
+{
+	// Both the destructor and Compile may be called after the global GSDevice has been destroyed!
+	virtual ~GSRAPipelineCompiler() = default;
+	/// Compile a pipeline.
+	/// This is entered with a WaitDestroy assertion on the loader.
+	/// If your compiler can function with the global GSDevice destroyed, copy what you need out of the filter chain, `EndWaitDestroy()`, and then `BeginWaitDestroy` shortly before returning.
+	virtual GSRAPipeline* Compile(GSRAFilterChainLoader::CompileFeedback& feedback, const GSRAFilterChain& chain, size_t pass) = 0;
+};

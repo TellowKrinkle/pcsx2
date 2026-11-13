@@ -118,15 +118,14 @@ GSDevice12::ComPtr<ID3DBlob> GSDevice12::SerializeRootSignature(const D3D12_ROOT
 	return blob;
 }
 
-GSDevice12::ComPtr<ID3D12RootSignature> GSDevice12::CreateRootSignature(const D3D12_ROOT_SIGNATURE_DESC* desc)
+GSDevice12::ComPtr<ID3D12RootSignature> GSDevice12::CreateRootSignature(ID3D12Device* dev, const D3D12_ROOT_SIGNATURE_DESC* desc)
 {
 	ComPtr<ID3DBlob> blob = SerializeRootSignature(desc);
 	if (!blob)
 		return {};
 
 	ComPtr<ID3D12RootSignature> rs;
-	const HRESULT hr =
-		m_device->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(rs.put()));
+	const HRESULT hr = dev->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(rs.put()));
 	if (FAILED(hr))
 	{
 		Console.Error("D3D12: CreateRootSignature() failed: %08X", hr);
@@ -134,6 +133,11 @@ GSDevice12::ComPtr<ID3D12RootSignature> GSDevice12::CreateRootSignature(const D3
 	}
 
 	return rs;
+}
+
+GSDevice12::ComPtr<ID3D12RootSignature> GSDevice12::CreateRootSignature(const D3D12_ROOT_SIGNATURE_DESC* desc)
+{
+	return CreateRootSignature(m_device.get(), desc);
 }
 
 bool GSDevice12::SupportsTextureFormat(DXGI_FORMAT format)
@@ -1673,7 +1677,7 @@ void GSDevice12::Draw(const GSHWDrawConfig& config)
 }
 
 void GSDevice12::LookupNativeFormat(GSTexture::Format format, DXGI_FORMAT* d3d_format, DXGI_FORMAT* srv_format,
-	DXGI_FORMAT* rtv_format, DXGI_FORMAT* dsv_format, DXGI_FORMAT* uav_format) const
+	DXGI_FORMAT* rtv_format, DXGI_FORMAT* dsv_format, DXGI_FORMAT* uav_format, bool typed_casting_supported)
 {
 	#define SRV_RTV_UAV(x) {x, x, x, DXGI_FORMAT_UNKNOWN, x}
 	#define SRV_RTV(x) {x, x, x, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_UNKNOWN}
@@ -1734,7 +1738,7 @@ void GSDevice12::LookupNativeFormat(GSTexture::Format format, DXGI_FORMAT* d3d_f
 
 	const auto& mapping = s_format_mapping[static_cast<int>(format)];
 	if (d3d_format)
-		*d3d_format = (format == GSTexture::Format::DepthStencil && !m_typed_casting_supported) ? DXGI_FORMAT_R32G8X24_TYPELESS : mapping[0];
+		*d3d_format = (format == GSTexture::Format::DepthStencil && !typed_casting_supported) ? DXGI_FORMAT_R32G8X24_TYPELESS : mapping[0];
 	if (srv_format)
 		*srv_format = mapping[1];
 	if (rtv_format)
@@ -1743,6 +1747,12 @@ void GSDevice12::LookupNativeFormat(GSTexture::Format format, DXGI_FORMAT* d3d_f
 		*dsv_format = mapping[3];
 	if (uav_format)
 		*uav_format = mapping[4];
+}
+
+void GSDevice12::LookupNativeFormat(GSTexture::Format format, DXGI_FORMAT* d3d_format, DXGI_FORMAT* srv_format,
+	DXGI_FORMAT* rtv_format, DXGI_FORMAT* dsv_format, DXGI_FORMAT* uav_format) const
+{
+	return LookupNativeFormat(format, d3d_format, srv_format, rtv_format, dsv_format, uav_format, m_typed_casting_supported);
 }
 
 GSTexture* GSDevice12::CreateSurface(GSTexture::Usage usage, int width, int height, int levels, GSTexture::Format format)
@@ -4959,7 +4969,7 @@ static D3D12_SHADER_VISIBILITY MapRAStageFlags(u32 stages)
 	return D3D12_SHADER_VISIBILITY_ALL;
 }
 
-static wil::com_ptr_nothrow<ID3D12RootSignature> CreateRARootSignature(GSDevice12* dev, const rashader::Pass& pass)
+static wil::com_ptr_nothrow<ID3D12RootSignature> CreateRARootSignature(ID3D12Device* dev, const rashader::Pass& pass)
 {
 	size_t ntex = pass.bindings.size();
 	size_t ntable = ntex ? ntex + 1 : 0;
@@ -5013,25 +5023,37 @@ static wil::com_ptr_nothrow<ID3D12RootSignature> CreateRARootSignature(GSDevice1
 		param.ShaderVisibility = MapRAStageFlags(pass.push.stages);
 	}
 	pxAssert(desc.NumParameters == nparam);
-	return dev->CreateRootSignature(&desc);
+
+	return GSDevice12::CreateRootSignature(dev, &desc);
 }
 
-GSRAPipeline* GSDevice12::CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass_idx)
+struct GSRAPipelineCompiler12 : public GSRAPipelineCompiler
 {
-	const rashader::Pass& pass = chain.passes[pass_idx];
-	ComPtr<ID3D12RootSignature> rootsig = CreateRARootSignature(this, pass);
+	wil::com_ptr_nothrow<ID3D12Device> dev;
+	D3D::ShaderModel sm;
+	bool typed_casting_supported;
+	bool debug = GSConfig.UseDebugDevice;
+	GSRAPipelineCompiler12(ID3D12Device* dev_, D3D::ShaderModel sm_, bool tc): dev(dev_), sm(sm_), typed_casting_supported(tc) {}
+	GSRAPipeline* Compile(GSRAFilterChainLoader::CompileFeedback& feedback, const GSRAFilterChain& chain, size_t pass_idx) override;
+};
+
+GSRAPipeline* GSRAPipelineCompiler12::Compile(GSRAFilterChainLoader::CompileFeedback& feedback, const GSRAFilterChain& chain, size_t pass_idx)
+{
+	rashader::Pass pass = chain.info.passes[pass_idx];
+	feedback.EndWaitDestroy();
+	wil::com_ptr_nothrow<ID3D12RootSignature> rootsig = CreateRARootSignature(dev.get(), pass);
 	if (!rootsig)
 		return nullptr;
 
-	D3D::ShaderModel sm = m_shader_cache.GetShaderModel();
-	bool debug = GSConfig.UseDebugDevice;
-	ComPtr<ID3DBlob> vs = D3D::CompileRAShaderSPIRV(pass.vs_spirv, pass, debug, sm, D3D::ShaderType::Vertex);
-	ComPtr<ID3DBlob> ps = D3D::CompileRAShaderSPIRV(pass.fs_spirv, pass, debug, sm, D3D::ShaderType::Pixel);
-	if (!vs || !ps)
+	wil::com_ptr_nothrow<ID3DBlob> vs = D3D::CompileRAShaderSPIRV(pass.vs_spirv, pass, debug, sm, D3D::ShaderType::Vertex);
+	if (!vs || !feedback.IncShaders(chain))
+		return nullptr;
+	wil::com_ptr_nothrow<ID3DBlob> ps = D3D::CompileRAShaderSPIRV(pass.fs_spirv, pass, debug, sm, D3D::ShaderType::Pixel);
+	if (!ps || !feedback.IncShaders(chain))
 		return nullptr;
 
 	DXGI_FORMAT fmt;
-	LookupNativeFormat(MapRAShaderFormat(pass.out_format), nullptr, nullptr, &fmt, nullptr, nullptr);
+	GSDevice12::LookupNativeFormat(MapRAShaderFormat(pass.out_format), nullptr, nullptr, &fmt, nullptr, nullptr, typed_casting_supported);
 
 	D3D12::GraphicsPipelineBuilder gpb;
 	gpb.SetRootSignature(rootsig.get());
@@ -5046,7 +5068,7 @@ GSRAPipeline* GSDevice12::CompileRAShaderPipeline(const rashader::FilterChain& c
 	gpb.SetNoBlendingState();
 	gpb.SetRenderTarget(0, fmt);
 
-	ComPtr<ID3D12PipelineState> pipe = gpb.Create(m_device.get(), false);
+	wil::com_ptr_nothrow<ID3D12PipelineState> pipe = gpb.Create(dev.get(), false);
 	if (!pipe)
 		return nullptr;
 
@@ -5056,10 +5078,18 @@ GSRAPipeline* GSDevice12::CompileRAShaderPipeline(const rashader::FilterChain& c
 	D3D12::SetObjectName(pipe.get(), TinyString::from_format("ra:{}", name));
 #endif
 
+	if (!feedback.BeginWaitDestroy())
+		return nullptr;
+
 	GSRAPipeline12* res = new GSRAPipeline12;
 	res->rootsig = std::move(rootsig);
 	res->pipeline = std::move(pipe);
 	return res;
+}
+
+GSRAPipelineCompiler* GSDevice12::CreateRAPipelineCompiler()
+{
+	return new GSRAPipelineCompiler12(m_device.get(), m_shader_cache.GetShaderModel(), m_typed_casting_supported);
 }
 
 static constexpr GSVector4 RA_VERTICES[] = {

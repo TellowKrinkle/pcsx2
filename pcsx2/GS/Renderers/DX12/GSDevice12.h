@@ -29,11 +29,15 @@ struct D3D12CommandList
 	wil::com_ptr_nothrow<ID3D12GraphicsCommandList7> list7;
 };
 
+struct GSRAPipelineCompiler12;
+
 class GSDevice12 final : public GSDevice
 {
 public:
 	template <typename T>
 	using ComPtr = wil::com_ptr_nothrow<T>;
+
+	friend class GSRAPipelineCompiler12;
 
 	enum : u32
 	{
@@ -137,7 +141,8 @@ public:
 	D3D12StreamBuffer& GetTextureStreamBuffer() { return m_texture_stream_buffer; }
 
 	// Root signature access.
-	ComPtr<ID3DBlob> SerializeRootSignature(const D3D12_ROOT_SIGNATURE_DESC* desc);
+	static ComPtr<ID3DBlob> SerializeRootSignature(const D3D12_ROOT_SIGNATURE_DESC* desc);
+	static ComPtr<ID3D12RootSignature> CreateRootSignature(ID3D12Device* dev, const D3D12_ROOT_SIGNATURE_DESC* desc);
 	ComPtr<ID3D12RootSignature> CreateRootSignature(const D3D12_ROOT_SIGNATURE_DESC* desc);
 
 	/// Fence value for current command list.
@@ -448,6 +453,8 @@ private:
 	std::string m_convert_source;
 	std::string m_tfx_source;
 
+	static void LookupNativeFormat(GSTexture::Format format, DXGI_FORMAT* d3d_format, DXGI_FORMAT* srv_format,
+		DXGI_FORMAT* rtv_format, DXGI_FORMAT* dsv_format, DXGI_FORMAT* uav_format, bool typed_casting_supported);
 	void LookupNativeFormat(GSTexture::Format format, DXGI_FORMAT* d3d_format, DXGI_FORMAT* srv_format,
 		DXGI_FORMAT* rtv_format, DXGI_FORMAT* dsv_format, DXGI_FORMAT* uav_format) const;
 
@@ -654,7 +661,7 @@ public:
 	void SetScissor(const GSVector4i& scissor);
 	void SetPipeline(const ID3D12PipelineState* pipeline);
 
-	GSRAPipeline* CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass) override;
+	GSRAPipelineCompiler* CreateRAPipelineCompiler() override;
 	GSRAFilterChain* CreateRAFilterChain() override;
 	void DestroyRAFilterChain(GSRAFilterChain* chain) override;
 	bool FinalizeRAFilterChain(GSRAFilterChain& chain) override;

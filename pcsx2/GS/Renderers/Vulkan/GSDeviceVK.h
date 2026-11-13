@@ -696,7 +696,8 @@ public:
 	void SetScissor(const GSVector4i& scissor);
 	void SetPipeline(VkPipeline pipeline);
 
-	GSRAPipeline* CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass) override;
+	GSRAFilterChainLoader* CreateRAFilterChainLoader() override;
+	GSRAPipelineCompiler* CreateRAPipelineCompiler() override;
 	GSRAFilterChain* CreateRAFilterChain() override;
 	void DestroyRAFilterChain(GSRAFilterChain* chain) override;
 	bool FinalizeRAFilterChain(GSRAFilterChain& chain) override;

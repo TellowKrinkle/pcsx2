@@ -395,7 +395,7 @@ public:
 
 	bool DoCAS(GSTexture* sTex, GSTexture* dTex, bool sharpen_only, const std::array<u32, NUM_CAS_CONSTANTS>& constants) override;
 
-	GSRAPipeline* CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass) override;
+	GSRAPipelineCompiler* CreateRAPipelineCompiler() override;
 	GSRAFilterChain* CreateRAFilterChain() override;
 	void DestroyRAFilterChain(GSRAFilterChain* chain) override;
 	bool FinalizeRAFilterChain(GSRAFilterChain& chain) override;

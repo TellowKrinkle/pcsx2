@@ -474,6 +474,13 @@ void GSDevice::Destroy()
 		DestroyRAFilterChain(m_rashader_filter_chain);
 		m_rashader_filter_chain = nullptr;
 	}
+	if (m_rashader_filter_chain_loader)
+	{
+		if (GSRAFilterChain* chain = m_rashader_filter_chain_loader->Finish(this))
+			DestroyRAFilterChain(chain);
+		m_rashader_filter_chain_loader->Release();
+		m_rashader_filter_chain_loader = nullptr;
+	}
 }
 
 bool GSDevice::AcquireWindow(bool recreate_window)
@@ -923,6 +930,21 @@ GSTexture* GSDevice::CreateCompatible(GSTexture* tex, int w, int h, bool clear, 
 	return FetchSurface(tex->GetUsage(), w, h, 1, tex->GetFormat(), clear, prefer_reuse);
 }
 
+class GSUploadBufferGeneric : public GSUploadBuffer
+{
+	u8* buffer;
+public:
+	GSUploadBufferGeneric(size_t size): GSUploadBuffer(size), buffer(static_cast<u8*>(malloc(size))) {}
+	~GSUploadBufferGeneric() { free(buffer); }
+	void* Map() override { return buffer; }
+	void CopyToTexture(GSTexture* dtex, const GSVector4i& drc, size_t offset, int pitch, int layer) override
+	{
+		dtex->Update(drc, buffer + offset, pitch, layer);
+	}
+};
+
+GSUploadBuffer* GSDevice::CreateUploadBuffer(size_t size) { return new GSUploadBufferGeneric(size); }
+
 void GSDevice::DoStretchRectWithAssertions(GSTexture* sTex, const GSVector4& sRect, GSTexture* dTex,
 	const GSVector4& dRect, ShaderConvertSelector shader, Filter filter)
 {
@@ -1137,208 +1159,9 @@ void GSDevice::ShadeBoost()
 	}
 }
 
-static bool CompileSPIRV(GSSPIRVCompiler& compiler, GSRAFilterChain& chain, size_t n, GSSPIRVCompiler::Type type)
+GSRAFilterChainLoader* GSDevice::CreateRAFilterChainLoader()
 {
-	rashader::Pass& pass = chain.info.passes[n];
-	const std::string&                in  = type == GSSPIRVCompiler::Type::VS ? pass.vs_glsl  : pass.fs_glsl;
-	GSSPIRVCompiler::SPIRVCodeVector& out = type == GSSPIRVCompiler::Type::VS ? pass.vs_spirv : pass.fs_spirv;
-	// We need debug info for reflection
-	if (auto spirv = compiler.Compile(type, in, GSSPIRVCompiler::DebugLevel::Base))
-	{
-		out = *spirv;
-		return true;
-	}
-	else
-	{
-		const char* type_name = type == GSSPIRVCompiler::Type::VS ? "VS" : "FS";
-		Host::AddOSDMessage(fmt::format(TRANSLATE_FS("GS", "Failed to compile {} pass {} {}.\nView console for details."), chain.path, n, type_name), Host::OSD_ERROR_DURATION);
-		return false;
-	}
-}
-
-static bool TryLoadTexture(const std::string& path, GSTextureReplacements::ReplacementTexture* data, bool only_base_image)
-{
-	const char* cpath = path.c_str();
-	std::string_view svpath = path;
-	GSTextureReplacements::ReplacementTextureLoader loader = GSTextureReplacements::GetLoader(svpath);
-	if (!loader)
-	{
-		Console.ErrorFmt("Unsupported postprocessing texture format {}", svpath);
-		return false;
-	}
-	FileSystem::ManagedCFilePtr fp = FileSystem::OpenManagedCFile(cpath, "rb");
-	GSTextureReplacements::CFile cfile(fp.get());
-	if (!fp || !loader(cfile, cpath, data, only_base_image))
-	{
-		Console.ErrorFmt("Failed to load postprocessing texture {}", svpath);
-		return false;
-	}
-	return true;
-}
-
-GSRAFilterChain* GSDevice::CreateRAFilterChain(std::string path)
-{
-	struct FilterChainDestroy { GSDevice* dev; void operator()(GSRAFilterChain* chain) { dev->DestroyRAFilterChain(chain); } };
-	std::unique_ptr<GSRAFilterChain, FilterChainDestroy> chain(CreateRAFilterChain(), {this});
-	if (!chain)
-		return nullptr;
-	bool has_non_fatal_errors = false;
-	bool needs_dummy = false;
-	std::vector<rashader::Error> errors;
-	rashader::SlangParseConfig config;
-	config.has_sensors = false;
-	chain->path = std::move(path);
-	ParseSlangP(chain->info, chain->path.c_str(), errors, config);
-	if (!errors.empty() || !chain->info.ok())
-	{
-		if (!chain->info.ok())
-			Console.ErrorFmt("Failed to load slangp {}:", chain->path);
-		else
-			Console.ErrorFmt("Warnings when loading slangp {}:", chain->path);
-		LogRAShaderErrors(errors);
-		has_non_fatal_errors = true;
-	}
-	if (!chain->info.ok())
-	{
-		Host::AddOSDMessage(fmt::format(TRANSLATE_FS("GS", "Failed to parse slangp {}.\nView console for details."), chain->path), Host::OSD_ERROR_DURATION);
-		return nullptr;
-	}
-
-	// Compile GLSL to SPIR-V
-	size_t npasses = chain->info.passes.size();
-	{
-		GSSPIRVCompiler compiler;
-		for (size_t i = 0; i < npasses; i++)
-		{
-			if (!CompileSPIRV(compiler, *chain, i, GSSPIRVCompiler::Type::VS))
-				return nullptr;
-			if (!CompileSPIRV(compiler, *chain, i, GSSPIRVCompiler::Type::FS))
-				return nullptr;
-		}
-	}
-
-	// Parse SPIR-V
-	std::vector<rashader::SPIRVError> spirv_errors;
-	if (!rashader::parse_spirv(chain->info, &spirv_errors))
-	{
-		Console.ErrorFmt("Failed to process shaders from slangp {}:", chain->path);
-		for (rashader::SPIRVError error : spirv_errors)
-		{
-			const char* stage = error.stage ? "FS" : "VS";
-			if (error.target)
-				Console.ErrorFmt("\t{} {}: {}: {}", stage, error.pass, error.message, error.target);
-			else
-				Console.ErrorFmt("\t{} {}: {}", stage, error.pass, error.message);
-		}
-		Host::AddOSDMessage(fmt::format(TRANSLATE_FS("GS", "Failed to process shaders from slangp {}.\nView console for details."), chain->path), Host::OSD_ERROR_DURATION);
-		return nullptr;
-	}
-
-	// Initialize execution planner
-	chain->plan = rashader::ExecutionPlanner(chain->info, false);
-	chain->Init();
-	for (size_t i = 0; i < npasses; i++)
-	{
-		for (const rashader::BoundTexture& binding : chain->info.passes[i].bindings)
-			if (binding.source == rashader::TextureSource::Pass && (binding.index >= i || binding.history))
-				needs_dummy = true;
-	}
-
-	// Compile pipelines
-	for (size_t i = 0; i < npasses; i++)
-	{
-		if (GSRAPipeline* pipeline = CompileRAShaderPipeline(chain->info, i))
-		{
-			chain->passes()[i] = pipeline;
-		}
-		else
-		{
-			Host::AddOSDMessage(fmt::format(TRANSLATE_FS("GS", "Failed to compile pipeline for slangp {} pass {}.\nView console for details."), chain->path, i), Host::OSD_ERROR_DURATION);
-			return nullptr;
-		}
-	}
-
-	// Load textures
-	size_t ntex = chain->info.textures.size();
-	for (size_t i = 0; i < ntex; i++)
-	{
-		rashader::Texture& tex = chain->info.textures[i];
-		if (!tex.used)
-			continue;
-		GSTextureReplacements::ReplacementTexture data;
-		if (!TryLoadTexture(tex.path, &data, !tex.mipmap))
-		{
-			has_non_fatal_errors = true;
-			needs_dummy = true;
-			continue;
-		}
-		u32 mips = static_cast<u32>(data.mips.size());
-		if (mips == 0 && tex.mipmap && !GSTexture::IsCompressedFormat(data.format))
-			mips = Common::BitScanReverse32(std::max(data.width, data.height) | 1);
-		GSTexture* gstex = CreateSurface(GSTexture::Texture, data.width, data.height, mips + 1, data.format);
-		chain->textures()[i] = gstex;
-		gstex->Update(GSVector4i(0, 0, data.width, data.height), data.data.data(), data.pitch);
-		for (size_t i = 0; i < data.mips.size(); i++)
-		{
-			GSTextureReplacements::ReplacementTexture::MipData& mip = data.mips[i];
-			gstex->Update(GSVector4i(0, 0, mip.width, mip.height), mip.data.data(), mip.pitch, static_cast<u32>(i + 1));
-		}
-		if (mips && data.mips.empty())
-			gstex->GenerateMipmap();
-#ifdef PCSX2_DEVBUILD
-		gstex->SetDebugName(TinyString::from_format("ra:{}", tex.name));
-#endif
-	}
-
-	if (needs_dummy)
-	{
-		GSTexture* dummy = CreateSurface(GSTexture::Texture, 1, 1, 1, GSTexture::Format::Color);
-		chain->dummy_tex = dummy;
-		u32 pixel = 0;
-		dummy->Update(GSVector4i::cxpr(0, 0, 1, 1), &pixel, 4);
-#ifdef PCSX2_DEVBUILD
-		dummy->SetDebugName("ra:dummy");
-#endif
-	}
-
-	chain->ReloadUserParams(GSConfig.LibrashaderPresetParams);
-
-	if (!FinalizeRAFilterChain(*chain))
-	{
-		DestroyRAFilterChain(chain.release());
-		return nullptr;
-	}
-
-	// Do this last so that backends can reorganize the uniform mapping in FinalizeRAFilterChain if they like
-	u8* uniform_base = chain->uniform_data;
-	for (size_t i = 0; i < npasses; i++)
-	{
-		static constexpr std::array<GSVector4, 4> mvp_main = {{
-			GSVector4::cxpr(1.f, 0.f, 0.f, 0.f),
-			GSVector4::cxpr(0.f, 1.f, 0.f, 0.f),
-			GSVector4::cxpr(0.f, 0.f, 1.f, 0.f),
-			GSVector4::cxpr(0.f, 0.f, 0.f, 1.f),
-		}};
-		static constexpr std::array<GSVector4, 4> mvp_final = {{
-			// Matrices are column-major!
-			GSVector4::cxpr( 2.f,  0.f, 0.f, 0.f),
-			GSVector4::cxpr( 0.f,  2.f, 0.f, 0.f),
-			GSVector4::cxpr( 0.f,  0.f, 1.f, 0.f),
-			GSVector4::cxpr(-1.f, -1.f, 0.f, 1.f),
-		}};
-		const std::array<GSVector4, 4>& mvp = i == npasses - 1 ? mvp_final : mvp_main;
-		const GSRAFilterChain::UniformMap& map = chain->uniform_offsets()[i];
-		const rashader::Pass& pass = chain->info.passes[i];
-		chain->WriteConstantRAUniforms(uniform_base + map.ubo,  pass.ubo,  mvp);
-		chain->WriteConstantRAUniforms(uniform_base + map.push, pass.push, mvp);
-	}
-
-	// We've uploaded constant buffers, remove them so we don't have to look through anymore
-	chain->CleanConstantBufferParams();
-
-	if (has_non_fatal_errors)
-		Host::AddOSDMessage(fmt::format(TRANSLATE_FS("GS", "Postprocessing shader {} loaded with warnings.\nView console for details."), chain->path), Host::OSD_WARNING_DURATION);
-	return chain.release();
+	return new GSRAFilterChainLoader(this);
 }
 
 void GSDevice::ReloadRAUserParams()
@@ -1376,6 +1199,16 @@ void GSDevice::UpdateRAUniforms(GSRAFilterChain& chain)
 
 void GSDevice::PrepareRAShader()
 {
+	auto try_destroy_loader = [this]{
+		if (GSRAFilterChain* chain = m_rashader_filter_chain_loader->Finish(this, false))
+			DestroyRAFilterChain(chain);
+		if (m_rashader_filter_chain_loader->IsEmpty())
+		{
+			m_rashader_filter_chain_loader->Release();
+			m_rashader_filter_chain_loader = nullptr;
+		}
+	};
+
 	if (!GSConfig.LibrashaderEnabled || GSConfig.LibrashaderPreset.empty())
 	{
 		if (m_rashader_filter_chain)
@@ -1383,14 +1216,52 @@ void GSDevice::PrepareRAShader()
 			DestroyRAFilterChain(m_rashader_filter_chain);
 			m_rashader_filter_chain = nullptr;
 		}
+		if (m_rashader_filter_chain_loader)
+			try_destroy_loader();
 	}
 	else if (!m_rashader_filter_chain || GSConfig.LibrashaderPreset != m_rashader_filter_chain->path)
 	{
-		if (m_rashader_filter_chain)
-			DestroyRAFilterChain(m_rashader_filter_chain);
-		m_rashader_filter_chain = CreateRAFilterChain(GSConfig.LibrashaderPreset);
-		if (!m_rashader_filter_chain)
-			GSConfig.LibrashaderPreset.clear(); // Broken
+		if (!m_rashader_filter_chain_loader || !m_rashader_filter_chain_loader->GetCurrent() ||
+			m_rashader_filter_chain_loader->GetCurrent()->path != GSConfig.LibrashaderPreset)
+		{
+			if (GSRAFilterChain* chain = CreateRAFilterChain())
+			{
+				chain->path = GSConfig.LibrashaderPreset;
+				if (!m_rashader_filter_chain_loader)
+					m_rashader_filter_chain_loader = CreateRAFilterChainLoader();
+				m_rashader_filter_chain_loader->BeginLoad(chain);
+			}
+			else
+			{
+				GSConfig.LibrashaderPreset.clear();
+			}
+		}
+		else if (m_rashader_filter_chain_loader->CheckDone(this))
+		{
+			if (m_rashader_filter_chain)
+				DestroyRAFilterChain(m_rashader_filter_chain);
+			bool ok = m_rashader_filter_chain_loader->WasSuccessful();
+			GSRAFilterChain* chain = m_rashader_filter_chain_loader->Finish(this);
+			ok = ok && FinalizeRAFilterChain(*chain);
+			if (ok)
+			{
+				chain->FinalizeUniformBuffers();
+				m_rashader_filter_chain = chain;
+			}
+			else
+			{
+				m_rashader_filter_chain = nullptr;
+				DestroyRAFilterChain(chain);
+				GSConfig.LibrashaderPreset.clear(); // Broken
+			}
+			m_rashader_filter_chain_loader->Release();
+			m_rashader_filter_chain_loader = nullptr;
+		}
+	}
+	else if (m_rashader_filter_chain_loader)
+	{
+		// If someone switched the shader to something else and then switched it back before the load finished
+		try_destroy_loader();
 	}
 }
 

@@ -48,6 +48,7 @@ enum : u32
 	TEXTURE_BUFFER_SIZE = 64 * 1024 * 1024,
 };
 
+static_assert(GSDeviceVK::NUM_COMMAND_BUFFERS <= GSUploadBuffer::DELAY_UNTIL_REUSE);
 
 #ifdef ENABLE_OGL_DEBUG
 static u32 s_debug_scope_depth = 0;
@@ -6881,7 +6882,19 @@ static VkDescriptorSetLayoutBinding GetRABinding(u32 binding, VkDescriptorType t
 	return res;
 }
 
-GSRAPipeline* GSDeviceVK::CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass_idx)
+GSRAFilterChainLoader* GSDeviceVK::CreateRAFilterChainLoader()
+{
+	GSRAFilterChainLoader* loader = new GSRAFilterChainLoader(this);
+	loader->m_separate_shader_compile = false;
+	return loader;
+}
+
+struct GSRAPipelineCompilerVK : public GSRAPipelineCompiler
+{
+	GSRAPipeline* Compile(GSRAFilterChainLoader::CompileFeedback&, const GSRAFilterChain& chain, size_t pass_idx) override;
+};
+
+GSRAPipeline* GSRAPipelineCompilerVK::Compile(GSRAFilterChainLoader::CompileFeedback&, const GSRAFilterChain& chain, size_t pass_idx)
 {
 	VkResult res;
 	VkDescriptorSetLayout set_layout;
@@ -6892,7 +6905,7 @@ GSRAPipeline* GSDeviceVK::CompileRAShaderPipeline(const rashader::FilterChain& c
 	VkPipeline pipeline;
 	GSRAPipelineVK* result;
 #define CHECK(x, action, cleanup) do { if ((res = (x)) != VK_SUCCESS) { LOG_VULKAN_ERROR(res, action " failed: "); goto cleanup; } } while (0)
-	const rashader::Pass& pass = chain.passes[pass_idx];
+	const rashader::Pass& pass = chain.info.passes[pass_idx];
 	VkDescriptorSetLayoutBinding* bindings = static_cast<VkDescriptorSetLayoutBinding*>(alloca(sizeof(*bindings) * (pass.bindings.size() + 1)));
 	VkDescriptorSetLayoutCreateInfo dslci;
 	VkPipelineLayoutCreateInfo plci;
@@ -6903,6 +6916,8 @@ GSRAPipeline* GSDeviceVK::CompileRAShaderPipeline(const rashader::FilterChain& c
 	VkRenderPassCreateInfo rpci;
 	VkShaderModuleCreateInfo smci;
 	Vulkan::GraphicsPipelineBuilder gpb;
+	GSDeviceVK* dev = GSDeviceVK::GetInstance();
+	VkDevice vkdev = dev->GetDevice();
 
 	dslci = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
 	dslci.pBindings = bindings;
@@ -6911,7 +6926,7 @@ GSRAPipeline* GSDeviceVK::CompileRAShaderPipeline(const rashader::FilterChain& c
 	for (const rashader::BoundTexture& tex : pass.bindings)
 		if (tex.stages)
 			bindings[dslci.bindingCount++] = GetRABinding(tex.binding, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, tex.stages);
-	CHECK(vkCreateDescriptorSetLayout(m_device, &dslci, nullptr, &set_layout), "vkCreateDescriptorSetLayout", fail0);
+	CHECK(vkCreateDescriptorSetLayout(vkdev, &dslci, nullptr, &set_layout), "vkCreateDescriptorSetLayout", fail0);
 
 	plci = {VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
 	plci.pSetLayouts = &set_layout;
@@ -6924,10 +6939,10 @@ GSRAPipeline* GSDeviceVK::CompileRAShaderPipeline(const rashader::FilterChain& c
 		plci.pPushConstantRanges = &pcr;
 		plci.pushConstantRangeCount = 1;
 	}
-	CHECK(vkCreatePipelineLayout(m_device, &plci, nullptr, &pipeline_layout), "vkCreatePipelineLayout", fail1);
+	CHECK(vkCreatePipelineLayout(vkdev, &plci, nullptr, &pipeline_layout), "vkCreatePipelineLayout", fail1);
 
 	ad = {};
-	ad.format = LookupNativeFormat(MapRAShaderFormat(pass.out_format));
+	ad.format = dev->LookupNativeFormat(MapRAShaderFormat(pass.out_format));
 	ad.samples = VK_SAMPLE_COUNT_1_BIT;
 	ad.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	ad.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -6945,17 +6960,17 @@ GSRAPipeline* GSDeviceVK::CompileRAShaderPipeline(const rashader::FilterChain& c
 	rpci.pAttachments = &ad;
 	rpci.subpassCount = 1;
 	rpci.pSubpasses = &sd;
-	CHECK(vkCreateRenderPass(m_device, &rpci, nullptr, &render_pass), "vkCreateRenderPass", fail2);
+	CHECK(vkCreateRenderPass(vkdev, &rpci, nullptr, &render_pass), "vkCreateRenderPass", fail2);
 
 	smci = {VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
-	smci.codeSize = chain.passes[pass_idx].vs_spirv.size() * sizeof(u32);
-	smci.pCode = chain.passes[pass_idx].vs_spirv.data();
-	CHECK(vkCreateShaderModule(m_device, &smci, nullptr, &vs), "vkCreateShaderModule", fail3);
-	smci.codeSize = chain.passes[pass_idx].fs_spirv.size() * sizeof(u32);
-	smci.pCode = chain.passes[pass_idx].fs_spirv.data();
-	CHECK(vkCreateShaderModule(m_device, &smci, nullptr, &fs), "vkCreateShaderModule", fail4);
+	smci.codeSize = pass.vs_spirv.size() * sizeof(u32);
+	smci.pCode = pass.vs_spirv.data();
+	CHECK(vkCreateShaderModule(vkdev, &smci, nullptr, &vs), "vkCreateShaderModule", fail3);
+	smci.codeSize = pass.fs_spirv.size() * sizeof(u32);
+	smci.pCode = pass.fs_spirv.data();
+	CHECK(vkCreateShaderModule(vkdev, &smci, nullptr, &fs), "vkCreateShaderModule", fail4);
 
-	SetPipelineProvokingVertex(m_features, gpb);
+	SetPipelineProvokingVertex(dev->Features(), gpb);
 	gpb.AddVertexBuffer(0, sizeof(GSVector4));
 	gpb.AddVertexAttribute(0, 0, VK_FORMAT_R32G32_SFLOAT, 0);
 	gpb.AddVertexAttribute(1, 0, VK_FORMAT_R32G32_SFLOAT, 8);
@@ -6965,9 +6980,9 @@ GSRAPipeline* GSDeviceVK::CompileRAShaderPipeline(const rashader::FilterChain& c
 	gpb.SetVertexShader(vs);
 	gpb.SetFragmentShader(fs);
 	gpb.SetRenderPass(render_pass, 0);
-	pipeline = gpb.Create(m_device, VK_NULL_HANDLE, false, false);
-	vkDestroyShaderModule(m_device, fs, nullptr);
-	vkDestroyShaderModule(m_device, vs, nullptr);
+	pipeline = gpb.Create(vkdev, VK_NULL_HANDLE, false, false);
+	vkDestroyShaderModule(vkdev, fs, nullptr);
+	vkDestroyShaderModule(vkdev, vs, nullptr);
 	if (!pipeline)
 		goto fail3;
 
@@ -6979,16 +6994,21 @@ GSRAPipeline* GSDeviceVK::CompileRAShaderPipeline(const rashader::FilterChain& c
 	return result;
 
 fail4:
-	vkDestroyShaderModule(m_device, vs, nullptr);
+	vkDestroyShaderModule(vkdev, vs, nullptr);
 fail3:
-	vkDestroyRenderPass(m_device, render_pass, nullptr);
+	vkDestroyRenderPass(vkdev, render_pass, nullptr);
 fail2:
-	vkDestroyPipelineLayout(m_device, pipeline_layout, nullptr);
+	vkDestroyPipelineLayout(vkdev, pipeline_layout, nullptr);
 fail1:
-	vkDestroyDescriptorSetLayout(m_device, set_layout, nullptr);
+	vkDestroyDescriptorSetLayout(vkdev, set_layout, nullptr);
 fail0:
 	return nullptr;
 #undef CHECK
+}
+
+GSRAPipelineCompiler* GSDeviceVK::CreateRAPipelineCompiler()
+{
+	return new GSRAPipelineCompilerVK;
 }
 
 static constexpr GSVector4 RA_VERTICES[] = {

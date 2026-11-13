@@ -9,6 +9,7 @@
 #include "GS/GSCapture.h"
 #include "GS/GSVector.h"
 #include "GS/Renderers/Common/GSDevice.h"
+#include "GS/Renderers/Common/GSRAShader.h"
 #ifdef _WIN32
 #include "GS/Renderers/DX12/GSDevice12.h"
 #endif
@@ -800,18 +801,13 @@ __ri void ImGuiManager::DrawShaderCompileIndicator(float scale, float margin, fl
 	static double s_indicator_fade_in_start = 0.0;
 	const double imgui_time = ImGui::GetTime();
 
-	const bool show_standard = GSShaderCompileIndicator::IsVisible();
-	bool show_any = show_standard;
-
-	if (!GSConfig.OsdShowGPUShadersStats || !show_any)
-	{
-		s_indicator_was_visible = false;
-		return;
-	}
+	GSRAFilterChainLoader* rashader_loader = g_gs_device->GetRAShaderLoader();
+	const bool show_rashader = rashader_loader && rashader_loader->GetCurrent();
+	const bool show_standard = GSShaderCompileIndicator::IsVisible() && GSConfig.OsdShowGPUShadersStats;
 
 	if (!s_indicator_was_visible)
 		s_indicator_fade_in_start = imgui_time;
-	s_indicator_was_visible = true;
+	s_indicator_was_visible = show_standard;
 
 	constexpr double fade_in_seconds = 0.12;
 	const float fade_in_alpha = static_cast<float>(
@@ -819,8 +815,7 @@ __ri void ImGuiManager::DrawShaderCompileIndicator(float scale, float margin, fl
 
 	ImFont* const font = ImGuiManager::GetOSDFont();
 	const float font_size = ImGuiManager::GetFontSizeStandard();
-	const float baseline_y =
-		GetWindowHeight() - margin - (GSConfig.OsdShowSettings ? font_size : 0.0f);
+	float baseline_y = GetWindowHeight() - margin - (GSConfig.OsdShowSettings ? font_size : 0.0f);
 	const float radius = std::ceil(10.0f * scale);
 	const float thickness = std::ceil(2.5f * scale);
 	ImDrawList* const dl = ImGui::GetBackgroundDrawList();
@@ -864,6 +859,25 @@ __ri void ImGuiManager::DrawShaderCompileIndicator(float scale, float margin, fl
 		}
 	};
 
+	if (show_rashader)
+	{
+		static std::string label;
+		label.clear();
+		auto append = std::back_inserter(label);
+
+		GSRAFilterChainLoader::Stats stats = rashader_loader->GetStats();
+		fmt::format_to(append, TRANSLATE_FS("ImGuiOverlays", "Loading shader preset '{0}'..."), Path::GetFileName(rashader_loader->GetCurrent()->path));
+		if (stats.total_textures)
+			fmt::format_to(append, TRANSLATE_FS("ImGuiOVerlays", "\n{0} / {1} textures"), stats.textures_loaded, stats.total_textures);
+		if (stats.total_shaders)
+			fmt::format_to(append, TRANSLATE_FS("ImGuiOVerlays", "\n{0} / {1} shaders"), stats.shaders_compiled, stats.total_shaders);
+		if (stats.total_pipelines)
+			fmt::format_to(append, TRANSLATE_FS("ImGuiOVerlays", "\n{0} / {1} pipelines"), stats.pipelines_compiled, stats.total_pipelines);
+		baseline_y -= 3 * font_size;
+		draw_indicator(label, 1.0, true, baseline_y);
+	}
+
+	if (show_standard)
 	{
 		const float fade_out_alpha = GSShaderCompileIndicator::GetFadeAlpha();
 		const float alpha = std::clamp(fade_in_alpha * fade_out_alpha, 0.0f, 1.0f);
@@ -880,6 +894,11 @@ __ri void ImGuiManager::DrawShaderCompileIndicator(float scale, float margin, fl
 		                              fmt::format(TRANSLATE_FS("ImGuiOverlays", COMPILED_MANY), count, time_ms);
 
 		float current_baseline_y = baseline_y;
+		if (show_rashader)
+		{
+			const float stack_spacing = std::ceil(4.0f * scale);
+			current_baseline_y -= radius * 2.0f + spacing + stack_spacing;
+		}
 		draw_indicator(label, alpha, true, current_baseline_y);
 	}
 }

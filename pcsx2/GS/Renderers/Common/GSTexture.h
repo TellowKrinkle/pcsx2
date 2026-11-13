@@ -358,3 +358,18 @@ protected:
 
 	bool m_needs_flush = false;
 };
+
+class GSUploadBuffer
+{
+	size_t m_size;
+public:
+	/// You must wait this many frames after a `CopyToTexture` to reuse a region of the upload buffer
+	static constexpr u32 DELAY_UNTIL_REUSE = 3;
+	GSUploadBuffer(GSUploadBuffer&&) = delete;
+	explicit GSUploadBuffer(size_t size): m_size(size) {}
+	virtual ~GSUploadBuffer() = default;
+	size_t Size() const { return m_size; }
+	virtual void* Map() = 0;
+	virtual void Unmap(u32 begin = 0, u32 end = UINT32_MAX) {};
+	virtual void CopyToTexture(GSTexture* dtex, const GSVector4i& drc, size_t offset, int pitch, int layer = 0) = 0;
+};

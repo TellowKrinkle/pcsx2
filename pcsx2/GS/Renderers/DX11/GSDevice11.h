@@ -427,7 +427,7 @@ public:
 
 	void ClearSamplerCache() override;
 
-	GSRAPipeline* CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass) override;
+	GSRAPipelineCompiler* CreateRAPipelineCompiler() override;
 	GSRAFilterChain* CreateRAFilterChain() override;
 	void DestroyRAFilterChain(GSRAFilterChain* chain) override;
 	bool FinalizeRAFilterChain(GSRAFilterChain& chain) override;

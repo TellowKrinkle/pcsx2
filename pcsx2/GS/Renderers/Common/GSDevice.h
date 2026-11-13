@@ -18,6 +18,8 @@
 
 struct GSRAFilterChain;
 struct GSRAPipeline;
+struct GSRAPipelineCompiler;
+class GSRAFilterChainLoader;
 
 namespace rashader {
 	struct FilterChain;
@@ -1520,6 +1522,7 @@ protected:
 	GSVector4 m_blur_source_rect = GSVector4::zero();
 
 	GSRAFilterChain* m_rashader_filter_chain = nullptr;
+	GSRAFilterChainLoader* m_rashader_filter_chain_loader = nullptr;
 	u64 m_last_rashader_frame_time = 0;
 
 	bool AcquireWindow(bool recreate_window);
@@ -1541,6 +1544,11 @@ protected:
 	void DoGaussianBlur(GSTexture* sTex, const GSVector4& sRect, GSTexture* dTex, GSTexture* tempTex);
 
 protected:
+	friend class GSRAFilterChainLoader;
+	/// Create a filter chain loader
+	virtual GSRAFilterChainLoader* CreateRAFilterChainLoader();
+	/// Create a
+	virtual GSRAPipelineCompiler* CreateRAPipelineCompiler() { return nullptr; }
 	/// Create an empty GSRAFilterChain
 	virtual GSRAFilterChain* CreateRAFilterChain() { return nullptr; }
 	/// Destroy an RAFilterChain
@@ -1552,15 +1560,13 @@ protected:
 	/// Upload uniforms for the given buffers.  `ubo` and `push` are bit arrays with one bit per pass
 	virtual void UploadRAUniforms(const GSRAFilterChain& chain, const u32* ubo, const u32* push) {}
 	virtual void RunRAShaderPass(const GSRAFilterChain& chain, size_t pass, GSTexture* target) {}
-	virtual GSRAPipeline* CompileRAShaderPipeline(const rashader::FilterChain& chain, size_t pass) { return nullptr; }
 public:
-	/// Fully create an RA filter chain (todo: do this on a multithreaded background queue)
-	GSRAFilterChain* CreateRAFilterChain(std::string path);
 	void ReloadRAUserParams();
 	void UpdateRAUniforms(GSRAFilterChain& chain);
 	void PrepareRAShader();
 	void RAShader(const GSVector4& draw_rect);
 	bool IsRAShaderActive() const { return m_rashader_filter_chain; }
+	GSRAFilterChainLoader* GetRAShaderLoader() { return m_rashader_filter_chain_loader; }
 
 	/// Perform texture operations for ImGui
 	void UpdateImGuiTextures();
@@ -1718,6 +1724,7 @@ public:
 	GSTexture* CreateCompatible(GSTexture* tex, int w, int h, bool clear = true, bool prefer_reuse = true);
 
 	virtual std::unique_ptr<GSDownloadTexture> CreateDownloadTexture(u32 width, u32 height, GSTexture::Format format) = 0;
+	virtual GSUploadBuffer* CreateUploadBuffer(size_t size);
 
 	virtual void CopyRect(GSTexture* sTex, GSTexture* dTex, const GSVector4i& r, u32 destX, u32 destY) = 0;
 
