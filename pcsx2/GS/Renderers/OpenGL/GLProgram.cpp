@@ -35,7 +35,7 @@ GLProgram::~GLProgram()
 	Destroy();
 }
 
-GLuint GLProgram::CompileShader(GLenum type, const std::string_view source)
+GLuint GLProgram::BeginCompileShader(GLenum type, const std::string_view source)
 {
 	GLuint id = glCreateShader(type);
 
@@ -43,6 +43,12 @@ GLuint GLProgram::CompileShader(GLenum type, const std::string_view source)
 	std::array<GLint, 1> source_lengths = {{static_cast<GLint>(source.size())}};
 	glShaderSource(id, static_cast<GLsizei>(sources.size()), sources.data(), source_lengths.data());
 	glCompileShader(id);
+	return id;
+}
+
+bool GLProgram::FinishCompileShader(GLuint* shader, const std::string_view source)
+{
+	GLuint id = *shader;
 
 	GLint status = GL_FALSE;
 	glGetShaderiv(id, GL_COMPILE_STATUS, &status);
@@ -72,18 +78,19 @@ GLuint GLProgram::CompileShader(GLenum type, const std::string_view source)
 				std::ofstream::out | std::ofstream::binary);
 			if (ofs.is_open())
 			{
-				ofs.write(sources[0], source_lengths[0]);
+				ofs.write(source.data(), source.size());
 				ofs << "\n\nCompile failed, info log:\n";
 				ofs << info_log;
 				ofs.close();
 			}
 
 			glDeleteShader(id);
-			return 0;
+			*shader = 0;
+			return false;
 		}
 	}
 
-	return id;
+	return true;
 }
 
 void GLProgram::ResetLastProgram()
@@ -91,21 +98,21 @@ void GLProgram::ResetLastProgram()
 	s_last_program_id = 0;
 }
 
-bool GLProgram::Compile(const std::string_view vertex_shader, const std::string_view fragment_shader)
+
+void GLProgram::BeginCompile(const std::string_view vertex_shader, const std::string_view fragment_shader)
 {
 	if (!vertex_shader.empty())
-	{
-		m_vertex_shader_id = CompileShader(GL_VERTEX_SHADER, vertex_shader);
-		if (m_vertex_shader_id == 0)
-			return false;
-	}
-
+		m_vertex_shader_id = BeginCompileShader(GL_VERTEX_SHADER, vertex_shader);
 	if (!fragment_shader.empty())
-	{
-		m_fragment_shader_id = CompileShader(GL_FRAGMENT_SHADER, fragment_shader);
-		if (m_fragment_shader_id == 0)
-			return false;
-	}
+		m_fragment_shader_id = BeginCompileShader(GL_FRAGMENT_SHADER, fragment_shader);
+}
+
+bool GLProgram::FinishCompile(const std::string_view vertex_shader, const std::string_view fragment_shader)
+{
+	if (!vertex_shader.empty() && !FinishCompileShader(&m_vertex_shader_id, vertex_shader))
+		return false;
+	if (!fragment_shader.empty() && !FinishCompileShader(&m_fragment_shader_id, fragment_shader))
+		return false;
 
 	m_program_id = glCreateProgram();
 	if (m_vertex_shader_id != 0)
@@ -115,10 +122,33 @@ bool GLProgram::Compile(const std::string_view vertex_shader, const std::string_
 	return true;
 }
 
+bool GLProgram::Compile(const std::string_view vertex_shader, const std::string_view fragment_shader)
+{
+	BeginCompile(vertex_shader, fragment_shader);
+	return FinishCompile(vertex_shader, fragment_shader);
+}
+
+static bool GetCompileStatus(GLuint shader)
+{
+	GLint res = GL_FALSE;
+	glGetShaderiv(shader, GL_COMPLETION_STATUS_KHR, &res);
+	return res != GL_FALSE;
+}
+
+bool GLProgram::CheckVSCompileStatus()
+{
+	return GetCompileStatus(m_vertex_shader_id);
+}
+
+bool GLProgram::CheckFSCompileStatus()
+{
+	return GetCompileStatus(m_fragment_shader_id);
+}
+
 bool GLProgram::CompileCompute(const std::string_view glsl)
 {
-	GLuint id = CompileShader(GL_COMPUTE_SHADER, glsl);
-	if (id == 0)
+	GLuint id = BeginCompileShader(GL_COMPUTE_SHADER, glsl);
+	if (!FinishCompileShader(&id, glsl))
 		return false;
 
 	m_program_id = glCreateProgram();
@@ -212,10 +242,13 @@ void GLProgram::BindFragDataIndexed(GLuint color_number /*= 0*/, const char* nam
 	glBindFragDataLocationIndexed(m_program_id, color_number, 0, name);
 }
 
-bool GLProgram::Link()
+void GLProgram::BeginLink()
 {
 	glLinkProgram(m_program_id);
+}
 
+bool GLProgram::FinishLink()
+{
 	if (m_vertex_shader_id != 0)
 		glDeleteShader(m_vertex_shader_id);
 	m_vertex_shader_id = 0;
@@ -253,6 +286,20 @@ bool GLProgram::Link()
 	}
 
 	return true;
+}
+
+bool GLProgram::Link()
+{
+	BeginLink();
+	return FinishLink();
+}
+
+bool GLProgram::CheckLinkStatus()
+{
+	static_assert(GL_COMPLETION_STATUS_KHR == GL_COMPLETION_STATUS_ARB);
+	GLint status = GL_FALSE;
+	glGetProgramiv(m_program_id, GL_COMPLETION_STATUS_KHR, &status);
+	return status != GL_FALSE;
 }
 
 void GLProgram::Bind() const

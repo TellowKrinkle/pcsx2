@@ -18,12 +18,17 @@ public:
 	GLProgram(GLProgram&& prog);
 	~GLProgram();
 
-	static GLuint CompileShader(GLenum type, const std::string_view source);
+	static GLuint BeginCompileShader(GLenum type, const std::string_view source);
+	static bool FinishCompileShader(GLuint* shader, const std::string_view source);
 	static void ResetLastProgram();
 
 	bool IsValid() const { return m_program_id != 0; }
 
+	void BeginCompile(const std::string_view vertex_shader, const std::string_view fragment_shader);
+	bool FinishCompile(const std::string_view vertex_shader, const std::string_view fragment_shader);
 	bool Compile(const std::string_view vertex_shader, const std::string_view fragment_shader);
+	bool CheckVSCompileStatus();
+	bool CheckFSCompileStatus();
 
 	bool CompileCompute(const std::string_view glsl);
 
@@ -38,7 +43,10 @@ public:
 	void BindFragData(GLuint index = 0, const char* name = "o_col0");
 	void BindFragDataIndexed(GLuint color_number = 0, const char* name = "o_col0");
 
+	void BeginLink();
+	bool FinishLink();
 	bool Link();
+	bool CheckLinkStatus();
 
 	void Bind() const;
 
