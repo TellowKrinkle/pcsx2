@@ -817,6 +817,7 @@ bool GSDeviceVK::ProcessDeviceExtensions()
 	m_optional_extensions.vk_ext_attachment_feedback_loop_layout &= !!attachment_feedback_loop_feature.attachmentFeedbackLoopLayout;
 
 	VkPhysicalDeviceProperties2 properties2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+	VkPhysicalDeviceVulkan12Properties properties_vk12 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES};
 	VkPhysicalDevicePushDescriptorPropertiesKHR push_descriptor_properties = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR};
 
 	if (m_optional_extensions.vk_khr_driver_properties)
@@ -824,6 +825,9 @@ bool GSDeviceVK::ProcessDeviceExtensions()
 		m_device_driver_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES;
 		Vulkan::AddPointerToChain(&properties2, &m_device_driver_properties);
 	}
+
+	if (m_device_properties.apiVersion >= VK_API_VERSION_1_2)
+		Vulkan::AddPointerToChain(&properties2, &properties_vk12);
 
 	if (m_optional_extensions.vk_khr_push_descriptor)
 		Vulkan::AddPointerToChain(&properties2, &push_descriptor_properties);
@@ -836,6 +840,13 @@ bool GSDeviceVK::ProcessDeviceExtensions()
 	{
 		Console.Error("VK: maxPushDescriptors (%u) is below required (%u)", push_descriptor_properties.maxPushDescriptors, NUM_TFX_TEXTURES);
 		m_optional_extensions.vk_khr_push_descriptor = false;
+	}
+
+	if (m_device_properties.apiVersion >= VK_API_VERSION_1_2)
+	{
+		// MoltenVK's push descriptor implementation is slower than descriptor writes because it mallocs memory for the write list on every push.
+		if (properties_vk12.driverID == VK_DRIVER_ID_MOLTENVK)
+			m_optional_extensions.vk_khr_push_descriptor = false;
 	}
 
 	if (m_optional_extensions.vk_ext_line_rasterization && !line_rasterization_feature.bresenhamLines)
