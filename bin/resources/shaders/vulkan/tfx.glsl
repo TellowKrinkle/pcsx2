@@ -661,13 +661,13 @@ layout(location = 0) in VSOutput
 #endif
 
 #if PS_ROV_COLOR
-	layout(set = 1, binding = 5, rgba8) uniform restrict coherent image2D RtImageRov;
+	layout(set = 1, binding = 2, rgba8) uniform restrict coherent image2D RtImageRov;
 	vec4 rov_rt_value;
 	vec4 sample_from_rt() { return rov_rt_value; }
 #endif
 
 #if PS_ROV_DEPTH
-	layout(set = 1, binding = 6, r32f) uniform restrict coherent image2D DepthImageRov;
+	layout(set = 1, binding = 3, r32f) uniform restrict coherent image2D DepthImageRov;
 	float rov_depth_value;
 	float sample_from_depth() { return rov_depth_value; }
 #endif
@@ -684,7 +684,7 @@ layout(set = 1, binding = 1) uniform texture2D Palette;
 			vec4 sample_from_rt() { return texelFetch(RtSampler, ivec2(gl_FragCoord.xy), 0); }
 		#endif
 		#if (PS_FEEDBACK_LOOP_IS_NEEDED_DEPTH && !PS_ROV_DEPTH)
-			layout(set = 1, binding = 4) uniform texture2D DepthSampler;
+			layout(set = 1, binding = 3) uniform texture2D DepthSampler;
 			float sample_from_depth() { return texelFetch(DepthSampler, ivec2(gl_FragCoord.xy), 0).r; }
 		#endif
 	#else
@@ -705,7 +705,7 @@ layout(set = 1, binding = 1) uniform texture2D Palette;
 #endif
 
 #if PS_DATE > 0
-layout(set = 1, binding = 3) uniform texture2D PrimMinTexture;
+layout(set = 1, binding = 4) uniform texture2D PrimMinTexture;
 #endif
 
 #if ZWRITE && !PS_FEEDBACK_LOOP_IS_NEEDED_DEPTH
