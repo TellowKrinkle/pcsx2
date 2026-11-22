@@ -47,6 +47,7 @@ public:
 		bool vk_khr_driver_properties : 1;
 		bool vk_khr_shader_non_semantic_info : 1;
 		bool vk_khr_synchronization2 : 1;
+		bool vk_khr_push_descriptor : 1;
 		bool vk_ext_attachment_feedback_loop_layout : 1;
 		bool vk_ext_fragment_shader_interlock : 1;
 	};
@@ -228,6 +229,7 @@ private:
 		// [0] - Init (upload) command buffer, [1] - draw command buffer
 		VkCommandPool command_pool = VK_NULL_HANDLE;
 		std::array<VkCommandBuffer, 2> command_buffers{VK_NULL_HANDLE, VK_NULL_HANDLE};
+		VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
 		VkFence fence = VK_NULL_HANDLE;
 		u64 fence_counter = 0;
 		s32 spin_id = -1;
@@ -420,6 +422,7 @@ private:
 	std::unique_ptr<VKSwapChain> m_swap_chain;
 	bool m_resize_requested = false;
 	bool m_is_presenting = false;
+	uint32_t m_descriptor_pool_multiplier = 1;
 
 	VkDescriptorSetLayout m_utility_ds_layout = VK_NULL_HANDLE;
 	VkPipelineLayout m_utility_pipeline_layout = VK_NULL_HANDLE;
@@ -520,6 +523,7 @@ private:
 	bool CreateBuffers();
 	bool CreatePipelineLayouts();
 	bool CreateRenderPasses();
+	bool CreateDescriptorPools();
 
 	bool CompileConvertPipelines();
 	bool CompilePresentPipelines();
@@ -681,6 +685,7 @@ public:
 	/// Binds all dirty state to the command buffer.
 	bool ApplyUtilityState(bool already_execed = false);
 	bool ApplyTFXState(PipelineLayout layout, bool already_execed = false);
+	bool AllocateDescriptorSet(VkDescriptorSet* out, const VkDescriptorSetLayout& layout);
 
 	void SetIndexBuffer(VkBuffer buffer);
 	void SetBlendConstants(u8 color);
