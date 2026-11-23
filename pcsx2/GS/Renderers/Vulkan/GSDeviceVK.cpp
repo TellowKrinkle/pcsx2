@@ -208,6 +208,23 @@ VkInstance GSDeviceVK::CreateVulkanInstance(const WindowInfo& wi, OptionalExtens
 	return instance;
 }
 
+static bool IsExtensionInList(std::string_view extension, const char* list)
+{
+	if (!list)
+		return false;
+	while (true)
+	{
+		const char* end = list;
+		while (*end && *end != ';' && *end != ':')
+			++end;
+		if (static_cast<size_t>(end - list) == extension.size() && 0 == memcmp(list, extension.data(), extension.size()))
+			return true;
+		if (!*end)
+			return false;
+		list = end + 1;
+	}
+}
+
 bool GSDeviceVK::SelectInstanceExtensions(ExtensionList* extension_list, const WindowInfo& wi, OptionalExtensions* oe,
 	bool enable_debug_utils)
 {
@@ -228,8 +245,15 @@ bool GSDeviceVK::SelectInstanceExtensions(ExtensionList* extension_list, const W
 	std::vector<VkExtensionProperties> available_extension_list(extension_count);
 	res = vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, available_extension_list.data());
 	pxAssert(res == VK_SUCCESS);
+	const char* disabled_extensions = getenv("VK_DISABLE_EXTENSIONS");
 
-	auto SupportsExtension = [&available_extension_list, extension_list](const char* name, bool required) {
+	auto SupportsExtension = [&available_extension_list, extension_list, disabled_extensions](const char* name, bool required) {
+		if (!required && IsExtensionInList(name, disabled_extensions))
+		{
+			DevCon.WriteLn("VK: Extension %s disabled by environment variable", name);
+			return false;
+		}
+
 		for (const VkExtensionProperties& properties : available_extension_list)
 		{
 			if (0 != strcmp(name, properties.extensionName))
@@ -439,8 +463,15 @@ bool GSDeviceVK::SelectDeviceExtensions(ExtensionList* extension_list, bool enab
 	res = vkEnumerateDeviceExtensionProperties(
 		m_physical_device, nullptr, &extension_count, available_extension_list.data());
 	pxAssert(res == VK_SUCCESS);
+	const char* disabled_extensions = getenv("VK_DISABLE_EXTENSIONS");
 
-	auto SupportsExtension = [&available_extension_list, extension_list](const char* name, bool required) {
+	auto SupportsExtension = [&available_extension_list, extension_list, disabled_extensions](const char* name, bool required) {
+		if (!required && IsExtensionInList(name, disabled_extensions))
+		{
+			DevCon.WriteLn("VK: Extension %s disabled by environment variable", name);
+			return false;
+		}
+
 		for (const VkExtensionProperties& properties : available_extension_list)
 		{
 			if (0 != strcmp(name, properties.extensionName))
