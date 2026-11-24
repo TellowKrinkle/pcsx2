@@ -184,3 +184,12 @@ jobs:
         with:
           name: ${{ steps.artifact-metadata.outputs.artifact-name }}
           path: ci-artifacts
+
+      - name: Test
+        if: inputs.cmakeBuildType == 'Debug'
+        run: |
+          mkdir -p run/PCSX2/{inis,bios}
+          cp .github/workflows/scripts/autotests/base.ini run/PCSX2/inis/PCSX2.ini
+          curl "${{ secrets.PS2_BIOS }}" -o run/PCSX2/bios/bios.bin 2>/dev/null
+          xvfb-run build/bin/pcsx2-qt -datapath run -exit-on-log "-- TEST END" -vm-logfile run/test.log .github/workflows/scripts/autotests/alu.elf
+          cat run/test.log
