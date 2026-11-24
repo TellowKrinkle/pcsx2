@@ -2297,6 +2297,22 @@ bool QtHost::ParseCommandLineOptions(const QStringList& args, std::shared_ptr<VM
 				InitializeEarlyConsole();
 				continue;
 			}
+			else if (CHECK_ARG_PARAM(QStringLiteral("-exit-on-log")))
+			{
+				g_exit_on_log = strdup((++it)->toUtf8());
+				continue;
+			}
+			else if (CHECK_ARG_PARAM(QStringLiteral("-vm-logfile")))
+			{
+				Error err;
+				g_vm_log_output = FileSystem::OpenCFile((++it)->toUtf8(), "wb", &err);
+				if (!g_vm_log_output)
+				{
+					std::fprintf(stderr, "Failed to open vm logfile: %s\n", err.GetDescription().c_str());
+					return false;
+				}
+				continue;
+			}
 			else if (CHECK_ARG(QStringLiteral("-bigpicture")))
 			{
 				s_start_big_picture_mode = true;

@@ -12,6 +12,7 @@
 #include "DebugTools/Debug.h"
 #include "R3000A.h"
 #include "R5900.h"
+#include "Host.h"
 
 #include "fmt/format.h"
 
@@ -26,6 +27,8 @@ using namespace R5900;
 
 TraceLogPack TraceLogging;
 ConsoleLogPack ConsoleLogging;
+const char* g_exit_on_log; ///< If non-null, the emulator will exit if the application logs this string
+FILE* g_vm_log_output;
 
 bool TraceLog::Write(const char* fmt, ...) const
 {
@@ -68,6 +71,32 @@ bool ConsoleLog::Write(ConsoleColors color, const char* fmt, ...) const
 	va_start(args, fmt);
 	Console.WriteLn(color, prefixed_str.c_str(), args);
 	va_end(args);
+
+	return false;
+}
+
+bool ConsoleLogFromVMBase::Write(std::string_view msg)
+{
+	for (const char ch : msg)
+	{
+		// Ignore control characters.
+		// Otherwise you get fun bells going off.
+		if (ch >= 0x20)
+			m_buffer.push_back(ch);
+
+		if (ch == '\n' || m_buffer.size() >= 4096)
+		{
+			Console.WriteLn(Color, m_buffer);
+			if (g_vm_log_output)
+			{
+				fprintf(g_vm_log_output, "%s\n", m_buffer.c_str());
+				fflush(g_vm_log_output);
+			}
+			if (g_exit_on_log && m_buffer == g_exit_on_log)
+				Host::RequestExitApplication(false);
+			m_buffer.clear();
+		}
+	}
 
 	return false;
 }

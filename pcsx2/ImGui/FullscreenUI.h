@@ -55,10 +55,6 @@ namespace FullscreenUI
 // Host UI triggers from Big Picture mode.
 namespace Host
 {
-	/// Requests shut down and exit of the hosting application. This may not actually exit,
-	/// if the user cancels the shutdown confirmation.
-	void RequestExitApplication(bool allow_confirm);
-
 	/// Requests Big Picture mode to be shut down, returning to the desktop interface.
 	void RequestExitBigPicture();
 

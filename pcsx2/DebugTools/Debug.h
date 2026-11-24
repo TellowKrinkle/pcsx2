@@ -91,30 +91,12 @@ struct ConsoleLog : public LogBase
 // formatting, since anything coming over the EE/IOP consoles should be considered raw
 // string data.  (otherwise %'s would get mis-interpreted).
 //
-template< ConsoleColors conColor >
-class ConsoleLogFromVM : public LogBase
+class ConsoleLogFromVMBase : public LogBase
 {
 public:
-	ConsoleLogFromVM(const LogDescriptor& descriptor) : LogBase(descriptor, conColor) {};
+	using LogBase::LogBase;
 
-	bool Write(std::string_view msg)
-	{
-		for (const char ch : msg)
-		{
-			// Ignore control characters.
-			// Otherwise you get fun bells going off.
-			if (ch >= 0x20)
-				m_buffer.push_back(ch);
-
-			if (ch == '\n' || m_buffer.size() >= 4096)
-			{
-				Console.WriteLn(conColor, m_buffer);
-				m_buffer.clear();
-			}
-		}
-
-		return false;
-	}
+	bool Write(std::string_view msg);
 
 	bool IsActive()
 	{
@@ -123,6 +105,13 @@ public:
 
 private:
 	std::string m_buffer;
+};
+
+template< ConsoleColors conColor >
+class ConsoleLogFromVM : public ConsoleLogFromVMBase
+{
+public:
+	ConsoleLogFromVM(const LogDescriptor& descriptor): ConsoleLogFromVMBase(descriptor, conColor) {}
 };
 
 // --------------------------------------------------------------------------------------
@@ -208,6 +197,8 @@ struct ConsoleLogPack
 
 extern TraceLogPack TraceLogging;
 extern ConsoleLogPack ConsoleLogging;
+extern const char* g_exit_on_log;
+extern FILE* g_vm_log_output;
 
 // Helper macro for cut&paste.  Note that we intentionally use a top-level *inline* bitcheck
 // against Trace.Enabled, to avoid extra overhead in Debug builds when logging is disabled.
